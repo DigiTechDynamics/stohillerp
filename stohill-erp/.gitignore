@@ -1,0 +1,57 @@
+# Stohil Properties - Global .gitignore
+
+# ─── Python / Django ────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+venv/
+ENV/
+env/
+build/
+dist/
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# ─── JavaScript / Node ────────────────────────────────────────────────────────
+node_modules/
+.DS_Store
+dist/
+dist-ssr
+*.local
+.eslintcache
+.stylelintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.vite/
+.vercel/
+
+# ─── IDE / Editors ────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# ─── Antigravity / Agent Data ──────────────────────────────────────────────────
+.gemini/
+.agents/
+.agent/
+_agents/
+_agent/
+brain/
+agent_logs/
+tmp/
+*.webp
+*.png
+*.mp4
+tb.txt
+debug_reports.py
+verify_ap_workflow.py
+seed_demo.sh
