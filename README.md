@@ -1,4 +1,4 @@
-# Stohill ERP — Property Management System
+# Stohil Properties — Property Management System
 
 A production-grade, full-stack Enterprise Resource Planning (ERP) system for real estate companies. Built with Django 5 + React 18.
 
@@ -270,6 +270,4 @@ npm run build
 
 ---
 
-*Stohill ERP — Built for South African real estate professionals*
-#   s t o h i l l e r p  
- 
+*Stohill Properties — Built for South African real estate professionals*
