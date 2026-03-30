@@ -46,7 +46,35 @@ def seed_payroll_config():
     PayrollSetting.objects.update_or_create(key='nssa_ceiling_usd', defaults={'name': 'NSSA Ceiling (USD)', 'value': Decimal('700.00')})
     PayrollSetting.objects.update_or_create(key='nssa_ceiling_zwg', defaults={'name': 'NSSA Ceiling (ZWG)', 'value': Decimal('24763.00')})
 
-    print("Success: Payroll configuration seeded.")
+    # 3. Salary Rules
+    from apps.payroll.models import SalaryRule, SalaryStructure
+    print("Seeding Salary Rules...")
+    
+    rules_data = [
+        {'code': 'BASIC', 'name': 'Basic Salary', 'category': 'basic', 'sequence': 10},
+        {'code': 'COMM', 'name': 'Commissions', 'category': 'allowance', 'sequence': 20},
+        {'code': 'PAYE', 'name': 'Income Tax (PAYE)', 'category': 'deduction', 'sequence': 30},
+        {'code': 'AIDS', 'name': 'AIDS Levy', 'category': 'deduction', 'sequence': 40},
+        {'code': 'NSSA', 'name': 'NSSA Pension', 'category': 'deduction', 'sequence': 50},
+        {'code': 'NET', 'name': 'Net Pay', 'category': 'net', 'sequence': 100},
+    ]
+
+    rules = []
+    for rd in rules_data:
+        rule, _ = SalaryRule.objects.update_or_create(
+            code=rd['code'],
+            defaults={'name': rd['name'], 'category': rd['category'], 'sequence': rd['sequence']}
+        )
+        rules.append(rule)
+
+    # 4. Salary Structure
+    structure, _ = SalaryStructure.objects.get_or_create(
+            code='ZW_MONTHLY',
+            defaults={'name': 'Zimbabwe Standard Monthly'}
+    )
+    structure.rules.set(rules)
+
+    print("Success: Payroll configuration and rules seeded.")
 
 if __name__ == "__main__":
     seed_payroll_config()

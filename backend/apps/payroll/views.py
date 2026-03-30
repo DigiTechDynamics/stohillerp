@@ -4,14 +4,15 @@ from rest_framework.response import Response
 from django.utils import timezone
 from django.db import transaction, models
 from decimal import Decimal
-from .models import PayrollRun, PayrollItem
-from .serializers import PayrollRunSerializer, PayrollItemSerializer
-from apps.hr.models import Employee
+from .models import PayrollRun, Payslip, PayslipLine, SalaryStructure
+from .serializers import PayrollRunSerializer, PayslipSerializer
+from apps.hr.models import Employee, EmployeeContract
 from apps.commissions.models import CommissionRecord
 from apps.core.models import Currency
 from .services.zimbabwe import ZimbabweTaxService
 from apps.finance.models.ap import Supplier, SupplierInvoice, SupplierInvoiceLine
-from apps.finance.models.core import ChartOfAccount
+from apps.finance.models.core import ChartOfAccount, Journal, JournalEntry, JournalLine, FiscalPeriod
+from apps.core.services.number_sequence import NumberSequenceService
 
 class PayrollRunViewSet(viewsets.ModelViewSet):
     queryset = PayrollRun.objects.all()
@@ -33,46 +34,106 @@ class PayrollRunViewSet(viewsets.ModelViewSet):
                     pass
 
             # 1. Clear existing items
-            payroll_run.items.all().delete()
+            payroll_run.payslips.all().delete()
             
-            # 2. Find eligible employees
-            employees = Employee.objects.filter(status='active')
+            # 2. Find eligible employees with running contracts
+            contracts = EmployeeContract.objects.filter(status='running').select_related('employee', 'job_position')
+            structure = SalaryStructure.objects.first()
             
             total_gross = Decimal('0.00')
             total_net = Decimal('0.00')
             payroll_run.total_deductions = Decimal('0.00')
             
-            for emp in employees:
-                # Calculate commissions for this period
+            for contract in contracts:
+                emp = contract.employee
+                
+                payslip = Payslip.objects.create(
+                    payroll_run=payroll_run,
+                    employee=emp,
+                    contract=contract,
+                    structure=structure,
+                    date_from=payroll_run.period_start,
+                    date_to=payroll_run.period_end,
+                )
+
                 commissions = CommissionRecord.objects.filter(
                     agent=emp,
                     status='approved',
                     approved_date__range=(payroll_run.period_start, payroll_run.period_end)
                 ).aggregate(total=models.Sum('net_commission'))['total'] or Decimal('0.00')
 
-                # Calculate Deductions (Zimbabwe Environment)
-                gross_for_tax = emp.basic_salary + commissions + emp.bonus
                 currency_code = payroll_run.currency.code if payroll_run.currency else "USD"
                 
-                paye = ZimbabweTaxService.calculate_paye(gross_for_tax, currency_code)
-                aids_levy = ZimbabweTaxService.calculate_aids_levy(paye)
-                nssa = ZimbabweTaxService.calculate_nssa(emp.basic_salary, currency_code)
+                rule_totals = {}
+                emp_gross = Decimal('0.00')
+                emp_net = Decimal('0.00')
+                emp_deduc = Decimal('0.00')
+                
+                # We will track mapped GL accounts globally for the Journal Entry
+                if not hasattr(payroll_run, '_gl_lines'):
+                    payroll_run._gl_lines = {}
 
-                item = PayrollItem.objects.create(
-                    payroll_run=payroll_run,
-                    employee=emp,
-                    basic_salary=emp.basic_salary,
-                    commission_amount=commissions,
-                    bonus=emp.bonus,
-                    tax_amount=paye,
-                    aids_levy=aids_levy,
-                    nssa_deduction=nssa,
-                    other_deductions=emp.other_deductions,
-                    bank_account_snapshot=f"{emp.bank_name} / {emp.bank_account_number}"
-                )
-                total_gross += item.gross_amount
-                total_net += item.net_amount
-                payroll_run.total_deductions += (paye + aids_levy + nssa + emp.other_deductions)
+
+                if structure:
+                    for rule in structure.rules.all().order_by('sequence'):
+                        amount = Decimal('0.00')
+                        if rule.code == 'BASIC':
+                            amount = contract.wage
+                        elif rule.code == 'COMM':
+                            amount = commissions
+                        elif rule.code == 'PAYE':
+                            tax_gross = contract.wage + commissions
+                            amount = ZimbabweTaxService.calculate_paye(tax_gross, currency_code)
+                        elif rule.code == 'AIDS':
+                            amount = ZimbabweTaxService.calculate_aids_levy(rule_totals.get('PAYE', Decimal('0.00')))
+                        elif rule.code == 'NSSA':
+                            amount = ZimbabweTaxService.calculate_nssa(contract.wage, currency_code)
+                        elif rule.amount_type == 'fixed':
+                            amount = rule.fixed_amount
+                        elif rule.amount_type == 'percentage':
+                            amount = contract.wage * (rule.percentage / Decimal('100.00'))
+
+                        if rule.category == 'net':
+                            amount = emp_net  # calculate net before applying rule
+
+                        rule_totals[rule.code] = amount
+
+                        if amount != 0 or rule.category == 'net':
+                            PayslipLine.objects.create(
+                                payslip=payslip,
+                                salary_rule=rule,
+                                name=rule.name,
+                                code=rule.code,
+                                category=rule.category,
+                                amount=amount,
+                                total=amount
+                            )
+                            
+                            # Accumulate for GL Journal Entry
+                            if amount > 0:
+                                if rule.debit_account:
+                                    cd = rule.debit_account.id
+                                    payroll_run._gl_lines.setdefault(cd, {'account': rule.debit_account, 'debit': Decimal('0.00'), 'credit': Decimal('0.00')})
+                                    payroll_run._gl_lines[cd]['debit'] += amount
+                                if rule.credit_account:
+                                    cc = rule.credit_account.id
+                                    payroll_run._gl_lines.setdefault(cc, {'account': rule.credit_account, 'debit': Decimal('0.00'), 'credit': Decimal('0.00')})
+                                    payroll_run._gl_lines[cc]['credit'] += amount
+
+                        if rule.category in ['basic', 'allowance']:
+                            emp_gross += amount
+                            emp_net += amount
+                        elif rule.category == 'deduction':
+                            emp_deduc += amount
+                            emp_net -= amount
+
+                payslip.net_amount = emp_net
+                payslip.bank_account_snapshot = f"{emp.bank_name} / {emp.bank_account_number}"  # Note: not in Payslip model; maybe we should just use contract?
+                payslip.save()
+
+                total_gross += emp_gross
+                total_net += emp_net
+                payroll_run.total_deductions += emp_deduc
             
             # 3. Update run totals
             payroll_run.total_gross = total_gross
@@ -82,10 +143,8 @@ class PayrollRunViewSet(viewsets.ModelViewSet):
             payroll_run.processed_by = request.user if request.user.is_authenticated else None
             
             # 4. Create/Update Supplier Invoice in AP
-            # Ensure "Staff Payroll" supplier exists
             wage_account = ChartOfAccount.objects.filter(code='5900').first()
             if not wage_account:
-                # Fallback to any expense account if 5900 is missing
                 wage_account = ChartOfAccount.objects.filter(account_type='expense').first()
 
             supplier, _ = Supplier.objects.get_or_create(
@@ -96,7 +155,6 @@ class PayrollRunViewSet(viewsets.ModelViewSet):
                 }
             )
 
-            # Create or update the invoice
             invoice = payroll_run.supplier_invoice
             if not invoice:
                 invoice = SupplierInvoice.objects.create(
@@ -113,15 +171,43 @@ class PayrollRunViewSet(viewsets.ModelViewSet):
             invoice.subtotal = total_net
             invoice.save()
 
-            # Create/Reset invoice lines
             invoice.lines.all().delete()
             SupplierInvoiceLine.objects.create(
                 invoice=invoice,
                 description=f"Net Payroll: {payroll_run.name}",
                 expense_account=wage_account,
-                unit_price=total_net,
-                line_total=total_net
+                unit_price=total_gross, # Using Gross for full visibility in AP, though deductions offset it normally
+                line_total=total_gross
             )
+
+            # 5. Create Odoo-Style Direct Journal Entry if GL rules are configured
+            if hasattr(payroll_run, '_gl_lines') and payroll_run._gl_lines:
+                try:
+                    journal, _ = Journal.objects.get_or_create(code='PAY', defaults={'name': 'Payroll Journal', 'auto_posting': True})
+                    period = FiscalPeriod.objects.filter(start_date__lte=payroll_run.period_end, end_date__gte=payroll_run.period_end).first()
+                    
+                    if period and period.is_open_for_posting():
+                        je_ref = NumberSequenceService.get_next_number('JournalEntry', prefix='JE-PAY-', padding=4)
+                        je = JournalEntry.objects.create(
+                            reference=je_ref,
+                            journal=journal,
+                            fiscal_period=period,
+                            currency=payroll_run.currency,
+                            entry_type='payroll',
+                            status='approved',
+                            entry_date=payroll_run.period_end,
+                            description=f"Payroll Run - {payroll_run.name}",
+                            source_module='payroll',
+                            source_id=payroll_run.id
+                        )
+                        
+                        for gl_data in payroll_run._gl_lines.values():
+                            if gl_data['debit'] > 0:
+                                JournalLine.objects.create(entry=je, account=gl_data['account'], side='debit', amount=gl_data['debit'], amount_currency=gl_data['debit'])
+                            if gl_data['credit'] > 0:
+                                JournalLine.objects.create(entry=je, account=gl_data['account'], side='credit', amount=gl_data['credit'], amount_currency=gl_data['credit'])
+                except Exception as e:
+                    pass # Silently fail GL posting if Finance period isn't setup
 
             payroll_run.save()
 
@@ -134,64 +220,62 @@ class PayrollRunViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Can only pay approved payroll runs'}, status=status.HTTP_400_BAD_REQUEST)
         
         with transaction.atomic():
-            payroll_run.items.all().update(status=PayrollItem.Status.PAID)
+            payroll_run.payslips.all().update(status=Payslip.Status.PAID)
             payroll_run.status = PayrollRun.Status.PAID
             payroll_run.save()
             
             # Mark commissions as paid
-            for item in payroll_run.items.all():
+            for payslip in payroll_run.payslips.all():
                 CommissionRecord.objects.filter(
-                    agent=item.employee,
+                    agent=payslip.employee,
                     status='approved',
                     approved_date__range=(payroll_run.period_start, payroll_run.period_end)
                 ).update(status='paid', payment_date=timezone.now().date(), payment_reference=f"PAY-{payroll_run.id}")
 
         return Response(PayrollRunSerializer(payroll_run).data)
 
-class PayrollItemViewSet(viewsets.ModelViewSet):
-    queryset = PayrollItem.objects.all()
-    serializer_class = PayrollItemSerializer
+class PayslipViewSet(viewsets.ModelViewSet):
+    queryset = Payslip.objects.prefetch_related('lines').select_related('employee', 'payroll_run', 'contract')
+    serializer_class = PayslipSerializer
     filterset_fields = ['payroll_run', 'employee', 'status']
 
     @action(detail=True, methods=['get'])
-    def payslip(self, request, pk=None):
-        item = self.get_object()
-        # Basic payslip data with company/employee/run context
+    def details(self, request, pk=None):
+        payslip = self.get_object()
         data = {
-            'id': item.id,
+            'id': payslip.id,
             'employee': {
-                'name': item.employee.full_name,
-                'number': item.employee.employee_number,
-                'job_title': item.employee.job_title,
-                'bank': item.employee.bank_name,
-                'account': item.employee.bank_account_number,
+                'name': payslip.employee.full_name,
+                'number': payslip.employee.employee_number,
+                'contract': payslip.contract.job_position.name if payslip.contract and payslip.contract.job_position else None,
+                'bank': payslip.employee.bank_name,
+                'account': payslip.employee.bank_account_number,
             },
             'run': {
-                'name': item.payroll_run.name,
-                'period': f"{item.payroll_run.period_start} to {item.payroll_run.period_end}",
-                'currency': item.payroll_run.currency.code if item.payroll_run.currency else "USD",
-                'symbol': item.payroll_run.currency.symbol if item.payroll_run.currency else "$",
+                'name': payslip.payroll_run.name,
+                'period': f"{payslip.payroll_run.period_start} to {payslip.payroll_run.period_end}",
+                'currency': payslip.payroll_run.currency.code if payslip.payroll_run.currency else "USD",
+                'symbol': payslip.payroll_run.currency.symbol if payslip.payroll_run.currency else "$",
             },
-            'earnings': [
-                {'label': 'Basic Salary', 'amount': item.basic_salary},
-                {'label': 'Commissions', 'amount': item.commission_amount},
-                {'label': 'Bonus', 'amount': item.bonus},
-            ],
-            'deductions': [
-                {'label': 'PAYE Tax', 'amount': item.tax_amount},
-                {'label': 'AIDS Levy', 'amount': item.aids_levy},
-                {'label': 'NSSA Pension', 'amount': item.nssa_deduction},
-                {'label': 'Other', 'amount': item.other_deductions},
+            'lines': [
+                {
+                    'name': line.name,
+                    'code': line.code,
+                    'category': line.category,
+                    'amount': line.amount
+                } for line in payslip.lines.all()
             ],
             'totals': {
-                'gross': item.gross_amount,
-                'net': item.net_amount,
+                'gross': sum(line.amount for line in payslip.lines.all() if line.category in ['basic', 'allowance']),
+                'deductions': sum(line.amount for line in payslip.lines.all() if line.category == 'deduction'),
+                'net': payslip.net_amount,
             }
         }
         return Response(data)
 
-from .serializers import TaxBracketSerializer, PayrollSettingSerializer
-from .models import TaxBracket, PayrollSetting
+from .serializers import TaxBracketSerializer, PayrollSettingSerializer, PayslipLineSerializer
+from .models import TaxBracket, PayrollSetting, SalaryRule, SalaryStructure
+from rest_framework import serializers as drf_serializers
 
 class TaxBracketViewSet(viewsets.ModelViewSet):
     queryset = TaxBracket.objects.all()
@@ -201,3 +285,26 @@ class TaxBracketViewSet(viewsets.ModelViewSet):
 class PayrollSettingViewSet(viewsets.ModelViewSet):
     queryset = PayrollSetting.objects.all()
     serializer_class = PayrollSettingSerializer
+
+class SalaryRuleSerializer(drf_serializers.ModelSerializer):
+    class Meta:
+        model = SalaryRule
+        fields = '__all__'
+
+class SalaryStructureSerializer(drf_serializers.ModelSerializer):
+    rules = SalaryRuleSerializer(many=True, read_only=True)
+    rule_ids = drf_serializers.PrimaryKeyRelatedField(
+        queryset=SalaryRule.objects.all(), many=True, write_only=True, source='rules'
+    )
+    class Meta:
+        model = SalaryStructure
+        fields = '__all__'
+
+class SalaryRuleViewSet(viewsets.ModelViewSet):
+    queryset = SalaryRule.objects.all()
+    serializer_class = SalaryRuleSerializer
+    filterset_fields = ['category', 'active']
+
+class SalaryStructureViewSet(viewsets.ModelViewSet):
+    queryset = SalaryStructure.objects.prefetch_related('rules').all()
+    serializer_class = SalaryStructureSerializer

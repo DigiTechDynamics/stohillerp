@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from decimal import Decimal
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
-from apps.hr.models import Employee, Department, LeaveRequest
+from apps.hr.models import Employee, Department, LeaveRequest, JobPosition, EmployeeContract, Attendance, LeaveAllocation
 
 class EmployeeViewSet(viewsets.ModelViewSet):
     queryset = Employee.objects.select_related('department', 'reports_to')
@@ -21,11 +21,11 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def statement(self, request, pk=None):
         employee = self.get_object()
-        from apps.payroll.models import PayrollItem
+        from apps.payroll.models import Payslip
         
-        items = PayrollItem.objects.filter(
+        items = Payslip.objects.filter(
             employee=employee, 
-            status__in=['paid', 'pending']
+            status__in=['paid', 'done']
         ).select_related('payroll_run', 'payroll_run__currency').order_by('-payroll_run__period_end')
         
         history = []
@@ -37,21 +37,27 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             run = item.payroll_run
             currency = run.currency.code if run.currency else "USD"
             
+            # Since Payslip fields don't have direct gross/deduction columns, we can calculate from lines
+            # For simplicity in this endpoint we can just use net_amount. 
+            # Or we can aggregate the lines. Let's aggregate lines.
+            gross = sum(line.amount for line in item.lines.all() if line.category in ['basic', 'allowance'])
+            deductions = sum(line.amount for line in item.lines.all() if line.category == 'deduction')
+
             history.append({
                 'id': item.id,
                 'period': f"{run.period_start} to {run.period_end}",
                 'run_name': run.name,
                 'date': run.processed_at,
                 'currency': currency,
-                'gross': item.gross_amount,
-                'deductions': item.tax_amount + item.aids_levy + item.nssa_deduction + item.other_deductions,
+                'gross': gross,
+                'deductions': deductions,
                 'net': item.net_amount,
                 'status': item.status,
                 'reference': item.payment_reference
             })
             
-            total_earnings += item.gross_amount
-            total_deductions += (item.tax_amount + item.aids_levy + item.nssa_deduction + item.other_deductions)
+            total_earnings += gross
+            total_deductions += deductions
             total_net += item.net_amount
             
         return Response({
@@ -94,3 +100,47 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
         if instance.status == 'approved':
             instance.employee.status = 'on_leave'
             instance.employee.save(update_fields=['status'])
+
+
+class JobPositionViewSet(viewsets.ModelViewSet):
+    queryset = JobPosition.objects.select_related('department')
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['department']
+    search_fields = ['name']
+    def get_serializer_class(self):
+        from apps.hr.serializers import JobPositionSerializer
+        return JobPositionSerializer
+
+
+class EmployeeContractViewSet(viewsets.ModelViewSet):
+    queryset = EmployeeContract.objects.select_related('employee', 'job_position', 'department')
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['employee', 'status']
+    ordering_fields = ['start_date']
+    def get_serializer_class(self):
+        from apps.hr.serializers import EmployeeContractSerializer
+        return EmployeeContractSerializer
+
+
+class AttendanceViewSet(viewsets.ModelViewSet):
+    queryset = Attendance.objects.select_related('employee')
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['employee']
+    ordering_fields = ['check_in']
+    def get_serializer_class(self):
+        from apps.hr.serializers import AttendanceSerializer
+        return AttendanceSerializer
+
+
+class LeaveAllocationViewSet(viewsets.ModelViewSet):
+    queryset = LeaveAllocation.objects.select_related('employee')
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['employee', 'leave_type']
+    def get_serializer_class(self):
+        from apps.hr.serializers import LeaveAllocationSerializer
+        return LeaveAllocationSerializer
+

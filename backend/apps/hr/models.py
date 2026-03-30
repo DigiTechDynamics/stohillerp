@@ -19,6 +19,17 @@ class Department(TimeStampedModel):
     def __str__(self):
         return self.name
 
+class JobPosition(TimeStampedModel):
+    name = models.CharField(max_length=100)
+    department = models.ForeignKey(Department, null=True, blank=True, on_delete=models.SET_NULL, related_name='job_positions')
+    expected_employees = models.PositiveIntegerField(default=1)
+    description = models.TextField(blank=True)
+
+    class Meta:
+        db_table = 'hr_job_positions'
+
+    def __str__(self):
+        return self.name
 
 class Employee(AuditedModel):
     """Employee / Agent profile. Links to User account for system access."""
@@ -48,18 +59,12 @@ class Employee(AuditedModel):
 
     # Job
     department = models.ForeignKey(Department, null=True, blank=True, on_delete=models.SET_NULL)
-    job_title = models.CharField(max_length=100)
+    job_position = models.ForeignKey(JobPosition, null=True, blank=True, on_delete=models.SET_NULL, related_name='employees')
     employment_type = models.CharField(max_length=20, choices=EmploymentType.choices, default=EmploymentType.FULL_TIME)
     status = models.CharField(max_length=20, choices=EmployeeStatus.choices, default=EmployeeStatus.ACTIVE)
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
     reports_to = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='direct_reports')
-
-    # Compensation
-    basic_salary = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
-    bonus = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), help_text='Recurring fixed bonus')
-    other_deductions = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), help_text='Recurring fixed deductions (e.g. medical)')
-    commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('50.00'), help_text='% of company commission earned by agent')
 
     # Agent-specific (EAAB registration)
     fidelity_fund_number = models.CharField(max_length=50, blank=True)
@@ -120,3 +125,55 @@ class LeaveRequest(AuditedModel):
     class Meta:
         db_table = 'hr_leave_requests'
         ordering = ['-start_date']
+
+class LeaveAllocation(AuditedModel):
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='leave_allocations')
+    leave_type = models.CharField(max_length=20, choices=LeaveRequest.LeaveType.choices)
+    days_allocated = models.DecimalField(max_digits=5, decimal_places=1)
+    valid_from = models.DateField(null=True, blank=True)
+    valid_to = models.DateField(null=True, blank=True)
+    description = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        db_table = 'hr_leave_allocations'
+
+    def __str__(self):
+        return f"{self.employee.full_name} - {self.get_leave_type_display()} ({self.days_allocated} days)"
+
+
+class Attendance(AuditedModel):
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='attendances')
+    check_in = models.DateTimeField()
+    check_out = models.DateTimeField(null=True, blank=True)
+    worked_hours = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        db_table = 'hr_attendances'
+        ordering = ['-check_in']
+
+    def __str__(self):
+        return f"{self.employee.full_name} in at {self.check_in}"
+
+
+class EmployeeContract(AuditedModel):
+    class Status(models.TextChoices):
+        DRAFT = 'draft', 'Draft'
+        RUNNING = 'running', 'Running'
+        EXPIRED = 'expired', 'Expired'
+        CANCELLED = 'cancelled', 'Cancelled'
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='contracts')
+    job_position = models.ForeignKey(JobPosition, null=True, blank=True, on_delete=models.SET_NULL)
+    department = models.ForeignKey(Department, null=True, blank=True, on_delete=models.SET_NULL)
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    wage = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), help_text='Basic Salary')
+    working_schedule = models.CharField(max_length=100, default='Standard 40 hours')
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+
+    class Meta:
+        db_table = 'hr_contracts'
+        ordering = ['-start_date']
+
+    def __str__(self):
+        return f"{self.employee.full_name} - {self.job_position.name if self.job_position else 'Contract'}"

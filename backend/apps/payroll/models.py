@@ -30,47 +30,7 @@ class PayrollRun(AuditedModel):
     def __str__(self):
         return f"{self.name} ({self.status})"
 
-class PayrollItem(TimeStampedModel):
-    """Individual pay record for an employee or agent within a payroll run."""
-    class Status(models.TextChoices):
-        PENDING = 'pending', 'Pending'
-        PAID = 'paid', 'Paid'
-        VOID = 'void', 'Void'
 
-    payroll_run = models.ForeignKey(PayrollRun, on_delete=models.CASCADE, related_name='items')
-    employee = models.ForeignKey('hr.Employee', on_delete=models.PROTECT, related_name='payroll_items')
-    
-    # Components
-    basic_salary = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
-    commission_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
-    bonus = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
-    
-    # Deductions
-    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), help_text="PAYE")
-    aids_levy = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), help_text="3% of PAYE")
-    nssa_deduction = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), help_text="NSSA Pension")
-    other_deductions = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
-    
-    # Calculated
-    gross_amount = models.DecimalField(max_digits=15, decimal_places=2)
-    net_amount = models.DecimalField(max_digits=15, decimal_places=2)
-    
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
-    payment_reference = models.CharField(max_length=100, blank=True)
-    bank_account_snapshot = models.CharField(max_length=255, blank=True, help_text="Stored at time of payroll for audit")
-
-    class Meta(TimeStampedModel.Meta):
-        db_table = 'payroll_items'
-        unique_together = ['payroll_run', 'employee']
-
-    def __str__(self):
-        return f"{self.employee.full_name} - {self.payroll_run.name}"
-
-    def save(self, *args, **kwargs):
-        self.gross_amount = self.basic_salary + self.commission_amount + self.bonus
-        total_deduc = self.tax_amount + self.aids_levy + self.nssa_deduction + self.other_deductions
-        self.net_amount = self.gross_amount - total_deduc
-        super().save(*args, **kwargs)
 
 class TaxBracket(AuditedModel):
     """Configurable tax brackets for PAYE."""
@@ -99,3 +59,89 @@ class PayrollSetting(AuditedModel):
 
     def __str__(self):
         return self.name
+
+class SalaryRule(AuditedModel):
+    class Category(models.TextChoices):
+        BASIC = 'basic', 'Basic'
+        ALLOWANCE = 'allowance', 'Allowance'
+        DEDUCTION = 'deduction', 'Deduction'
+        NET = 'net', 'Net'
+
+    class AmountType(models.TextChoices):
+        FIXED = 'fixed', 'Fixed Amount'
+        PERCENTAGE = 'percentage', 'Percentage (%)'
+
+    name = models.CharField(max_length=100)
+    code = models.CharField(max_length=50, unique=True)
+    category = models.CharField(max_length=20, choices=Category.choices)
+    sequence = models.PositiveIntegerField(default=10)
+    active = models.BooleanField(default=True)
+    
+    amount_type = models.CharField(max_length=20, choices=AmountType.choices, default=AmountType.FIXED)
+    fixed_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    percentage = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'), help_text="Percentage of basic salary")
+
+    # Financial GL Integration
+    debit_account = models.ForeignKey('finance.ChartOfAccount', null=True, blank=True, on_delete=models.SET_NULL, related_name='salary_rule_debits')
+    credit_account = models.ForeignKey('finance.ChartOfAccount', null=True, blank=True, on_delete=models.SET_NULL, related_name='salary_rule_credits')
+
+    class Meta:
+        db_table = 'payroll_salary_rules'
+        ordering = ['sequence']
+
+    def __str__(self):
+        return self.name
+
+class SalaryStructure(AuditedModel):
+    name = models.CharField(max_length=100)
+    code = models.CharField(max_length=50, unique=True)
+    rules = models.ManyToManyField(SalaryRule, related_name='structures')
+
+    class Meta:
+        db_table = 'payroll_salary_structures'
+
+    def __str__(self):
+        return self.name
+
+class Payslip(TimeStampedModel):
+    class Status(models.TextChoices):
+        DRAFT = 'draft', 'Draft'
+        DONE = 'done', 'Done'
+        PAID = 'paid', 'Paid'
+        CANCELLED = 'cancelled', 'Cancelled'
+
+    payroll_run = models.ForeignKey(PayrollRun, on_delete=models.CASCADE, related_name='payslips', null=True, blank=True)
+    employee = models.ForeignKey('hr.Employee', on_delete=models.PROTECT, related_name='payslips')
+    contract = models.ForeignKey('hr.EmployeeContract', on_delete=models.SET_NULL, null=True, blank=True, related_name='payslips')
+    structure = models.ForeignKey(SalaryStructure, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    date_from = models.DateField()
+    date_to = models.DateField()
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    
+    net_amount = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0.00'))
+    payment_reference = models.CharField(max_length=100, blank=True)
+    bank_account_snapshot = models.CharField(max_length=255, blank=True, help_text="Snapshot of bank details at time of processing")
+
+    class Meta:
+        db_table = 'payroll_payslips'
+        ordering = ['-date_from']
+
+    def __str__(self):
+        return f"Payslip {self.employee.full_name} ({self.date_from} - {self.date_to})"
+
+class PayslipLine(TimeStampedModel):
+    payslip = models.ForeignKey(Payslip, on_delete=models.CASCADE, related_name='lines')
+    salary_rule = models.ForeignKey(SalaryRule, on_delete=models.PROTECT)
+    name = models.CharField(max_length=100)
+    code = models.CharField(max_length=50)
+    category = models.CharField(max_length=20)
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    total = models.DecimalField(max_digits=15, decimal_places=2)
+
+    class Meta:
+        db_table = 'payroll_payslip_lines'
+        ordering = ['payslip', 'salary_rule__sequence']
+
+    def __str__(self):
+        return f"{self.payslip.employee.full_name} - {self.name}"

@@ -1,6 +1,6 @@
 """Stohil Properties - HR Serializers"""
 from rest_framework import serializers
-from apps.hr.models import Employee, Department, LeaveRequest
+from apps.hr.models import Employee, Department, JobPosition, LeaveRequest, LeaveAllocation, Attendance, EmployeeContract
 
 class DepartmentSerializer(serializers.ModelSerializer):
     manager_name = serializers.CharField(source='manager.full_name', read_only=True)
@@ -11,6 +11,7 @@ class DepartmentSerializer(serializers.ModelSerializer):
 class EmployeeSerializer(serializers.ModelSerializer):
     full_name = serializers.ReadOnlyField()
     department_name = serializers.CharField(source='department.name', read_only=True)
+    job_position_name = serializers.CharField(source='job_position.name', read_only=True)
     manager_name = serializers.CharField(source='reports_to.full_name', read_only=True)
     class Meta:
         model = Employee
@@ -28,4 +29,30 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
     approved_by_name = serializers.CharField(source='approved_by.full_name', read_only=True)
     class Meta:
         model = LeaveRequest
+        fields = '__all__'
+
+class JobPositionSerializer(serializers.ModelSerializer):
+    department_name = serializers.CharField(source='department.name', read_only=True)
+    class Meta:
+        model = JobPosition
+        fields = '__all__'
+
+class EmployeeContractSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    job_position_name = serializers.CharField(source='job_position.name', read_only=True)
+    class Meta:
+        model = EmployeeContract
+        fields = '__all__'
+
+class AttendanceSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    class Meta:
+        model = Attendance
+        fields = '__all__'
+
+class LeaveAllocationSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    leave_type_display = serializers.CharField(source='get_leave_type_display', read_only=True)
+    class Meta:
+        model = LeaveAllocation
         fields = '__all__'
