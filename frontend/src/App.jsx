@@ -28,6 +28,7 @@ import FiscalPeriodsPage from '@/pages/finance/FiscalPeriodsPage'
 import PostingProfilesPage from '@/pages/finance/PostingProfilesPage'
 import AssetsPage from '@/pages/finance/AssetsPage'
 import CreateJournalEntryPage from '@/pages/finance/CreateJournalEntryPage'
+import BatchApprovalPage from '@/pages/finance/BatchApprovalPage'
 import PayrollPage from '@/pages/payroll/PayrollPage'
 import UserAccessPage from '@/pages/admin/UserAccessPage'
 
@@ -69,6 +70,7 @@ export default function App() {
         <Route path="finance/entries" element={<JournalEntriesPage />} />
         <Route path="finance/entries/new" element={<CreateJournalEntryPage />} />
         <Route path="finance/entries/:id/edit" element={<CreateJournalEntryPage />} />
+        <Route path="finance/approvals" element={<BatchApprovalPage />} />
         <Route path="finance/reports" element={<ReportsPage />} />
         <Route path="finance/ap" element={<AccountsPayablePage />} />
         <Route path="finance/ar" element={<AccountsReceivablePage />} />

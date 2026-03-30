@@ -4,6 +4,7 @@ from . import views
 router = DefaultRouter()
 router.register('accounts', views.ChartOfAccountViewSet, basename='coa')
 router.register('journals', views.JournalViewSet, basename='journals')
+router.register('batches', views.JournalBatchViewSet, basename='journal-batches')
 router.register('entries', views.JournalEntryViewSet, basename='journal-entries')
 router.register('fiscal-years', views.FiscalYearViewSet, basename='fiscal-years')
 router.register('periods', views.FiscalPeriodViewSet, basename='fiscal-periods')

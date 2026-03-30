@@ -96,6 +96,7 @@ html.light .text-dark-400 { color: var(--text-muted) !important; }
 html.light .text-dark-300 { color: var(--text-muted) !important; }
 html.light .text-dark-100 { color: var(--text-main) !important; }
 html.light .text-dark-500 { color: #999 !important; }
+html.light .text-dark-900 { color: #1A1A1A !important; }
 html.light .bg-white\/5 { background-color: rgba(0,0,0,0.04) !important; }
 html.light .bg-dark-800\/50 { background-color: rgba(255,255,255,0.7) !important; }
 html.light .bg-dark-900\/80 { background-color: var(--topbar-bg) !important; }
@@ -161,7 +162,7 @@ html.light .ring-dark-900 { --tw-ring-color: var(--bg-card) !important; }
 
   /* Buttons */
   .btn-primary {
-    @apply inline-flex items-center gap-2 px-4 py-2 bg-primary text-dark-900
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-primary text-[#111]
            rounded-lg text-sm font-semibold hover:bg-primary-400
            transition-all duration-150 shadow-gold hover:shadow-gold-lg;
   }

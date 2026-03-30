@@ -60,9 +60,9 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'email', 'first_name', 'last_name', 'full_name',
                   'phone', 'avatar', 'status', 'roles', 'role_ids', 'executive_mode',
-                  'accessible_modules', 'sod_conflicts',
+                  'accessible_modules', 'sod_conflicts', 'is_superuser',
                   'date_joined', 'last_login']
-        read_only_fields = ['id', 'date_joined', 'last_login']
+        read_only_fields = ['id', 'date_joined', 'last_login', 'is_superuser']
 
     def update(self, instance, validated_data):
         role_ids = validated_data.pop('role_ids', None)

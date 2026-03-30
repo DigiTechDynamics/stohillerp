@@ -34,21 +34,34 @@ export default function DepartmentListPanel() {
           </div>
         ) : (
           departments.map(dept => (
-            <div key={dept.id} className="card p-4 space-y-3 hover:border-white/10 transition-colors">
+            <div key={dept.id} className="group relative p-5 rounded-2xl bg-white/2 border border-white/5 hover:border-primary/30 transition-all duration-300">
               <div className="flex items-start justify-between">
-                <div>
-                  <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                    {dept.name} <span className="badge text-[10px] bg-dark-800 text-dark-300">{dept.code}</span>
-                  </h4>
-                  {dept.manager && (
-                    <p className="text-xs text-dark-400 mt-1 flex items-center gap-1.5">
-                      <Users size={12} /> Required Manager Info Included
-                    </p>
-                  )}
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-dark-800 flex items-center justify-center text-dark-400 group-hover:text-primary transition-colors">
+                    <Users size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-semibold text-white group-hover:text-primary transition-colors">
+                      {dept.name}
+                    </h4>
+                    <div className="flex items-center gap-2 mt-1">
+                       <span className="text-[10px] font-mono text-dark-500 bg-dark-800 px-2 py-0.5 rounded border border-white/5">
+                         {dept.code}
+                       </span>
+                       {dept.manager_name ? (
+                         <p className="text-xs text-dark-400 flex items-center gap-1.5 ml-2">
+                           <User size={12} className="text-primary/60" />
+                           Manager: <span className="text-dark-200">{dept.manager_name}</span>
+                         </p>
+                       ) : (
+                         <p className="text-xs text-dark-500 italic ml-2">No manager assigned</p>
+                       )}
+                    </div>
+                  </div>
                 </div>
                 <button 
                   onClick={() => openPanel('department-form', { department: dept })}
-                  className="p-2 rounded-lg bg-white/5 text-dark-400 hover:text-white hover:bg-white/10 transition-colors"
+                  className="p-2 rounded-lg bg-white/5 text-dark-500 hover:text-white hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100"
                   title="Edit Department"
                 >
                   <Edit2 size={16} />

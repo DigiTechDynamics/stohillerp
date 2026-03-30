@@ -52,12 +52,12 @@ export default function PayrollPage() {
   const fetchItems = async (runId) => {
     setItemsLoading(true)
     try {
-      const { data } = await payrollAPI.items.list({ payroll_run: runId })
+      const { data } = await payrollAPI.payslips.list({ payroll_run: runId })
       setItems(data.results || [])
     } catch (err) {
-      console.error('Failed to fetch payroll items:', err)
+      console.error('Failed to fetch payslips:', err)
     } finally {
-      setItemsLoading(false)
+      setItemsLoading(true)
     }
   }
 
@@ -403,10 +403,10 @@ export default function PayrollPage() {
                           {formatCurrency(item.tax_amount, selectedRun?.currency_code)}
                         </td>
                         <td className="text-right font-mono text-red-400/70">
-                          {formatCurrency(item.aids_levy, selectedRun?.currency_code)}
+                          {formatCurrency(item.aids_amount, selectedRun?.currency_code)}
                         </td>
                         <td className="text-right font-mono text-red-400/70">
-                          {formatCurrency(item.nssa_deduction, selectedRun?.currency_code)}
+                          {formatCurrency(item.nssa_amount, selectedRun?.currency_code)}
                         </td>
                         <td className="text-right font-bold text-primary font-mono bg-primary/5">
                           {formatCurrency(item.net_amount, selectedRun?.currency_code)}

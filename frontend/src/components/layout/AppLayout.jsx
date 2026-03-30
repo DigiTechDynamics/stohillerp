@@ -133,15 +133,16 @@ export default function AppLayout() {
         <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5 custom-scrollbar">
           {groups.map((group) => {
             const accessibleModules = user?.accessible_modules || []
-            const isAdmin = user?.roles?.some(r => ['super_admin', 'admin'].includes(r.role_type))
+            const isAdmin = user?.is_superuser || user?.roles?.some(r => ['super_admin', 'admin'].includes(r.role_type))
             
             const items = navItems.filter((n) => 
                n.group === group && (
+                 isAdmin ||
                  accessibleModules.includes(n.module) || 
                  n.module === 'dashboard'
                )
             )
-            
+
             if (items.length === 0) return null
 
             return (

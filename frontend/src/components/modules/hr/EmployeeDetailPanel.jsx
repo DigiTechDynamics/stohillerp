@@ -44,7 +44,7 @@ export default function EmployeeDetailPanel({ employee }) {
           </div>
           <p className="text-sm text-dark-400 flex items-center gap-1.5">
             <Briefcase size={14} className="text-primary" />
-            {employee.job_title} • <span className="font-mono text-xs">{employee.employee_number}</span>
+            {employee.job_position_name} • <span className="font-mono text-xs">{employee.employee_number}</span>
           </p>
         </div>
       </div>
@@ -72,28 +72,26 @@ export default function EmployeeDetailPanel({ employee }) {
       <Section title="Job & Reporting" icon={Briefcase}>
         <InfoRow label="Department" value={employee.department_name} />
         <InfoRow label="Reports To" value={employee.manager_name} />
-        <InfoRow label="Job Title" value={employee.job_title} />
+        <InfoRow label="Job Position" value={employee.job_position_name} />
       </Section>
 
-      <Section title="Financials (Private)" icon={CreditCard}>
-        <div className="grid grid-cols-2 gap-6 pb-2">
-          <div>
-            <p className="text-[10px] text-dark-400 uppercase mb-1">Basic Salary</p>
-            <p className="text-lg font-semibold text-white">{formatCurrency(employee.basic_salary)}</p>
+      <Section title="Employment Contracts" icon={CreditCard}>
+        <div className="space-y-4">
+          <p className="text-[10px] text-dark-500 uppercase tracking-widest font-bold">Current Terms</p>
+          <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+            <p className="text-xs text-dark-300 leading-relaxed">
+              Compensation, banking, and tax rules are now managed via rule-based <strong>Employment Contracts</strong>. 
+            </p>
           </div>
-          <div>
-            <p className="text-[10px] text-dark-400 uppercase mb-1">Comm. Rate</p>
-            <p className="text-lg font-semibold text-white">{employee.commission_rate}%</p>
+          <div className="pt-3 border-t border-white/5 space-y-2">
+            <InfoRow label="Bank" value={employee.bank_name} />
+            {employee.fidelity_fund_number && (
+              <>
+                 <InfoRow label="Fidelity Fund #" value={employee.fidelity_fund_number} />
+                 <InfoRow label="FF Expiry" value={formatDate(employee.fidelity_fund_expiry)} />
+              </>
+            )}
           </div>
-        </div>
-        <div className="pt-3 border-t border-white/5 space-y-2">
-          <InfoRow label="Bank" value={employee.bank_name} />
-          {employee.fidelity_fund_number && (
-            <>
-               <InfoRow label="Fidelity Fund #" value={employee.fidelity_fund_number} />
-               <InfoRow label="FF Expiry" value={formatDate(employee.fidelity_fund_expiry)} />
-            </>
-          )}
         </div>
       </Section>
 

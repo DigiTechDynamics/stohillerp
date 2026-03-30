@@ -180,6 +180,15 @@ export const financeAPI = {
   journals: {
     list: (params) => api.get('finance/journals/', { params }),
   },
+  batches: {
+    list: (params) => api.get('finance/batches/', { params }),
+    detail: (id) => api.get(`finance/batches/${id}/`),
+    create: (data) => api.post('finance/batches/', data),
+    update: (id, data) => api.patch(`finance/batches/${id}/`, data),
+    submit: (id) => api.post(`finance/batches/${id}/submit_for_approval/`),
+    approve: (id) => api.post(`finance/batches/${id}/approve/`),
+    post: (id) => api.post(`finance/batches/${id}/post_batch/`),
+  },
   entries: {
     list: (params) => api.get('finance/entries/', { params }),
     detail: (id) => api.get(`finance/entries/${id}/`),
@@ -215,9 +224,9 @@ export const financeAPI = {
     delete: (id) => api.delete(`finance/posting-profiles/${id}/`),
   },
   reports: {
-    trialBalance: (periodId) => api.get('finance/reports/trial-balance/', { params: { period_id: periodId } }),
-    incomeStatement: (fromDate, toDate) =>
-      api.get('finance/reports/income-statement/', { params: { from_date: fromDate, to_date: toDate } }),
+    trialBalance: (periodId, propertyId) => api.get('finance/reports/trial-balance/', { params: { period_id: periodId, property_id: propertyId } }),
+    incomeStatement: (fromDate, toDate, propertyId) =>
+      api.get('finance/reports/income-statement/', { params: { from_date: fromDate, to_date: toDate, property_id: propertyId } }),
     balanceSheet: (asAtDate) =>
       api.get('finance/reports/balance-sheet/', { params: { as_at_date: asAtDate } }),
     vatReturn: (fromDate, toDate) =>
@@ -379,6 +388,15 @@ export const hrAPI = {
     create: (data) => api.post('hr/leave/', data),
     update: (id, data) => api.patch(`hr/leave/${id}/`, data),
   },
+  contracts: {
+    list: (params) => api.get('hr/contracts/', { params }),
+    detail: (id) => api.get(`hr/contracts/${id}/`),
+    create: (data) => api.post('hr/contracts/', data),
+    update: (id, data) => api.patch(`hr/contracts/${id}/`, data),
+  },
+  jobPositions: {
+    list: (params) => api.get('hr/job-positions/', { params }),
+  },
 }
 
 export const payrollAPI = {
@@ -390,11 +408,17 @@ export const payrollAPI = {
     process: (id) => api.post(`payroll/runs/${id}/process/`),
     payAll: (id) => api.post(`payroll/runs/${id}/pay_all/`),
   },
-  items: {
-    list: (params) => api.get('payroll/items/', { params }),
-    detail: (id) => api.get(`payroll/items/${id}/`),
-    update: (id, data) => api.patch(`payroll/items/${id}/`, data),
-    payslip: (id) => api.get(`payroll/items/${id}/payslip/`),
+  payslips: {
+    list: (params) => api.get('payroll/payslips/', { params }),
+    detail: (id) => api.get(`payroll/payslips/${id}/`),
+    update: (id, data) => api.patch(`payroll/payslips/${id}/`, data),
+    details: (id) => api.get(`payroll/payslips/${id}/details/`),
+  },
+  salaryRules: {
+    list: (params) => api.get('payroll/salary-rules/', { params }),
+  },
+  salaryStructures: {
+    list: (params) => api.get('payroll/salary-structures/', { params }),
   },
   settings: {
     list: (params) => api.get('payroll/settings/', { params }),

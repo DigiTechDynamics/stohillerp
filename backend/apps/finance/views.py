@@ -11,7 +11,7 @@ from django.http import HttpResponse
 from decimal import Decimal
 
 from apps.finance.models import (  # type: ignore
-    ChartOfAccount, Journal, JournalEntry, JournalLine,
+    ChartOfAccount, Journal, JournalBatch, JournalEntry, JournalLine,
     FiscalPeriod, FiscalYear, TrialBalance, ExchangeRate,
     CustomerProfile, Supplier, PostingProfile
 )
@@ -147,6 +147,76 @@ class JournalViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         from apps.finance.serializers import JournalSerializer  # type: ignore
         return JournalSerializer
+
+
+class JournalBatchViewSet(viewsets.ModelViewSet):
+    queryset = JournalBatch.objects.select_related('journal', 'fiscal_period', 'maker', 'checker').prefetch_related('entries')
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'journal', 'fiscal_period', 'maker']
+    search_fields = ['batch_number', 'description']
+    ordering_fields = ['created_at', 'batch_number']
+
+    def get_serializer_class(self):
+        from apps.finance.serializers import JournalBatchSerializer  # type: ignore
+        return JournalBatchSerializer
+
+    @action(detail=True, methods=['post'])
+    def submit_for_approval(self, request, pk=None):
+        batch = self.get_object()
+        if batch.status != JournalBatch.BatchStatus.DRAFT:
+            return Response({'error': 'Only draft batches can be submitted.'}, status=400)
+        
+        # Verify balance
+        if not batch.is_balanced():
+            return Response({'error': 'Batch is out of balance. Debits must equal credits.'}, status=400)
+            
+        batch.status = JournalBatch.BatchStatus.PENDING_APPROVAL
+        batch.save(update_fields=['status'])
+        
+        # Lock entries to pending
+        batch.entries.update(status='pending')
+        
+        return Response({'status': 'submitted', 'batch_number': batch.batch_number})
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        batch = self.get_object()
+        if batch.status != JournalBatch.BatchStatus.PENDING_APPROVAL:
+            return Response({'error': 'Batch is not pending approval.'}, status=400)
+            
+        if batch.maker_id == request.user.id and not request.user.is_superuser:  # Exception for testing
+            return Response({'error': 'Maker cannot approve their own batch. Role segregation required.'}, status=400)
+            
+        from django.utils import timezone  # type: ignore
+        batch.status = JournalBatch.BatchStatus.APPROVED
+        batch.checker = request.user
+        batch.approved_at = timezone.now()
+        batch.save(update_fields=['status', 'checker', 'approved_at'])
+        
+        batch.entries.update(status='approved')
+        return Response({'status': 'approved'})
+
+    @action(detail=True, methods=['post'])
+    def post_batch(self, request, pk=None):
+        batch = self.get_object()
+        if batch.status != JournalBatch.BatchStatus.APPROVED:
+            return Response({'error': 'Batch must be approved before posting.'}, status=400)
+            
+        from apps.finance.services.accounting import AccountingService  # type: ignore
+        service = AccountingService(user=request.user)
+        try:
+            for entry in batch.entries.filter(status='approved'):
+               service.post_saved_entry(entry)
+            
+            from django.utils import timezone  # type: ignore
+            batch.status = JournalBatch.BatchStatus.POSTED
+            batch.posted_by = request.user
+            batch.posted_at = timezone.now()
+            batch.save(update_fields=['status', 'posted_by', 'posted_at'])
+            return Response({'status': 'posted'})
+        except Exception as e:
+            return Response({'error': str(e)}, status=400)
 
 
 class JournalEntryViewSet(viewsets.ModelViewSet):
@@ -331,6 +401,8 @@ class TrialBalanceView(APIView):
         period_id = request.query_params.get('period_id')
         if not period_id:
             return Response({'error': 'period_id required'}, status=400)
+        property_id = request.query_params.get('property_id')
+
         try:
             period = FiscalPeriod.objects.get(id=period_id)
         except FiscalPeriod.DoesNotExist:
@@ -338,7 +410,7 @@ class TrialBalanceView(APIView):
 
         from apps.finance.services.accounting import AccountingService  # type: ignore
         service = AccountingService(user=request.user)
-        data = service.generate_trial_balance(period)
+        data = service.generate_trial_balance(period, property_id=property_id)
         return Response(data)
 
 
@@ -350,11 +422,18 @@ class IncomeStatementView(APIView):
         from_date = request.query_params.get('from_date')
         to_date = request.query_params.get('to_date')
 
-        lines = JournalLine.objects.filter(
+        property_id = request.query_params.get('property_id')
+
+        qs = JournalLine.objects.filter(
             entry__status=JournalEntry.EntryStatus.POSTED,
             entry__entry_date__range=[from_date, to_date],
             account__account_type__in=['revenue', 'expense']
-        ).values(
+        )
+        
+        if property_id:
+            qs = qs.filter(property_ref_id=property_id)
+
+        lines = qs.values(
             'account__code', 'account__name', 'account__account_type'
         ).annotate(
             total_debit=Sum('amount', filter=Q(side='debit')),

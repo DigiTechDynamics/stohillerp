@@ -12,6 +12,9 @@ import { toast } from 'react-hot-toast'
 export default function ReconciliationWorkspace({ accountId }) {
   const [processing, setProcessing] = useState(false)
   const [expandedLines, setExpandedLines] = useState(new Set())
+  const [selectedBankLine, setSelectedBankLine] = useState(null)
+  const [selectedLedgerLine, setSelectedLedgerLine] = useState(null)
+  const [reconciling, setReconciling] = useState(false)
 
   const toggleLine = (id) => {
     setExpandedLines(prev => {
@@ -44,11 +47,29 @@ export default function ReconciliationWorkspace({ accountId }) {
       const { data } = await bankingAPI.statements.auto_match(statement.id)
       toast.success(`${data.matches_found} matches found and applied!`)
       refetchStmt()
+      setSelectedBankLine(null)
+      setSelectedLedgerLine(null)
     } catch (error) {
       console.error('Auto-match failed', error)
       toast.error('Auto-match failed. Please check backend logs.')
     } finally {
       setProcessing(false)
+    }
+  }
+
+  const handleManualMatch = async () => {
+    if (!selectedBankLine || !selectedLedgerLine) return
+    setReconciling(true)
+    try {
+      await bankingAPI.lines.reconcile(selectedBankLine.id, { ledger_line_id: selectedLedgerLine.id })
+      toast.success('Successfully matched and reconciled.')
+      refetchStmt()
+      setSelectedBankLine(null)
+      setSelectedLedgerLine(null)
+    } catch (error) {
+      toast.error('Failed to match lines. Make sure amounts sum correctly.')
+    } finally {
+      setReconciling(false)
     }
   }
 
@@ -129,16 +150,15 @@ export default function ReconciliationWorkspace({ accountId }) {
                         </td>
                         <td className="text-right">
                           {line.is_reconciled ? (
-                            <div className="p-2 text-emerald-400" title="Reconciled">
+                            <div className="p-2 text-emerald-400 flex justify-end" title="Reconciled">
                               <CheckCircle2 size={16} />
                             </div>
                           ) : (
                             <button 
-                              onClick={() => toggleLine(line.id)}
-                              className={`p-2 transition-all rounded-lg ${expandedLines.has(line.id) ? 'bg-primary text-dark-900' : 'text-primary hover:bg-primary/10'}`} 
-                              title={expandedLines.has(line.id) ? 'Collapse' : 'Expand for Matching'}
+                              onClick={() => setSelectedBankLine(selectedBankLine?.id === line.id ? null : line)}
+                              className={`px-3 py-1 transition-all rounded text-xs font-bold uppercase tracking-wider ${selectedBankLine?.id === line.id ? 'bg-amber-500 text-dark-900 shadow-[0_0_15px_rgba(245,158,11,0.5)]' : 'bg-white/5 text-dark-300 hover:text-white'}`}
                             >
-                              <ArrowRight size={16} className={`transition-transform duration-200 ${expandedLines.has(line.id) ? 'rotate-90' : ''}`} />
+                              {selectedBankLine?.id === line.id ? 'Selected' : 'Select'}
                             </button>
                           )}
                         </td>
@@ -226,8 +246,11 @@ export default function ReconciliationWorkspace({ accountId }) {
                         {formatCurrency(entry.total_debits)}
                       </td>
                       <td className="text-right">
-                        <button className="text-xs font-semibold text-primary hover:text-white transition-colors">
-                          Match
+                        <button 
+                          onClick={() => setSelectedLedgerLine(selectedLedgerLine?.id === entry.lines[0]?.id ? null : entry.lines[0])}
+                          className={`px-3 py-1 transition-all rounded text-xs font-bold uppercase tracking-wider ${selectedLedgerLine?.id === entry.lines[0]?.id ? 'bg-amber-500 text-dark-900 shadow-[0_0_15px_rgba(245,158,11,0.5)]' : 'bg-white/5 text-dark-300 hover:text-white'}`}
+                        >
+                          {selectedLedgerLine?.id === entry.lines[0]?.id ? 'Selected' : 'Select'}
                         </button>
                       </td>
                     </tr>
@@ -245,6 +268,49 @@ export default function ReconciliationWorkspace({ accountId }) {
           </div>
         </div>
       </div>
+      {/* Match Bar */}
+      <AnimatePresence>
+        {(selectedBankLine || selectedLedgerLine) && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-dark-800 border-2 border-amber-500/50 rounded-2xl shadow-2xl p-4 flex items-center justify-between gap-8 z-50 w-full max-w-2xl"
+          >
+             <div className="flex gap-10 items-center">
+                 <div>
+                     <p className="text-[10px] text-amber-500 font-bold uppercase tracking-widest mb-1">Bank Line</p>
+                     <p className="text-lg font-mono text-white">
+                        {selectedBankLine ? formatCurrency(selectedBankLine.amount) : '---'}
+                     </p>
+                 </div>
+                 <ArrowRightLeft size={20} className="text-dark-400" />
+                 <div>
+                     <p className="text-[10px] text-amber-500 font-bold uppercase tracking-widest mb-1">Ledger Line</p>
+                     <p className="text-lg font-mono text-white">
+                        {selectedLedgerLine ? formatCurrency(selectedLedgerLine.amount || selectedLedgerLine.amount_currency) : '---'}
+                     </p>
+                 </div>
+             </div>
+             
+             <div className="flex gap-3 items-center">
+                 {Math.abs(parseFloat(selectedBankLine?.amount || 0)) !== parseFloat(selectedLedgerLine?.amount || selectedLedgerLine?.amount_currency || 0) && selectedBankLine && selectedLedgerLine ? (
+                    <div className="flex items-center gap-2 text-red-500 text-xs font-bold uppercase tracking-widest mr-4 bg-red-500/10 px-3 py-1.5 rounded">
+                        <AlertCircle size={14} /> Amounts Differ
+                    </div>
+                 ) : null}
+                 <button 
+                    disabled={!selectedBankLine || !selectedLedgerLine || reconciling}
+                    onClick={handleManualMatch}
+                    className="btn-primary flex items-center gap-2 px-6 shadow-gold disabled:opacity-50 disabled:shadow-none"
+                 >
+                    {reconciling ? <RefreshCw size={16} className="animate-spin" /> : <Wand2 size={16} />}
+                    {reconciling ? 'Matching...' : 'Match & Reconcile'}
+                 </button>
+             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

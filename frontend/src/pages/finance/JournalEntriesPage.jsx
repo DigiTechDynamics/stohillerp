@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Plus, ArrowRightLeft, FileCheck, FileX, Filter, MoreVertical, Calendar } from 'lucide-react'
+import { Search, Plus, ArrowRightLeft, Calendar, User, CheckCircle } from 'lucide-react'
 import { financeAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
@@ -11,28 +11,40 @@ import Pagination from '@/components/common/Pagination'
 export default function JournalEntriesPage() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState('-entry_date')
+  const [sort, setSort] = useState('-created_at')
   const [page, setPage] = useState(1)
-  const openPanel = useUIStore((s) => s.openSidePanel)
+  const openPanel = useUIStore((s) => s.openSidePanel) // Could open a batch detail later
 
   const { data, isLoading } = useQuery({
-    queryKey: ['journal-entries', { search, ordering: sort, page }],
-    queryFn: () => financeAPI.entries.list({ search, ordering: sort, page }),
+    queryKey: ['journal-batches', { search, ordering: sort, page }],
+    queryFn: () => financeAPI.batches.list({ search, ordering: sort, page }),
   })
 
-  const entries = data?.data?.results || data?.data || []
+  // The backend paginated response
+  const batches = data?.data?.results || []
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl text-white">Journal Entries</h1>
-          <p className="text-dark-400 text-sm mt-1">Review and post manual journal adjustments</p>
+          <h1 className="font-display text-2xl tracking-tight text-white">Journal Batches</h1>
+          <p className="text-dark-400 text-sm mt-1">Review, approve and post financial batches</p>
         </div>
-        <button className="btn-primary flex items-center gap-2" onClick={() => navigate('/finance/entries/new')}>
-          <Plus size={16} /> New Entry
-        </button>
+        <div className="flex items-center gap-3">
+            <button 
+                className="btn-secondary flex items-center gap-2" 
+                onClick={() => navigate('/finance/approvals')} // Future dashboard
+            >
+              <CheckCircle size={16} /> Approvals Dashboard
+            </button>
+            <button 
+                className="btn-primary flex items-center gap-2" 
+                onClick={() => navigate('/finance/entries/new')}
+            >
+              <Plus size={16} /> Capture New Batch
+            </button>
+        </div>
       </div>
 
       {/* Toolbar */}
@@ -41,7 +53,7 @@ export default function JournalEntriesPage() {
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-400" />
           <input
             type="text"
-            placeholder="Search entries..."
+            placeholder="Search batches by number or description..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1) }}
             className="form-input pl-9 w-full"
@@ -52,66 +64,80 @@ export default function JournalEntriesPage() {
           onChange={(e) => { setSort(e.target.value); setPage(1) }}
           className="form-input w-auto min-w-[150px]"
         >
-          <option value="-entry_date">Newest First</option>
-          <option value="reference">Reference (A-Z)</option>
-          <option value="-reference">Reference (Z-A)</option>
+          <option value="-created_at">Newest First</option>
+          <option value="batch_number">Batch Number (A-Z)</option>
+          <option value="-batch_number">Batch Number (Z-A)</option>
         </select>
       </div>
 
-      {/* Entries List */}
+      {/* Batches List */}
       <div className="card overflow-hidden">
         <table className="data-table">
           <thead>
             <tr>
-              <th>Reference</th>
+              <th>Batch Number</th>
               <th>Date</th>
               <th>Description</th>
-              <th className="text-right">Total Amount</th>
+              <th className="text-right">Total Debit</th>
+              <th>Maker</th>
               <th>Status</th>
               <th className="w-10"></th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-white/5">
             <AnimatePresence mode="popLayout">
-              {entries.map((entry) => (
+              {batches.map((batch) => (
                 <motion.tr
-                  key={entry.id}
+                  key={batch.id}
                   layout={false}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="hover:bg-white/2 transition-colors cursor-pointer"
-                  onClick={() => openPanel('journal-entry-detail', { entry })}
+                  className="hover:bg-white/2 transition-colors cursor-pointer group"
+                  onClick={() => navigate(`/finance/entries/${batch.id}/edit`)}
                 >
-                  <td className="px-4 py-3 font-mono text-xs text-primary">{entry.reference}</td>
-                  <td className="px-4 py-3 text-sm text-dark-300">
+                  <td className="px-5 py-4 font-mono text-xs text-primary font-bold">{batch.batch_number}</td>
+                  <td className="px-5 py-4 text-sm text-dark-300">
                     <div className="flex items-center gap-1.5">
                       <Calendar size={12} className="text-dark-500" />
-                      {formatDate(entry.entry_date)}
+                      {formatDate(batch.created_at)}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-white max-w-md truncate">{entry.description}</td>
-                  <td className="px-4 py-3 text-sm text-white font-semibold text-right">
-                    {formatCurrency(parseFloat(entry.total_debits))}
+                  <td className="px-5 py-4 text-sm text-white font-medium max-w-md truncate">
+                    {batch.description}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-5 py-4 text-sm text-white font-mono font-semibold text-right">
+                    {formatCurrency(parseFloat(batch.total_debits))}
+                  </td>
+                  <td className="px-5 py-4 text-sm text-dark-300">
+                      <div className="flex items-center gap-1.5">
+                          <User size={12} className="text-dark-500"/>
+                          {batch.maker_name}
+                      </div>
+                  </td>
+                  <td className="px-5 py-4">
                     <span className={`badge text-[10px] uppercase font-bold
-                      ${entry.status === 'posted' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-dark-700 text-dark-400'}`}>
-                      {entry.status}
+                      ${batch.status === 'posted' ? 'bg-emerald-500/10 text-emerald-400' :
+                        batch.status === 'approved' ? 'bg-blue-500/10 text-blue-400' :
+                        batch.status === 'pending_approval' ? 'bg-amber-500/10 text-amber-400' :
+                        'bg-dark-700 text-dark-400'}`}>
+                      {batch.status.replace('_', ' ')}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <button className="p-1 hover:text-white transition-colors">
-                      <MoreVertical size={16} />
-                    </button>
+                  <td className="px-5 py-4">
+                     <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold uppercase tracking-widest">
+                         Open
+                     </span>
                   </td>
                 </motion.tr>
               ))}
             </AnimatePresence>
-            {entries.length === 0 && !isLoading && (
+            {batches.length === 0 && !isLoading && (
               <tr>
-                <td colSpan={6} className="text-center py-20">
-                  <ArrowRightLeft size={40} className="mx-auto mb-3 text-dark-600" />
-                  <p className="text-dark-400">No journal entries found.</p>
+                <td colSpan={7} className="text-center py-24">
+                  <div className="flex flex-col items-center justify-center opacity-50">
+                    <ArrowRightLeft size={32} className="mb-4 text-dark-400" />
+                    <p className="text-dark-300 font-medium">No journal batches found.</p>
+                  </div>
                 </td>
               </tr>
             )}
@@ -119,12 +145,14 @@ export default function JournalEntriesPage() {
         </table>
       </div>
 
-      <Pagination 
-        currentPage={page}
-        totalPages={data?.data?.total_pages}
-        totalCount={data?.data?.count}
-        onPageChange={setPage}
-      />
+      {data?.data?.count > 0 && (
+          <Pagination 
+            currentPage={page}
+            totalPages={data?.data?.total_pages}
+            totalCount={data?.data?.count}
+            onPageChange={setPage}
+          />
+      )}
     </div>
   )
 }

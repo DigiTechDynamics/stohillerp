@@ -34,5 +34,28 @@ This document outlines the key improvements, fixes, and features implemented in 
 - **Executive Dashboard**: Refortified the Command Center to ensure stable loading of financial and operational KPIs.
 - **A/B Testing (Infrastructure)**: Laid the foundation for marketing optimization with database support for content variants and backend traffic-splitting logic.
 
+## 5. Architectural Modernization & Audits
+- **Odoo-Style HR & Payroll Refactor**: 
+    - Migrated the system to an enterprise-grade `SalaryStructure` and `SalaryRule` engine identical to Odoo.
+    - Separated personal `Employee` profiles from financial `EmployeeContract` models to allow history tracking.
+    - Enforced immutable `PayslipLine` generation for perfect financial audibility.
+    - Seeding processes now dynamically create interconnected dummy Departments, Job Positions, and active Contracts.
+- **Global Pagination Standardization**: 
+    - Re-architected the main `Pagination.jsx` UI component to be "prop-agnostic" (`page/currentPage`, `count/totalCount`). 
+    - This eliminated prop-mismatch crashes across 15+ sub-modules, allowing the backend to standardize its `PageNumberPagination` response format without breaking frontend tables.
+- **Production-Ready Audit**: 
+    - Conducted a comprehensive Codebase Hardcode Audit covering all frontend services and backend pipelines.
+    - Confirmed zero occurrences of mocked API data or fake `useState` arrays, guaranteeing all application interfaces are fully driven by the PostgreSQL/SQLite backend.
+
+## 6. Finance Module Upgrade (Phase 3)
+- **Architecture**: Upgraded the Finance module to align with **Sage 200 Evolution enterprise standards**.
+- **Batch Posting Engine**: Implemented a robust `JournalBatch` model and posting engine. All journal and cashbook entries are now routed through accountable batches rather than single-line isolated transactions.
+- **Maker/Checker Workflows**: Enforced strict segregation of duties for all financial postings. The user who creates a batch (Maker) cannot approve it (Checker) prior to ledger insertion.
+- **High-Density UI**: Refactored the journal entry capture screen into an Excel-like, high-density data grid optimized for bulk multi-line capture and keyboard navigation.
+- **Dual-Pane Bank Reconciliation**: Completely overhauled the Reconciliation Workspace to support a professional "dual-pane" view, allowing seamless side-by-side matching of imported bank statement lines against un-reconciled ledger entries.
+- **Cost Center Reporting**: Extended the `AccountingService` layer and UI reports (`Trial Balance`, `Income Statement`) to natively support `Property / Cost Center` filtering, enabling granular per-asset profitability tracking.
+- **Access Control Hotfixes**: Exposed `is_superuser` securely to the frontend payload, resolving a strict UI filter bug that hid critical finance modules (GL, Tax, AR/AP) from Administrators.
+- **Light Mode UI Enhancements**: Corrected contrast issues across the application by overriding `.text-dark-900` globally for light mode, ensuring primary gold buttons and system badges remain perfectly legible.
+
 ---
-*Last Updated: 29 March 2026*
+*Last Updated: 30 March 2026*

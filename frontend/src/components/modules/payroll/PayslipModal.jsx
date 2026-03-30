@@ -10,7 +10,7 @@ const PayslipModal = ({ isOpen, onClose, itemId }) => {
 
   const { data: payslip, isLoading } = useQuery({
     queryKey: ['payslip', itemId],
-    queryFn: () => payrollAPI.items.payslip(itemId).then(res => res.data),
+    queryFn: () => payrollAPI.payslips.details(itemId).then(res => res.data),
     enabled: !!itemId && isOpen,
   });
 
@@ -70,6 +70,9 @@ const PayslipModal = ({ isOpen, onClose, itemId }) => {
   };
 
   if (!isOpen) return null;
+
+  const earnings = payslip?.lines?.filter(l => ['basic', 'allowance'].includes(l.category)) || [];
+  const deductions = payslip?.lines?.filter(l => l.category === 'deduction') || [];
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -133,7 +136,7 @@ const PayslipModal = ({ isOpen, onClose, itemId }) => {
                         <div className="space-y-3">
                           <div className="info-row"><span className="info-label">Full Name</span><span className="info-value">{payslip.employee.name}</span></div>
                           <div className="info-row"><span className="info-label">Staff ID</span><span className="info-value">{payslip.employee.number}</span></div>
-                          <div className="info-row"><span className="info-label">Designation</span><span className="info-value">{payslip.employee.job_title}</span></div>
+                          <div className="info-row"><span className="info-label">Designation</span><span className="info-value">{payslip.employee.contract || '—'}</span></div>
                         </div>
                       </div>
                       <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
@@ -154,8 +157,8 @@ const PayslipModal = ({ isOpen, onClose, itemId }) => {
                             <tr><th>Description</th><th className="amount">Amount</th></tr>
                           </thead>
                           <tbody>
-                            {payslip.earnings.map((e, idx) => (
-                              <tr key={idx}><td>{e.label}</td><td className="amount">{formatCurrency(e.amount, payslip.run.currency)}</td></tr>
+                            {earnings.map((e, idx) => (
+                              <tr key={idx}><td>{e.name}</td><td className="amount">{formatCurrency(e.amount, payslip.run.currency)}</td></tr>
                             ))}
                           </tbody>
                         </table>
@@ -167,8 +170,8 @@ const PayslipModal = ({ isOpen, onClose, itemId }) => {
                             <tr><th>Description</th><th className="amount">Amount</th></tr>
                           </thead>
                           <tbody>
-                            {payslip.deductions.map((d, idx) => (
-                              <tr key={idx}><td>{d.label}</td><td className="amount text-rose-600">({formatCurrency(d.amount, payslip.run.currency)})</td></tr>
+                            {deductions.map((d, idx) => (
+                              <tr key={idx}><td>{d.name}</td><td className="amount text-rose-600">({formatCurrency(d.amount, payslip.run.currency)})</td></tr>
                             ))}
                           </tbody>
                         </table>
@@ -183,7 +186,7 @@ const PayslipModal = ({ isOpen, onClose, itemId }) => {
                         </div>
                         <div className="total-row">
                           <span className="total-label uppercase tracking-widest text-[10px]">Total Deductions</span>
-                          <span className="total-value text-rose-600">-{formatCurrency(payslip.totals.gross - payslip.totals.net, payslip.run.currency)}</span>
+                          <span className="total-value text-rose-600">-{formatCurrency(payslip.totals.deductions, payslip.run.currency)}</span>
                         </div>
                         <div className="total-row net-pay">
                           <span className="total-label font-bold uppercase tracking-widest">Net Disbursed</span>

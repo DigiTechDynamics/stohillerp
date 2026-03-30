@@ -4,7 +4,7 @@ from rest_framework import serializers  # type: ignore
 from django.db import transaction  # type: ignore
 from apps.core.models import Currency  # type: ignore
 from .models import (  # type: ignore
-    ChartOfAccount, Journal, JournalEntry, JournalLine, 
+    ChartOfAccount, Journal, JournalBatch, JournalEntry, JournalLine, 
     FiscalPeriod, FiscalYear, ExchangeRate, PostingProfile,
     Supplier, SupplierInvoice, SupplierInvoiceLine, SupplierPayment,
     CustomerProfile, CustomerInvoice, CustomerInvoiceLine, CustomerReceipt,
@@ -27,6 +27,39 @@ class JournalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Journal
         fields = '__all__'
+
+
+class JournalBatchSerializer(serializers.ModelSerializer):
+    maker_name = serializers.SerializerMethodField()
+    checker_name = serializers.SerializerMethodField()
+    journal_code = serializers.CharField(source='journal.code', read_only=True)
+    journal_name = serializers.CharField(source='journal.name', read_only=True)
+    period_name = serializers.CharField(source='fiscal_period.name', read_only=True)
+    entries_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = JournalBatch
+        fields = '__all__'
+        read_only_fields = ['status', 'total_debits', 'total_credits', 'maker', 'checker', 'approved_at', 'posted_by', 'posted_at', 'batch_number']
+
+    def get_maker_name(self, obj):
+        if obj.maker:
+            return f"{obj.maker.first_name} {obj.maker.last_name}".strip()
+        return "Unknown"
+
+    def get_checker_name(self, obj):
+        if obj.checker:
+            return f"{obj.checker.first_name} {obj.checker.last_name}".strip()
+        return None
+
+    def get_entries_count(self, obj):
+        return obj.entries.count()
+        
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            validated_data['maker'] = request.user
+        return super().create(validated_data)
 
 
 class JournalLineSerializer(serializers.ModelSerializer):
@@ -72,6 +105,7 @@ class JournalEntrySerializer(serializers.ModelSerializer):
     total_debits = serializers.SerializerMethodField()
     total_credits = serializers.SerializerMethodField()
     is_balanced = serializers.SerializerMethodField()
+    batch_number = serializers.CharField(source='batch.batch_number', read_only=True)
 
     class Meta:
         model = JournalEntry

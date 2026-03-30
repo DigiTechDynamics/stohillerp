@@ -7,7 +7,7 @@ import {
   TrendingUp, PieChart, Landmark, ArrowLeft,
   Printer, Share2, Loader2, AlertCircle, ChevronRight
 } from 'lucide-react'
-import { financeAPI } from '@/services/api'
+import { financeAPI, propertiesAPI } from '@/services/api'
 import { formatCurrency } from '@/utils/format'
 
 export default function ReportsPage() {
@@ -16,8 +16,15 @@ export default function ReportsPage() {
     period_id: '',
     from_date: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
     to_date: new Date().toISOString().split('T')[0],
-    as_at_date: new Date().toISOString().split('T')[0]
+    as_at_date: new Date().toISOString().split('T')[0],
+    property_id: ''
   })
+
+  const { data: propertiesData } = useQuery({
+    queryKey: ['properties'],
+    queryFn: () => propertiesAPI.properties.list({ page_size: 1000 })
+  })
+  const properties = propertiesData?.data?.results || []
 
   const { data: periodsData } = useQuery({
     queryKey: ['fiscal-periods'],
@@ -50,6 +57,7 @@ export default function ReportsPage() {
         params={params} 
         setParams={setParams}
         periods={periods}
+        properties={properties}
         onBack={() => setSelectedReport(null)} 
       />
     )
@@ -100,7 +108,7 @@ export default function ReportsPage() {
   )
 }
 
-function ReportViewer({ report, params, setParams, periods, onBack }) {
+function ReportViewer({ report, params, setParams, periods, properties, onBack }) {
   const [isPreviewing, setIsPreviewing] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
 
@@ -111,7 +119,8 @@ function ReportViewer({ report, params, setParams, periods, onBack }) {
         period_id: params.period_id,
         from_date: params.from_date,
         to_date: params.to_date,
-        as_at_date: params.as_at_date
+        as_at_date: params.as_at_date,
+        property_id: params.property_id
       }
       const response = await financeAPI.reports.export(report.id, format, reportParams)
       
@@ -133,8 +142,8 @@ function ReportViewer({ report, params, setParams, periods, onBack }) {
   const { data: reportData, isLoading, error, refetch } = useQuery({
     queryKey: ['report', report.id, params],
     queryFn: () => {
-      if (report.id === 'trial-balance') return financeAPI.reports.trialBalance(params.period_id)
-      if (report.id === 'income-statement') return financeAPI.reports.incomeStatement(params.from_date, params.to_date)
+      if (report.id === 'trial-balance') return financeAPI.reports.trialBalance(params.period_id, params.property_id)
+      if (report.id === 'income-statement') return financeAPI.reports.incomeStatement(params.from_date, params.to_date, params.property_id)
       if (report.id === 'balance-sheet') return financeAPI.reports.balanceSheet(params.as_at_date)
       return Promise.reject('Report not implemented')
     },
@@ -198,6 +207,22 @@ function ReportViewer({ report, params, setParams, periods, onBack }) {
                   />
                 </div>
               </>
+            )}
+
+            {(report.id === 'income-statement' || report.id === 'trial-balance') && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-dark-400 uppercase">Property / Cost Center (Optional)</label>
+                <select 
+                  className="form-input text-xs"
+                  value={params.property_id}
+                  onChange={e => setParams({...params, property_id: e.target.value})}
+                >
+                  <option value="">All Properties (Consolidated)</option>
+                  {properties.map(p => (
+                    <option key={p.id} value={p.id}>{p.name} ({p.reference_number})</option>
+                  ))}
+                </select>
+              </div>
             )}
 
             {report.id === 'balance-sheet' && (

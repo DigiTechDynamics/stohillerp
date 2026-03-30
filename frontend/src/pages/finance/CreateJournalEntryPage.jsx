@@ -1,16 +1,13 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { 
-  Plus, Trash2, Save, Send, AlertCircle, Info, Calculator, 
-  ChevronLeft, ArrowRightLeft, Search, CheckCircle2 
-} from 'lucide-react'
+import { Plus, Trash2, Save, Send, AlertCircle, Info, Calculator, ChevronLeft, Calendar } from 'lucide-react'
 import { financeAPI } from '@/services/api'
 import { formatCurrency } from '@/utils/format'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import AccountCombobox from '@/components/common/AccountCombobox'
 
-export default function CreateJournalEntryPage() {
+export default function JournalBatchGrid() {
   const navigate = useNavigate()
   const { id } = useParams()
   const queryClient = useQueryClient()
@@ -18,23 +15,20 @@ export default function CreateJournalEntryPage() {
   
   const isEditing = !!id
 
-  // 1. Data Fetching
-  const { data: journalsRes } = useQuery({
-    queryKey: ['finance-journals'],
-    queryFn: () => financeAPI.journals.list(),
-  })
-  const { data: accountsRes } = useQuery({
-    queryKey: ['finance-accounts-compact'],
-    queryFn: () => financeAPI.accounts.list({ page_size: 1000 }),
-  })
-  const { data: currenciesRes } = useQuery({
-    queryKey: ['currencies'],
-    queryFn: () => financeAPI.currencies.list(),
-  })
+  const { data: journalsRes } = useQuery({ queryKey: ['finance-journals'], queryFn: () => financeAPI.journals.list() })
+  const { data: accountsRes } = useQuery({ queryKey: ['finance-accounts-compact'], queryFn: () => financeAPI.accounts.list({ page_size: 1000 }) })
+  const { data: currenciesRes } = useQuery({ queryKey: ['currencies'], queryFn: () => financeAPI.currencies.list() })
   
-  const { data: entryRes, isLoading: isLoadingEntry } = useQuery({
-    queryKey: ['journal-entry', id],
-    queryFn: () => financeAPI.entries.detail(id),
+  const { data: batchRes, isLoading: isLoadingBatch } = useQuery({
+    queryKey: ['journal-batch', id],
+    queryFn: () => financeAPI.batches.detail(id),
+    enabled: isEditing
+  })
+
+  // We should also fetch entries for this batch if editing
+  const { data: entriesRes } = useQuery({
+    queryKey: ['journal-entries-batch', id],
+    queryFn: () => financeAPI.entries.list({ batch: id, page_size: 1000 }),
     enabled: isEditing
   })
 
@@ -43,469 +37,266 @@ export default function CreateJournalEntryPage() {
   const currencies = currenciesRes?.data?.results || []
   const baseCurrency = currencies.find(c => c.is_base)
 
-  // 2. Form State
-  const [formData, setFormData] = useState({
+  const [batchData, setBatchData] = useState({
     journal: '',
-    entry_date: new Date().toISOString().split('T')[0],
     description: '',
-    currency: '',
-    exchange_rate: 1,
-    lines: [
-      { account: null, offsetAccount: null, description: '', debit: 0, credit: 0 },
-      { account: null, offsetAccount: null, description: '', debit: 0, credit: 0 }
-    ]
   })
+
+  const initialLine = { id: null, date: new Date().toISOString().split('T')[0], reference: '', account: null, offsetAccount: null, description: '', currency: '', debit: 0, credit: 0 }
+  const [lines, setLines] = useState([{ ...initialLine }])
 
   useEffect(() => {
-    if (entryRes?.data) {
-      const entry = entryRes.data
-      setFormData({
-        journal: entry.journal,
-        entry_date: entry.entry_date,
-        description: entry.description,
-        currency: entry.currency,
-        exchange_rate: entry.exchange_rate,
-        lines: entry.lines?.map(l => ({
-          account: l.account,
-          offsetAccount: null,
-          description: l.description,
-          debit: l.side === 'debit' ? l.amount_currency : 0,
-          credit: l.side === 'credit' ? l.amount_currency : 0
-        })) || [
-          { account: null, offsetAccount: null, description: '', debit: 0, credit: 0 },
-          { account: null, offsetAccount: null, description: '', debit: 0, credit: 0 }
-        ]
+    if (batchRes?.data) {
+      setBatchData({
+        journal: batchRes.data.journal,
+        description: batchRes.data.description,
       })
     }
-  }, [entryRes])
+  }, [batchRes])
 
-  // 3. Line Management
-  const addLine = () => {
-    setFormData(prev => ({
-      ...prev,
-      lines: [...prev.lines, { account: null, offsetAccount: null, description: '', debit: 0, credit: 0 }]
-    }))
-  }
+  useEffect(() => {
+     if (entriesRes?.data?.results?.length > 0) {
+        const loadedLines = entriesRes.data.results.map(entry => {
+           // Assume typical cashbook entry: line 0 is main, line 1 is offset (if any)
+           const mainLine = entry.lines[0] || {}
+           const offsetLine = entry.lines.find(l => l.side !== mainLine.side) || {}
+           
+           return {
+               id: entry.id,
+               date: entry.entry_date,
+               reference: entry.reference,
+               account: mainLine.account,
+               offsetAccount: offsetLine.account || null,
+               description: entry.description,
+               currency: entry.currency,
+               debit: mainLine.side === 'debit' ? mainLine.amount_currency : 0,
+               credit: mainLine.side === 'credit' ? mainLine.amount_currency : 0,
+           }
+        })
+        if (loadedLines.length > 0) {
+            setLines(loadedLines)
+        }
+     }
+  }, [entriesRes])
 
+  const addLine = () => setLines([...lines, { ...initialLine, date: lines[lines.length-1]?.date || initialLine.date, currency: lines[lines.length-1]?.currency || '' }])
   const removeLine = (index) => {
-    if (formData.lines.length <= 2) return
-    setFormData(prev => ({
-      ...prev,
-      lines: prev.lines.filter((_, i) => i !== index)
-    }))
+    if (lines.length <= 1) return
+    setLines(lines.filter((_, i) => i !== index))
   }
-
   const updateLine = (index, field, value) => {
-    const updatedLines = [...formData.lines]
-    updatedLines[index] = { ...updatedLines[index], [field]: value }
-    
-    // Clear opposite side when one is entered
-    if (field === 'debit' && parseFloat(value) > 0) updatedLines[index].credit = 0
-    if (field === 'credit' && parseFloat(value) > 0) updatedLines[index].debit = 0
-    
-    setFormData({ ...formData, lines: updatedLines })
+    const newLines = [...lines]
+    newLines[index] = { ...newLines[index], [field]: value }
+    if (field === 'debit' && parseFloat(value) > 0) newLines[index].credit = 0
+    if (field === 'credit' && parseFloat(value) > 0) newLines[index].debit = 0
+    setLines(newLines)
   }
 
-  // 4. Calculations
   const totals = useMemo(() => {
-    return formData.lines.reduce((acc, line) => {
-      const d = parseFloat(line.debit) || 0
-      const c = parseFloat(line.credit) || 0
-      
-      // Add current line
-      acc.debit += d
-      acc.credit += c
-      
-      // If there's an offset account, it implicitly balances this line
-      if (line.offsetAccount) {
-        acc.debit += c
-        acc.credit += d
-      }
-      
+    return lines.reduce((acc, line) => {
+      acc.debit += parseFloat(line.debit) || 0
+      acc.credit += parseFloat(line.credit) || 0
       return acc
     }, { debit: 0, credit: 0 })
-  }, [formData.lines])
+  }, [lines])
 
-  const diff = Math.abs(totals.debit - totals.credit)
-  const isBalanced = diff < 0.01 && totals.debit > 0
+  const createBatchMut = useMutation({ mutationFn: (data) => financeAPI.batches.create(data) })
+  const updateBatchMut = useMutation({ mutationFn: (params) => financeAPI.batches.update(params.id, params.data) })
+  const createEntryMut = useMutation({ mutationFn: (data) => financeAPI.entries.create(data) })
+  const updateEntryMut = useMutation({ mutationFn: (params) => financeAPI.entries.update(params.id, params.data) })
+  const submitMut = useMutation({ mutationFn: (id) => financeAPI.batches.submit(id) })
 
-  const parseError = (err) => {
-    const data = err.response?.data
-    if (data?.error?.message) return data.error.message
-    if (typeof data === 'object') {
-      // Handle DRF validation error objects
-      const errors = []
-      for (const [key, value] of Object.entries(data)) {
-        errors.push(`${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
-      }
-      return errors.join(' | ')
-    }
-    return 'An unexpected error occurred'
-  }
-
-  const createMutation = useMutation({
-    mutationFn: (data) => isEditing ? financeAPI.entries.update(id, data) : financeAPI.entries.create(data),
-    onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ['journal-entries'] })
-    },
-    onError: (err) => setError(parseError(err) || 'Failed to save entry')
-  })
-
-  const postMutation = useMutation({
-    mutationFn: (entryId) => financeAPI.entries.post(entryId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['journal-entries'] })
-      navigate('/finance/entries')
-    },
-    onError: (err) => setError(parseError(err) || 'Failed to post entry')
-  })
-
-  const handleSubmit = async (shouldPost) => {
+  const handleSave = async (submitForApproval = false) => {
     setError(null)
-    
-    // Prepare lines for API
-    const preparedLines = []
-    formData.lines.forEach(l => {
-      const mainAccount = l.account
-      if (!mainAccount || (!parseFloat(l.debit) && !parseFloat(l.credit))) return
+    if (!batchData.journal) return setError('Please select a Journal.')
+    if (!batchData.description) return setError('Please provide a Batch Description.')
 
-      const side = parseFloat(l.debit) > 0 ? 'debit' : 'credit'
-      const amount = parseFloat(l.debit) > 0 ? parseFloat(l.debit) : parseFloat(l.credit)
-      const desc = l.description || formData.description
-
-      const buildLine = (entity) => {
-        const line = {
-          side,
-          amount_currency: amount,
-          description: desc
-        }
-        if (entity.type === 'account') line.account = entity.id
-        else if (entity.type === 'customer') line.contact_ref = entity.entity_id
-        else if (entity.type === 'supplier') line.supplier_ref = entity.entity_id
-        else if (entity.type === 'employee') line.employee_ref = entity.entity_id
-        return line
-      }
-
-      // Main Line
-      preparedLines.push(buildLine(mainAccount))
-
-      // Offset Line (if provided)
-      if (l.offsetAccount) {
-        const offsetLine = buildLine(l.offsetAccount)
-        offsetLine.side = side === 'debit' ? 'credit' : 'debit'
-        preparedLines.push(offsetLine)
-      }
-    })
-
-    if (!formData.journal) {
-      setError('Please select a Journal.')
-      return
-    }
-
-
-    if (!formData.entry_date) {
-      setError('Please select a Posting Date.')
-      return
-    }
-
-    if (!formData.description) {
-      setError('Please provide a Global Description.')
-      return
-    }
-
-    if (preparedLines.length < 2) {
-      setError('A journal entry requires at least two lines with accounts and amounts.')
-      return
-    }
-
-    if (!formData.currency) {
-      setError('Please select a Currency.')
-      return
-    }
-
-    if (shouldPost && !isBalanced) {
-      setError('Only balanced entries can be posted.')
-      return
-    }
-
-    const payload = { ...formData, lines: preparedLines }
+    const validLines = lines.filter(l => l.account && (parseFloat(l.debit) > 0 || parseFloat(l.credit) > 0))
+    if (validLines.length === 0) return setError('At least one valid line entry is required.')
 
     try {
-      const res = await createMutation.mutateAsync(payload)
-      if (shouldPost) {
-        await postMutation.mutateAsync(res.data.id || id)
+      // 1. Save or Update Batch
+      let batchId = id
+      if (!isEditing) {
+          const res = await createBatchMut.mutateAsync(batchData)
+          batchId = res.data.id
       } else {
-        navigate('/finance/entries')
+          await updateBatchMut.mutateAsync({ id: batchId, data: batchData })
       }
+
+      // 2. Process Entries (Each Row is an Entry)
+      const promises = validLines.map(async (row) => {
+          const side = parseFloat(row.debit) > 0 ? 'debit' : 'credit'
+          const amount = parseFloat(row.debit) > 0 ? parseFloat(row.debit) : parseFloat(row.credit)
+          
+          const payloadLines = [{ side, amount_currency: amount, account: row.account, description: row.description }]
+          
+          if (row.offsetAccount) {
+              payloadLines.push({ 
+                  side: side === 'debit' ? 'credit' : 'debit', 
+                  amount_currency: amount, 
+                  account: row.offsetAccount, 
+                  description: row.description 
+              })
+          }
+
+          const entryPayload = {
+              batch: batchId,
+              journal: batchData.journal,
+              entry_date: row.date,
+              description: row.description || batchData.description,
+              currency: row.currency || baseCurrency?.id,
+              lines: payloadLines
+          }
+
+          if (row.id) {
+              return updateEntryMut.mutateAsync({ id: row.id, data: entryPayload })
+          } else {
+              return createEntryMut.mutateAsync(entryPayload)
+          }
+      })
+
+      await Promise.all(promises)
+
+      // 3. Submit if requested
+      if (submitForApproval) {
+          await submitMut.mutateAsync(batchId)
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['journal-batches'] })
+      navigate('/finance/entries')
+
     } catch (err) {
-      // Error handled by mutation onError
+       setError(err.response?.data?.error || err.message || 'Error saving batch.')
     }
   }
 
-  if (isLoadingEntry) return <div className="p-20 text-center text-dark-400">Loading entry...</div>
+  // Handle Tab key for quick insertion
+  const handleKeyDown = (e, idx) => {
+      if (e.key === 'Tab' && idx === lines.length - 1 && document.activeElement.name === 'credit') {
+          e.preventDefault()
+          addLine()
+      }
+  }
+
+  if (isLoadingBatch) return <div className="p-20 text-center text-dark-400">Loading batch...</div>
 
   return (
-    <div className="p-4 lg:p-8 max-w-[1600px] mx-auto space-y-8">
+    <div className="p-4 lg:p-6 mx-auto space-y-6 flex flex-col h-[calc(100vh-80px)]">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
-          <button 
-            onClick={() => navigate('/finance/entries')}
-            className="p-2 hover:bg-white/5 rounded-full transition-colors text-dark-400"
-          >
+          <button onClick={() => navigate('/finance/entries')} className="p-2 hover:bg-white/5 rounded-full transition-colors text-dark-400">
             <ChevronLeft size={20} />
           </button>
           <div>
-            <h1 className="text-3xl font-display text-white tracking-tight">
-              {isEditing ? 'Edit Journal Entry' : 'Capture New Journal Entry'}
+            <h1 className="text-2xl font-display text-white tracking-tight">
+              {isEditing ? 'Edit Batch' : 'Batch Data Entry Grid'}
             </h1>
-            <p className="text-dark-400 text-base mt-1.5 font-medium">Create a manual record of financial transactions with full sub-ledger support</p>
+            <p className="text-dark-400 text-sm mt-1">High-speed keyboard-friendly data entry</p>
           </div>
         </div>
         
         <div className="flex items-center gap-3">
-          <button 
-            disabled={createMutation.isPending || postMutation.isPending}
-            onClick={() => handleSubmit(false)}
-            className="btn-secondary px-6 py-2.5 flex items-center gap-2"
-          >
-            <Save size={18} /> Save as Draft
+          <button onClick={() => handleSave(false)} className="btn-secondary px-6 py-2.5 flex items-center gap-2">
+            <Save size={16} /> Save Draft
           </button>
-          <button 
-            disabled={!isBalanced || createMutation.isPending || postMutation.isPending}
-            onClick={() => handleSubmit(true)}
-            className="btn-primary px-6 py-2.5 flex items-center gap-2 group"
-          >
-            <Send size={18} className="group-hover:translate-x-0.5 transition-transform" /> 
-            {postMutation.isPending ? 'Posting...' : 'Post Entry'}
+          <button onClick={() => handleSave(true)} className="btn-primary px-6 py-2.5 flex items-center gap-2 group">
+            <Send size={16} className="group-hover:translate-x-0.5 transition-transform" /> Submit to Checker
           </button>
         </div>
       </div>
 
       {error && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-sm flex gap-3"
-        >
-          <AlertCircle size={18} className="flex-shrink-0" />
-          <p>{typeof error === 'object' ? JSON.stringify(error) : error}</p>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm shrink-0">
+          {error}
         </motion.div>
       )}
 
-      {/* Main Entry Info */}
-      <div className="grid grid-cols-12 gap-8">
-        <div className="col-span-12 xl:col-span-9 space-y-8">
-          <div className="card p-6 space-y-5">
-             <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Journal Type</label>
-                <select 
-                  className="form-input w-full"
-                  value={formData.journal}
-                  onChange={(e) => setFormData({...formData, journal: e.target.value})}
-                >
-                  <option value="">Select Journal...</option>
-                  {journals.map(j => <option key={j.id} value={j.id}>{j.name}</option>)}
-                </select>
-             </div>
-
-             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Posting Date</label>
-                  <input 
-                    type="date" 
-                    className="form-input w-full" 
-                    value={formData.entry_date}
-                    onChange={(e) => setFormData({...formData, entry_date: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Currency</label>
-                  <div className="flex gap-2">
-                    <select 
-                      className="form-input flex-1"
-                      value={formData.currency}
-                      onChange={(e) => {
-                        const curr = currencies.find(c => c.id === e.target.value)
-                        setFormData({
-                          ...formData, 
-                          currency: e.target.value,
-                          exchange_rate: curr?.is_base ? 1 : formData.exchange_rate
-                        })
-                      }}
-                    >
-                      <option value="">Select Currency...</option>
-                      {currencies.map(c => <option key={c.id} value={c.id}>{c.code} - {c.name}</option>)}
-                    </select>
-                    {formData.currency && !currencies.find(c => c.id === formData.currency)?.is_base && (
-                      <div className="w-32 space-y-1.5">
-                        <input 
-                          type="number" 
-                          step="0.00000001"
-                          className="form-input w-full"
-                          placeholder="Rate"
-                          value={formData.exchange_rate}
-                          onChange={(e) => setFormData({...formData, exchange_rate: parseFloat(e.target.value) || 0})}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-             </div>
-
-             <div className="space-y-1.5">
-               <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Global Description</label>
-               <input 
-                 type="text" 
-                 className="form-input w-full" 
-                 placeholder="Entry purpose..."
-                 value={formData.description}
-                 onChange={(e) => setFormData({...formData, description: e.target.value})}
-               />
-             </div>
+      {/* Batch Header */}
+      <div className="card p-5 grid grid-cols-2 lg:grid-cols-4 gap-4 shrink-0 border border-primary/10">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-dark-500 uppercase">Journal Type <span className="text-red-500">*</span></label>
+            <select className="form-input w-full" value={batchData.journal} onChange={(e) => setBatchData({...batchData, journal: e.target.value})}>
+              <option value="">Select...</option>
+              {journals.map(j => <option key={j.id} value={j.id}>{j.name}</option>)}
+            </select>
           </div>
+          <div className="space-y-1.5 lg:col-span-2">
+             <label className="text-[10px] font-bold text-dark-500 uppercase">Batch Description <span className="text-red-500">*</span></label>
+             <input type="text" className="form-input w-full" placeholder="e.g. November Expense Accruals" value={batchData.description} onChange={(e) => setBatchData({...batchData, description: e.target.value})} />
+          </div>
+          <div className="flex flex-col justify-end items-end p-2 border border-white/5 rounded-lg bg-dark-800">
+              <span className="text-[10px] font-bold text-dark-500 uppercase">Total Debits</span>
+              <span className="text-xl font-mono text-emerald-400">{formatCurrency(totals.debit)}</span>
+          </div>
+      </div>
 
-          {/* Line Items - Spreadsheet Style */}
-          <div className="card overflow-hidden">
-             <div className="p-4 border-b border-white/5 bg-white/2 flex items-center justify-between">
-               <h2 className="text-xs font-bold text-dark-400 uppercase tracking-widest flex items-center gap-2">
-                 <ArrowRightLeft size={14} /> Transaction Lines
-               </h2>
-               <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-dark-500 uppercase">Lines: {formData.lines.length}</span>
-               </div>
-             </div>
-             
-             <table className="w-full text-left border-collapse">
-               <thead>
-                 <tr className="text-[10px] text-dark-500 uppercase font-bold border-b border-white/5">
-                   <th className="px-5 py-4 w-[25%]">Main Account</th>
-                   <th className="px-5 py-4 w-[25%]">Offset Account</th>
-                   <th className="px-5 py-4">Line Narration</th>
-                   <th className="px-5 py-4 w-32 text-right">Debit</th>
-                   <th className="px-5 py-4 w-32 text-right">Credit</th>
-                   <th className="px-5 py-4 w-12"></th>
-                 </tr>
-               </thead>
-               <tbody className="divide-y divide-white/2">
-                 {formData.lines.map((line, idx) => (
-                   <tr key={idx} className="group hover:bg-white/1 transition-colors">
-                      <td className="p-3">
-                         <AccountCombobox 
-                           value={line.account}
-                           onChange={(val) => updateLine(idx, 'account', val)}
-                           placeholder="Main account/entity..."
-                         />
-                      </td>
-                      <td className="p-3">
-                         <AccountCombobox 
-                           value={line.offsetAccount}
-                           onChange={(val) => updateLine(idx, 'offsetAccount', val)}
-                           placeholder="Optional offset..."
-                         />
-                      </td>
-                     <td className="p-3">
-                        <input 
-                          type="text" 
-                          className="form-input w-full text-base py-2 border-transparent hover:border-white/10 focus:border-primary/50 bg-transparent"
-                          placeholder="Line details..."
-                          value={line.description}
-                          onChange={(e) => updateLine(idx, 'description', e.target.value)}
-                        />
-                     </td>
-                     <td className="p-3">
-                        <input 
-                          type="number" 
-                          className="form-input w-full text-lg py-2 text-right font-mono text-emerald-400 border-transparent hover:border-white/10 focus:border-primary/50 bg-transparent"
-                          placeholder="0.00"
-                          value={line.debit || ''}
-                          onChange={(e) => updateLine(idx, 'debit', e.target.value)}
-                        />
-                     </td>
-                     <td className="p-3">
-                        <input 
-                          type="number" 
-                          className="form-input w-full text-lg py-2 text-right font-mono text-primary border-transparent hover:border-white/10 focus:border-primary/50 bg-transparent"
-                          placeholder="0.00"
-                          value={line.credit || ''}
-                          onChange={(e) => updateLine(idx, 'credit', e.target.value)}
-                        />
-                     </td>
-                     <td className="p-2 text-center">
-                        <button 
-                          onClick={() => removeLine(idx)}
-                          className="p-1.5 text-dark-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-0"
-                          disabled={formData.lines.length <= 2}
-                        >
+      {/* Grid Container */}
+      <div className="card flex-1 overflow-hidden flex flex-col scrollbar-hide">
+         <div className="overflow-x-auto flex-1 h-full scrollbar-hide">
+            <table className="w-full text-left border-collapse min-w-[1000px]">
+              <thead className="bg-dark-800/80 sticky top-0 z-10 backdrop-blur-md">
+                <tr className="text-[10px] text-dark-500 uppercase font-bold border-b border-white/5">
+                  <th className="px-3 py-3 w-32">Date</th>
+                  <th className="px-3 py-3 w-40">Main Account</th>
+                  <th className="px-3 py-3 w-40">Contra Account</th>
+                  <th className="px-3 py-3">Line Description</th>
+                  <th className="px-3 py-3 w-28">Currency</th>
+                  <th className="px-3 py-3 w-32 text-right">Debit</th>
+                  <th className="px-3 py-3 w-32 text-right">Credit</th>
+                  <th className="px-3 py-3 w-10"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 bg-transparent overflow-y-auto">
+                {lines.map((line, idx) => (
+                  <tr key={idx} className="group hover:bg-white/2 transition-colors">
+                    <td className="p-1">
+                       <input type="date" className="form-input w-full text-sm border-transparent hover:border-white/10 focus:border-primary bg-transparent text-white" 
+                              value={line.date} onChange={(e) => updateLine(idx, 'date', e.target.value)} />
+                    </td>
+                    <td className="p-1 relative">
+                       <div className="w-full rounded border border-transparent hover:border-white/10 focus-within:border-primary">
+                           <AccountCombobox value={line.account} onChange={(val) => updateLine(idx, 'account', val)} placeholder="Account..." />
+                       </div>
+                    </td>
+                    <td className="p-1 relative">
+                       <div className="w-full rounded border border-transparent hover:border-white/10 focus-within:border-primary">
+                           <AccountCombobox value={line.offsetAccount} onChange={(val) => updateLine(idx, 'offsetAccount', val)} placeholder="Contra..." />
+                       </div>
+                    </td>
+                    <td className="p-1">
+                       <input type="text" className="form-input w-full text-sm border-transparent hover:border-white/10 focus:border-primary bg-transparent" placeholder="Narration..." 
+                              value={line.description} onChange={(e) => updateLine(idx, 'description', e.target.value)} />
+                    </td>
+                    <td className="p-1">
+                        <select className="form-input w-full text-sm border-transparent hover:border-white/10 focus:border-primary bg-transparent" 
+                                value={line.currency} onChange={(e) => updateLine(idx, 'currency', e.target.value)}>
+                            <option value="">Base</option>
+                            {currencies.map(c => <option key={c.id} value={c.id}>{c.code}</option>)}
+                        </select>
+                    </td>
+                    <td className="p-1">
+                        <input type="number" step="0.01" className="form-input w-full text-right font-mono text-emerald-400 font-semibold border-transparent hover:border-white/10 focus:border-primary bg-transparent" 
+                               placeholder="0.00" value={line.debit || ''} onChange={(e) => updateLine(idx, 'debit', e.target.value)} />
+                    </td>
+                    <td className="p-1">
+                        <input type="number" step="0.01" name="credit" className="form-input w-full text-right font-mono text-primary font-semibold border-transparent hover:border-white/10 focus:border-primary bg-transparent" 
+                               placeholder="0.00" value={line.credit || ''} onChange={(e) => updateLine(idx, 'credit', e.target.value)} onKeyDown={(e) => handleKeyDown(e, idx)} />
+                    </td>
+                    <td className="p-1 text-center">
+                        <button onClick={() => removeLine(idx)} className="p-1.5 text-dark-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-0" title="Remove row">
                           <Trash2 size={14} />
                         </button>
-                     </td>
-                   </tr>
-                 ))}
-               </tbody>
-             </table>
-             
-             <button 
-               onClick={addLine}
-               className="w-full py-4 text-xs text-dark-500 hover:text-primary hover:bg-white/2 transition-all flex items-center justify-center gap-2 border-t border-white/5"
-             >
-               <Plus size={14} /> Add Transaction Line (Tab)
-             </button>
-          </div>
-        </div>
-
-        <div className="col-span-12 xl:col-span-3 space-y-6">
-          {/* Summary Card */}
-          <div className="card p-6 space-y-4">
-             <h2 className="text-sm font-bold text-dark-400 uppercase tracking-widest flex items-center gap-2 mb-2">
-               <Calculator size={16} /> Entry Summary
-             </h2>
-             
-             <div className="space-y-3">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-dark-500">Total Debits</span>
-                  <span className="font-mono text-emerald-400 font-bold">{formatCurrency(totals.debit)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-dark-500">Total Credits</span>
-                  <span className="font-mono text-primary font-bold">{formatCurrency(totals.credit)}</span>
-                </div>
-                
-                <div className="pt-4 border-t border-white/5">
-                  <div className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all duration-500 ${isBalanced ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
-                    {isBalanced ? (
-                      <CheckCircle2 size={32} className="text-emerald-500" />
-                    ) : (
-                      <AlertCircle size={32} className="text-red-500" />
-                    )}
-                    <span className={`text-[10px] font-bold uppercase tracking-widest text-center ${isBalanced ? 'text-emerald-500' : 'text-red-500'}`}>
-                      {isBalanced ? 'Entry is Balanced' : `Trial Balance Out by ${formatCurrency(diff)}`}
-                    </span>
-                  </div>
-                </div>
-             </div>
-          </div>
-
-          <div className="bg-dark-800/50 rounded-2xl p-5 border border-white/5">
-            <h3 className="text-[10px] font-bold text-dark-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-              <Info size={12} /> Accounting Rules
-            </h3>
-            <ul className="space-y-3 text-xs text-dark-400 leading-relaxed">
-              <li className="flex gap-2">
-                <span className="text-primary">•</span>
-                Total debits must equal total credits before posting.
-              </li>
-              <li className="flex gap-2">
-                <span className="text-primary">•</span>
-                Posted entries create immutable ledger records.
-              </li>
-              <li className="flex gap-2">
-                <span className="text-primary">•</span>
-                The fiscal period is automatically determined by the posting date.
-              </li>
-            </ul>
-          </div>
-        </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+         </div>
+         <button onClick={addLine} className="w-full py-2.5 text-xs font-bold text-dark-500 hover:text-primary hover:bg-white/2 transition-all flex items-center justify-center gap-2 border-t border-white/5 uppercase tracking-widest bg-dark-800">
+            <Plus size={14} /> Add Row (or press Tab on last cell)
+         </button>
       </div>
     </div>
   )

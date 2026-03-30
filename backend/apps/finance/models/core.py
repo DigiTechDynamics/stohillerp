@@ -225,6 +225,59 @@ class Journal(AuditedModel):
         return f'{self.code} - {self.name}'
 
 
+class JournalBatch(AuditedModel):
+    """
+    Groups multiple Journal Entries together for Maker/Checker approval workflows.
+    Entries in a batch must share the same fiscal period and journal type.
+    """
+    class BatchStatus(models.TextChoices):
+        DRAFT = 'draft', 'Draft'
+        PENDING_APPROVAL = 'pending', 'Pending Approval'
+        APPROVED = 'approved', 'Approved'
+        POSTED = 'posted', 'Posted'
+        REJECTED = 'rejected', 'Rejected'
+
+    batch_number = models.CharField(max_length=50, unique=True, db_index=True)
+    description = models.CharField(max_length=255)
+    fiscal_period = models.ForeignKey(FiscalPeriod, on_delete=models.PROTECT, related_name='batches')
+    journal = models.ForeignKey(Journal, on_delete=models.PROTECT, related_name='batches')
+    
+    status = models.CharField(max_length=20, choices=BatchStatus.choices, default=BatchStatus.DRAFT)
+    
+    total_debits = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal('0.00'))
+    total_credits = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal('0.00'))
+    
+    # Maker/Checker validation
+    maker = models.ForeignKey('core.User', on_delete=models.PROTECT, related_name='created_batches')
+    checker = models.ForeignKey('core.User', null=True, blank=True, on_delete=models.PROTECT, related_name='approved_batches')
+    approved_at = models.DateTimeField(null=True, blank=True)
+    posted_by = models.ForeignKey('core.User', null=True, blank=True, on_delete=models.PROTECT, related_name='posted_batches')
+    posted_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True)
+
+    class Meta:
+        db_table = 'finance_journal_batches'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.batch_number} - {self.description}'
+
+    def is_balanced(self):
+        return self.total_debits == self.total_credits
+
+    def save(self, *args, **kwargs):
+        if not self.batch_number:
+            from apps.core.services.number_sequence import NumberSequenceService
+            self.batch_number = NumberSequenceService.get_next_number("Journal Batch", prefix="JB-", padding=6)
+        
+        # Enforce Maker != Checker
+        if self.status in [self.BatchStatus.APPROVED, self.BatchStatus.POSTED]:
+            if self.maker_id and self.checker_id and self.maker_id == self.checker_id:
+                raise ValidationError("Maker and Checker cannot be the same user. Role segregation required.")
+                
+        super().save(*args, **kwargs)
+
+
 class JournalEntry(AuditedModel):
     """
     A Journal Entry (JE) is the header record for a double-entry transaction.
@@ -256,6 +309,7 @@ class JournalEntry(AuditedModel):
 
     # Reference
     reference = models.CharField(max_length=50, unique=True, db_index=True)
+    batch = models.ForeignKey(JournalBatch, null=True, blank=True, on_delete=models.PROTECT, related_name='entries')
     journal = models.ForeignKey(Journal, on_delete=models.PROTECT, related_name='entries')
     fiscal_period = models.ForeignKey(FiscalPeriod, on_delete=models.PROTECT, related_name='entries')
     currency = models.ForeignKey('core.Currency', on_delete=models.PROTECT, related_name='entries', null=True)

@@ -965,18 +965,23 @@ class AccountingService:
 
         return reversal
 
-    def generate_trial_balance(self, fiscal_period: FiscalPeriod) -> dict:
+    def generate_trial_balance(self, fiscal_period: FiscalPeriod, property_id=None) -> dict:
         """
-        Generate Trial Balance for a fiscal period.
+        Generate Trial Balance for a fiscal period, optionally filtered by Property.
         Returns structured data with account balances.
         """
         from django.db.models import Sum, Case, When, Q  # type: ignore
 
-        # Aggregate debits and credits per account for the period
-        lines = JournalLine.objects.filter(
+        qs = JournalLine.objects.filter(
             entry__fiscal_period=fiscal_period,
             entry__status=JournalEntry.EntryStatus.POSTED,
-        ).values(
+        )
+        
+        if property_id:
+            qs = qs.filter(property_ref_id=property_id)
+
+        # Aggregate debits and credits per account for the period
+        lines = qs.values(
             'account__code', 'account__name', 'account__account_type'
         ).annotate(
             total_debit=Sum('amount', filter=Q(side='debit')),

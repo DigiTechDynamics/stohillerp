@@ -35,13 +35,11 @@ export default function EmployeeForm() {
     phone: employee?.phone || '',
     id_number: employee?.id_number || '',
     department: employee?.department || '',
-    job_title: employee?.job_title || '',
+    job_position: employee?.job_position || '',
     employment_type: employee?.employment_type || 'full_time',
     status: employee?.status || 'active',
     start_date: employee?.start_date || new Date().toISOString().split('T')[0],
     reports_to: employee?.reports_to || '',
-    basic_salary: employee?.basic_salary || '0.00',
-    commission_rate: employee?.commission_rate || '50.00',
     bank_name: employee?.bank_name || '',
     bank_account_number: employee?.bank_account_number || '',
     bank_branch_code: employee?.bank_branch_code || '',
@@ -55,6 +53,12 @@ export default function EmployeeForm() {
     queryFn: () => hrAPI.departments.list(),
   })
   const departments = deptsData?.data?.results || []
+
+  const { data: posData } = useQuery({
+    queryKey: ['hr-job-positions'],
+    queryFn: () => hrAPI.jobPositions.list(),
+  })
+  const jobPositions = posData?.data?.results || []
 
   const { data: empsData } = useQuery({
     queryKey: ['hr-employees-lite'],
@@ -176,8 +180,11 @@ export default function EmployeeForm() {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Job Title</label>
-                  <input name="job_title" value={formData.job_title} onChange={handleChange} required className="form-input w-full" />
+                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Job Position</label>
+                  <select name="job_position" value={formData.job_position} onChange={handleChange} required className="form-input w-full">
+                    <option value="">Select Position</option>
+                    {jobPositions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
                 </div>
               </div>
 
@@ -206,7 +213,7 @@ export default function EmployeeForm() {
                   <select name="reports_to" value={formData.reports_to} onChange={handleChange} className="form-input w-full">
                     <option value="">No Manager (Top Level)</option>
                     {allEmployees.filter(e => e.id !== employee?.id).map(e => (
-                      <option key={e.id} value={e.id}>{e.first_name} {e.last_name} ({e.job_title})</option>
+                      <option key={e.id} value={e.id}>{e.full_name} ({e.job_position_name})</option>
                     ))}
                   </select>
                 </div>
@@ -230,15 +237,12 @@ export default function EmployeeForm() {
 
           {activeTab === 'payroll' && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Basic Salary (USD)</label>
-                  <input type="number" step="0.01" name="basic_salary" value={formData.basic_salary} onChange={handleChange} className="form-input w-full" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Commission Rate (%)</label>
-                  <input type="number" step="0.1" name="commission_rate" value={formData.commission_rate} onChange={handleChange} className="form-input w-full" />
-                </div>
+              <div className="p-4 rounded-xl bg-orange-500/10 border border-orange-500/20">
+                <p className="text-[10px] text-orange-400 leading-relaxed font-bold uppercase tracking-wider">Note on Compensation</p>
+                <p className="text-xs text-dark-300 mt-1">
+                  Salary and commission rates are now managed via <strong>Employee Contracts</strong>. 
+                  Update the contract after saving the employee profile.
+                </p>
               </div>
 
               <div className="border-t border-white/5 pt-5 mt-5">

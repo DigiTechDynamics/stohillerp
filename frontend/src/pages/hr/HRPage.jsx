@@ -131,10 +131,10 @@ export default function HRPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-dark-700 flex items-center justify-center text-xs font-semibold text-primary border border-white/5">
-                        {emp.first_name?.[0]}{emp.last_name?.[0]}
+                        {emp.full_name?.[0]}
                       </div>
                       <div>
-                        <p className="text-sm text-white font-medium">{emp.first_name} {emp.last_name}</p>
+                        <p className="text-sm text-white font-medium">{emp.full_name}</p>
                         <p className="text-xs text-dark-400 font-mono">{emp.employee_number}</p>
                       </div>
                     </div>
@@ -144,7 +144,7 @@ export default function HRPage() {
                     <div className="flex items-center gap-1.5"><Phone size={12} className="text-dark-500" /> {emp.phone || '—'}</div>
                   </td>
                   <td className="px-4 py-3 text-sm text-dark-300">
-                    <p className="font-medium text-white">{emp.job_title}</p>
+                    <p className="font-medium text-white">{emp.job_position_name}</p>
                     <p className="text-[10px] text-dark-500 uppercase">{emp.department_name}</p>
                   </td>
                   <td className="px-4 py-3 text-sm text-dark-300">
