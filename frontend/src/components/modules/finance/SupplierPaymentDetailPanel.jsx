@@ -21,8 +21,8 @@ export default function SupplierPaymentDetailPanel({ payment: initialPayment }) 
     mutationFn: () => financeAPI.ap.payments.post(payment.id),
     onSuccess: () => {
       toast.success('Payment posted successfully!')
-      queryClient.invalidateQueries(['supplier-payments'])
-      queryClient.invalidateQueries(['ap-suppliers'])
+      queryClient.invalidateQueries({ queryKey: ['supplier-payments'] })
+      queryClient.invalidateQueries({ queryKey: ['ap-suppliers'] })
       closeSidePanel()
     },
     onError: (err) => {

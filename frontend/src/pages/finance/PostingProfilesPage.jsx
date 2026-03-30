@@ -22,7 +22,7 @@ export default function PostingProfilesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => financeAPI.postingProfiles.delete(id),
-    onSuccess: () => queryClient.invalidateQueries(['posting-profiles']),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['posting-profiles'] }),
   })
 
   const handleDelete = (id) => {
@@ -92,7 +92,7 @@ export default function PostingProfilesPage() {
           <div className="flex flex-col items-center justify-center py-20 text-red-400 gap-2 text-center">
             <AlertCircle size={32} />
             <p>Failed to load posting profiles.</p>
-            <button onClick={() => queryClient.invalidateQueries(['posting-profiles'])} className="text-xs text-primary underline">Try again</button>
+            <button onClick={() => queryClient.invalidateQueries({ queryKey: ['posting-profiles'] })} className="text-xs text-primary underline">Try again</button>
           </div>
         ) : profiles.length === 0 ? (
           <div className="card py-20 flex flex-col items-center justify-center text-center">

@@ -1,4 +1,4 @@
-// Stohil Properties - Executive Mode Toggle
+// Stohill Properties - Executive Mode Toggle
 // Switches between standard and executive dashboard views
 import { motion } from 'framer-motion'
 import { Zap } from 'lucide-react'

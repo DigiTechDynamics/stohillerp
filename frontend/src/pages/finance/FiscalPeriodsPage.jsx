@@ -1,4 +1,4 @@
-// Stohil Properties - Fiscal Periods Management
+// Stohill Properties - Fiscal Periods Management
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -42,44 +42,44 @@ export default function FiscalPeriodsPage() {
 
   const generatePeriodsMutation = useMutation({
     mutationFn: (id) => financeAPI.fiscalYears.generatePeriods(id),
-    onSuccess: () => queryClient.invalidateQueries(['fiscal-periods', selectedYearId]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fiscal-periods', selectedYearId] }),
   })
 
   const closeYearMutation = useMutation({
     mutationFn: (id) => financeAPI.fiscalYears.close(id),
     onSuccess: () => {
-      queryClient.invalidateQueries(['fiscal-years'])
-      queryClient.invalidateQueries(['fiscal-periods', selectedYearId])
+      queryClient.invalidateQueries({ queryKey: ['fiscal-years'] })
+      queryClient.invalidateQueries({ queryKey: ['fiscal-periods', selectedYearId] })
     },
   })
   
   const reopenYearMutation = useMutation({
     mutationFn: (id) => financeAPI.fiscalYears.reopen(id),
     onSuccess: () => {
-      queryClient.invalidateQueries(['fiscal-years'])
-      queryClient.invalidateQueries(['fiscal-periods', selectedYearId])
+      queryClient.invalidateQueries({ queryKey: ['fiscal-years'] })
+      queryClient.invalidateQueries({ queryKey: ['fiscal-periods', selectedYearId] })
     },
   })
 
   // New mutations for period actions
   const lockPeriodMutation = useMutation({
     mutationFn: (id) => financeAPI.periods.lock(id),
-    onSuccess: () => queryClient.invalidateQueries(['fiscal-periods', selectedYearId]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fiscal-periods', selectedYearId] }),
   })
 
   const unlockPeriodMutation = useMutation({
     mutationFn: (id) => financeAPI.periods.unlock(id),
-    onSuccess: () => queryClient.invalidateQueries(['fiscal-periods', selectedYearId]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fiscal-periods', selectedYearId] }),
   })
 
   const closePeriodMutation = useMutation({
     mutationFn: (id) => financeAPI.periods.close(id),
-    onSuccess: () => queryClient.invalidateQueries(['fiscal-periods', selectedYearId]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fiscal-periods', selectedYearId] }),
   })
 
   const reopenPeriodMutation = useMutation({
     mutationFn: (id) => financeAPI.periods.reopen(id),
-    onSuccess: () => queryClient.invalidateQueries(['fiscal-periods', selectedYearId]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fiscal-periods', selectedYearId] }),
   })
 
   // The original updatePeriodMutation is no longer needed with separate mutations
@@ -89,7 +89,7 @@ export default function FiscalPeriodsPage() {
   //     if (action === 'unlock') return financeAPI.periods.unlock(id)
   //     if (action === 'close') return financeAPI.periods.close(id)
   //   },
-  //   onSuccess: () => queryClient.invalidateQueries(['fiscal-periods', selectedYearId]),
+  //   onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fiscal-periods', selectedYearId] }),
   // })
 
   // ── Handlers ───────────────────────────────────────────────────────

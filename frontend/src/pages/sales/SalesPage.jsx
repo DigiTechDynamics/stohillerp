@@ -1,4 +1,4 @@
-// Stohil Properties - Sales and Brokerage Page
+// Stohill Properties - Sales and Brokerage Page
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -37,7 +37,8 @@ export default function SalesPage() {
         <div className="flex items-center gap-3">
           <DataManagementButtons 
             module="sales" 
-            onImportSuccess={() => queryClient.invalidateQueries(['sales-transactions'])} 
+            filters={{ search, status, ordering: sort, page }}
+            onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['sales-transactions'] })} 
           />
           <button className="btn-primary flex items-center gap-2" onClick={() => openPanel('sale-form')}>
             <Plus size={16} /> New Transaction
@@ -147,7 +148,7 @@ export default function SalesPage() {
                       {tx.status?.replace(/_/g, ' ')}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-dark-400">{tx.closing_date ? formatDate(tx.closing_date) : 'TBD'}</td>
+                  <td className="px-4 py-3 text-sm text-dark-400">{tx.closing_date ? formatDate(tx.closing_date) : 'TBD - Awaiting Confirmation'}</td>
                 </motion.tr>
               ))}
             </AnimatePresence>

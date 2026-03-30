@@ -453,7 +453,8 @@ class ReportExportView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, report_id):
-        format_type = request.query_params.get('format', 'csv')
+        print("INSIDE ReportExportView GET", report_id)
+        format_type = request.query_params.get('export_format', 'csv')
         
         # Re-use existing view logic to get data
         if report_id == 'trial-balance':
@@ -474,7 +475,58 @@ class ReportExportView(APIView):
         data = response.data
         
         output = HttpResponse(content_type='text/csv')
-        output['Content-Disposition'] = f'attachment; filename="{report_id}_{format_type}.csv"'
+        output['Content-Disposition'] = f'attachment; filename="{report_id}.csv"'
+        
+        if format_type == 'pdf':
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import letter
+            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+            from reportlab.lib.styles import getSampleStyleSheet
+            
+            output = HttpResponse(content_type='application/pdf')
+            output['Content-Disposition'] = f'attachment; filename="{report_id}.pdf"'
+            
+            doc = SimpleDocTemplate(output, pagesize=letter)
+            elements = []
+            styles = getSampleStyleSheet()
+            
+            if report_id == 'vat-return':
+                period = data.get('period', {})
+                elements.append(Paragraph("VAT Return Report", styles['Title']))
+                elements.append(Paragraph(f"From: {period.get('start_date')} To: {period.get('end_date')}", styles['Normal']))
+                elements.append(Spacer(1, 20))
+                
+                table_data = [
+                    ['SUMMARY', ''],
+                    ['Output Tax', str(data.get('output_tax', 0))],
+                    ['Input Tax', str(data.get('input_tax', 0))],
+                    ['Net Liability', str(data.get('vat_liability', 0))],
+                    ['', ''],
+                    ['DETAILED CATEGORIES', ''],
+                    ['Total Sales Gross', str(data.get('total_sales_gross', 0))],
+                    ['Total Sales Net', str(data.get('total_sales_net', 0))],
+                    ['Total Purchases Gross', str(data.get('total_purchases_gross', 0))],
+                    ['Total Purchases Net', str(data.get('total_purchases_net', 0))]
+                ]
+                
+                t = Table(table_data, colWidths=[200, 200])
+                t.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (1, 0), colors.grey),
+                    ('TEXTCOLOR', (0, 0), (1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 5), (1, 5), colors.grey),
+                    ('TEXTCOLOR', (0, 5), (1, 5), colors.whitesmoke),
+                    ('FONTNAME', (0, 5), (-1, 5), 'Helvetica-Bold'),
+                    ('GRID', (0,0), (-1,-1), 1, colors.black)
+                ]))
+                
+                elements.append(t)
+            
+            doc.build(elements)
+            return output
+
         import csv
         writer = csv.writer(output)
 
@@ -521,7 +573,8 @@ class ReportExportView(APIView):
             writer.writerow(['Total Equity', '', data.get('total_equity')])
 
         elif report_id == 'vat-return':
-            writer.writerow(['VAT Return Report', f"From: {data.get('from_date')} To: {data.get('to_date')}"])
+            period = data.get('period', {})
+            writer.writerow(['VAT Return Report', f"From: {period.get('start_date')} To: {period.get('end_date')}"])
             writer.writerow([])
             writer.writerow(['SUMMARY'])
             writer.writerow(['Output Tax', data.get('output_tax')])
@@ -543,9 +596,10 @@ from apps.finance.models import Supplier, SupplierInvoice, SupplierPayment  # ty
 class SupplierViewSet(viewsets.ModelViewSet):
     queryset = Supplier.objects.all().order_by('name')
     permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['is_active']
     search_fields = ['name', 'tax_number', 'email']
+    ordering_fields = ['name', 'created_at']
 
     def get_serializer_class(self):
         from apps.finance.serializers import SupplierSerializer  # type: ignore
@@ -779,3 +833,48 @@ class VATReturnView(APIView):
             return Response(data)
         except Exception as e:
             return Response({'error': str(e)}, status=400)
+
+
+class FinanceSummaryView(APIView):
+    """Provides high-level financial KPIs for the dashboard and finance module."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.finance.models import ChartOfAccount, JournalLine, JournalEntry
+        from apps.rentals.models import RentalInvoice
+
+        # 1. Cash Position: Sum of all Bank accounts
+        cash_position = ChartOfAccount.objects.filter(
+            account_sub_type='bank', is_active=True
+        ).aggregate(total=Sum('current_balance'))['total'] or Decimal('0')
+
+        # 2. Accounts Receivable: Sum of all Receivable accounts
+        ar_total = ChartOfAccount.objects.filter(
+            account_sub_type='receivable', is_active=True
+        ).aggregate(total=Sum('current_balance'))['total'] or Decimal('0')
+
+        # 3. Overdue Count
+        overdue_count = RentalInvoice.objects.filter(status='overdue').count()
+
+        # 4. Operating Margin: (Revenue - Expenses) / Revenue
+        revenue = JournalLine.objects.filter(
+            entry__status=JournalEntry.EntryStatus.POSTED,
+            account__account_type='revenue'
+        ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        
+        expenses = JournalLine.objects.filter(
+            entry__status=JournalEntry.EntryStatus.POSTED,
+            account__account_type='expense'
+        ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+
+        operating_margin = 0
+        if revenue > 0:
+            operating_margin = round(((revenue - expenses) / revenue) * 100, 1)
+
+        return Response({
+            'cash_position': str(cash_position),
+            'accounts_receivable': str(ar_total),
+            'overdue_count': overdue_count,
+            'operating_margin': operating_margin,
+            'operating_target': 35.0,
+        })

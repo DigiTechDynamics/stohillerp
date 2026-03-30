@@ -34,4 +34,5 @@ urlpatterns = [
     path('reports/vat-return/', views.VATReturnView.as_view(), name='vat-return'),
     path('reports/export/<str:report_id>/', views.ReportExportView.as_view(), name='report-export'),
     path('account-search/', views.UnifiedAccountSearchView.as_view(), name='account-search'),
+    path('summary/', views.FinanceSummaryView.as_view(), name='finance-summary'),
 ]

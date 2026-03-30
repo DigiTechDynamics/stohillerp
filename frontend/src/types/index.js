@@ -1,4 +1,4 @@
-// Stohil Properties - Shared Constants and Types (JS)
+// Stohill Properties - Shared Constants and Types (JS)
 
 export const PROPERTY_STATUS = {
   AVAILABLE: 'available',

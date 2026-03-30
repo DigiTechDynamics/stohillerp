@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
@@ -11,6 +11,16 @@ import { toast } from 'react-hot-toast'
 
 export default function ReconciliationWorkspace({ accountId }) {
   const [processing, setProcessing] = useState(false)
+  const [expandedLines, setExpandedLines] = useState(new Set())
+
+  const toggleLine = (id) => {
+    setExpandedLines(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const { data: statementsData, isLoading: loadingStmt, refetch: refetchStmt } = useQuery({
     queryKey: ['banking-statements', { accountId }],
@@ -105,29 +115,72 @@ export default function ReconciliationWorkspace({ accountId }) {
                 </thead>
                 <tbody>
                   {statementLines.map((line) => (
-                    <tr key={line.id} className={line.is_reconciled ? 'opacity-50' : ''}>
-                      <td className="whitespace-nowrap tabular-nums">{formatDate(line.transaction_date)}</td>
-                      <td>
-                        <div className="text-sm text-dark-300 truncate max-w-[180px]" title={line.description}>
-                          {line.description}
-                        </div>
-                        <div className="text-[10px] text-dark-500 font-mono">{line.reference}</div>
-                      </td>
-                      <td className="text-right font-semibold text-white tabular-nums">
-                        {formatCurrency(line.amount)}
-                      </td>
-                      <td className="text-right">
-                        {line.is_reconciled ? (
-                          <div className="p-2 text-emerald-400" title="Reconciled">
-                            <CheckCircle2 size={16} />
+                    <React.Fragment key={line.id}>
+                      <tr className={line.is_reconciled ? 'opacity-50' : ''}>
+                        <td className="whitespace-nowrap tabular-nums">{formatDate(line.transaction_date)}</td>
+                        <td>
+                          <div className="text-sm text-dark-300 truncate max-w-[180px]" title={line.description}>
+                            {line.description}
                           </div>
-                        ) : (
-                          <button className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors" title="Match Manually">
-                            <ArrowRight size={16} />
-                          </button>
+                          <div className="text-[10px] text-dark-500 font-mono">{line.reference}</div>
+                        </td>
+                        <td className="text-right font-semibold text-white tabular-nums">
+                          {formatCurrency(line.amount)}
+                        </td>
+                        <td className="text-right">
+                          {line.is_reconciled ? (
+                            <div className="p-2 text-emerald-400" title="Reconciled">
+                              <CheckCircle2 size={16} />
+                            </div>
+                          ) : (
+                            <button 
+                              onClick={() => toggleLine(line.id)}
+                              className={`p-2 transition-all rounded-lg ${expandedLines.has(line.id) ? 'bg-primary text-dark-900' : 'text-primary hover:bg-primary/10'}`} 
+                              title={expandedLines.has(line.id) ? 'Collapse' : 'Expand for Matching'}
+                            >
+                              <ArrowRight size={16} className={`transition-transform duration-200 ${expandedLines.has(line.id) ? 'rotate-90' : ''}`} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                      <AnimatePresence>
+                        {expandedLines.has(line.id) && (
+                          <motion.tr
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                          >
+                            <td colSpan={4} className="px-6 py-4 bg-dark-800/80 border-y border-white/5">
+                              <div className="flex flex-col gap-3">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="text-[10px] font-bold text-primary uppercase tracking-widest">Line Details</h4>
+                                  <span className="text-[10px] text-dark-500 font-mono">ID: {line.id}</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-6 text-[11px]">
+                                  <div>
+                                    <p className="text-dark-500 mb-1 uppercase tracking-tighter">Full Description</p>
+                                    <p className="text-white bg-dark-700/50 p-2 rounded border border-white/5">{line.description}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-dark-500 mb-1 uppercase tracking-tighter">Bank Reference</p>
+                                    <p className="text-white bg-dark-700/50 p-2 rounded border border-white/5">{line.reference || 'None'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-dark-500 mb-1 uppercase tracking-tighter">Transaction Hash</p>
+                                    <p className="text-dark-400 font-mono mt-2 truncate">{line.id.substring(0, 16)}...</p>
+                                  </div>
+                                </div>
+                                <div className="pt-2 flex justify-end">
+                                   <button className="btn-primary flex items-center gap-2 text-[10px] py-1.5 px-3">
+                                      <Wand2 size={12} /> Find Suggested Matches
+                                   </button>
+                                </div>
+                              </div>
+                            </td>
+                          </motion.tr>
                         )}
-                      </td>
-                    </tr>
+                      </AnimatePresence>
+                    </React.Fragment>
                   ))}
                   {statementLines.length === 0 && (
                     <tr>

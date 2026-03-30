@@ -495,6 +495,30 @@ class PostingProfile(AuditedModel):
         ChartOfAccount, on_delete=models.RESTRICT,
         related_name='comm_inc_profiles', limit_choices_to={'account_type': 'revenue'}
     )
+    sale_revenue = models.ForeignKey(
+        ChartOfAccount, on_delete=models.RESTRICT,
+        related_name='sale_rev_profiles', limit_choices_to={'account_type': 'revenue'},
+        null=True, blank=True
+    )
+
+    # Expense Accounts
+    cost_of_sales = models.ForeignKey(
+        ChartOfAccount, on_delete=models.RESTRICT,
+        related_name='cos_profiles', limit_choices_to={'account_type': 'expense'},
+        null=True, blank=True
+    )
+    commission_expense = models.ForeignKey(
+        ChartOfAccount, on_delete=models.RESTRICT,
+        related_name='comm_exp_profiles', limit_choices_to={'account_type': 'expense'},
+        null=True, blank=True
+    )
+
+    # Inventory Accounts
+    property_inventory = models.ForeignKey(
+        ChartOfAccount, on_delete=models.RESTRICT,
+        related_name='inv_profiles', limit_choices_to={'account_type': 'asset'},
+        null=True, blank=True
+    )
 
     class Meta:
         db_table = 'finance_posting_profiles'

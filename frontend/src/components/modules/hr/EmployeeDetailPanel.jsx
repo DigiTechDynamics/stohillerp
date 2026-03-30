@@ -1,8 +1,11 @@
+import React, { useState } from 'react'
 import { User, Briefcase, Mail, Phone, CreditCard, Calendar, ShieldCheck, MapPin } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
+import EmployeeStatementModal from './EmployeeStatementModal'
 
 export default function EmployeeDetailPanel({ employee }) {
+  const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
   if (!employee) return null
   const openSidePanel = useUIStore((s) => s.openSidePanel)
 
@@ -111,8 +114,19 @@ export default function EmployeeDetailPanel({ employee }) {
         >
           Edit Profile
         </button>
-        <button className="btn-secondary px-4 py-2.5">Generate Statement</button>
+        <button 
+          className="btn-secondary px-4 py-2.5"
+          onClick={() => setIsStatementModalOpen(true)}
+        >
+          Generate Statement
+        </button>
       </div>
+
+      <EmployeeStatementModal 
+        isOpen={isStatementModalOpen}
+        onClose={() => setIsStatementModalOpen(false)}
+        employeeId={employee.id}
+      />
     </div>
   )
 }

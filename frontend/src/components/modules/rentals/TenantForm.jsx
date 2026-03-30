@@ -1,7 +1,7 @@
-// Stohil Properties - Tenant Form
+// Stohill Properties - Tenant / Contact Form
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Save, AlertCircle, UserPlus, FileText } from 'lucide-react'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
+import { Save, AlertCircle, UserPlus, FileText, ShieldCheck } from 'lucide-react'
 import { crmAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import CurrencySelect from '@/components/common/CurrencySelect'
@@ -13,6 +13,12 @@ export default function TenantForm() {
   const isEdit = !!contact
   const [error, setError] = useState(null)
 
+  const { data: teamsRes } = useQuery({
+    queryKey: ['sales-teams'],
+    queryFn: () => crmAPI.salesTeams.list()
+  })
+  const teams = teamsRes?.data || []
+
   const [formData, setFormData] = useState({
     first_name: contact?.first_name || '',
     last_name: contact?.last_name || '',
@@ -20,7 +26,7 @@ export default function TenantForm() {
     email: contact?.email || '',
     phone_mobile: contact?.phone_mobile || contact?.phone || '',
     id_number: contact?.id_number || '',
-    contact_type: contact?.contact_type || 'tenant',
+    contact_type: contact?.contact_type || 'lead',
     source: contact?.source || 'Website',
     notes: contact?.notes || '',
     currency: contact?.currency || '',
@@ -32,6 +38,7 @@ export default function TenantForm() {
     guarantor_email: contact?.guarantor_email || '',
     guarantor_phone: contact?.guarantor_phone || '',
     guarantor_relationship: contact?.guarantor_relationship || '',
+    sales_team: contact?.sales_team || '',
   })
 
   const mutation = useMutation({
@@ -43,7 +50,7 @@ export default function TenantForm() {
     },
     onError: (err) => {
       const resp = err.response?.data
-      setError(resp?.error?.message || resp || `Failed to ${isEdit ? 'update' : 'create'} tenant`)
+      setError(resp?.error?.message || resp || `Failed to ${isEdit ? 'update' : 'create'} record`)
     },
   })
 
@@ -55,26 +62,28 @@ export default function TenantForm() {
   const handleSubmit = (e) => {
     e.preventDefault()
     setError(null)
-    mutation.mutate(formData)
+    const payload = { ...formData }
+    if (!payload.sales_team) delete payload.sales_team
+    mutation.mutate(payload)
   }
 
   return (
-    <div className="flex flex-col h-full bg-dark-900">
+    <div className="flex flex-col h-full bg-dark-900 font-sans">
       <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
         <form id="tenant-form" onSubmit={handleSubmit} className="space-y-6">
           {/* Header */}
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary border border-primary/20">
+            <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
               <UserPlus size={24} />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">{isEdit ? 'Edit Contact' : 'New Tenant'}</h3>
-              <p className="text-xs text-dark-500">{isEdit ? 'Update contact information' : 'Add a new tenant profile to the system.'}</p>
+              <h3 className="text-lg font-bold text-white tracking-tight">{isEdit ? 'Edit Contact' : 'New Contact'}</h3>
+              <p className="text-xs text-dark-500 font-medium">{isEdit ? 'Update unified contact record' : 'Create a new CRM contact or lead.'}</p>
             </div>
           </div>
 
           {error && (
-            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex gap-2">
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex gap-2 animate-pulse">
               <AlertCircle size={14} className="flex-shrink-0" />
               <p>{typeof error === 'object' ? JSON.stringify(error) : error}</p>
             </div>
@@ -95,31 +104,62 @@ export default function TenantForm() {
 
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Company / Entity Name</label>
-              <input type="text" name="company" value={formData.company} onChange={handleChange} placeholder="Optional (for commercial leases)" className="form-input w-full" />
+              <input type="text" name="company" value={formData.company} onChange={handleChange} placeholder="Optional company link" className="form-input w-full" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">ID / Reg Number</label>
-                <input type="text" name="id_number" value={formData.id_number} onChange={handleChange} className="form-input w-full" />
+                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Contact Type</label>
+                <select name="contact_type" value={formData.contact_type} onChange={handleChange} className="form-input w-full">
+                  <option value="lead">Lead</option>
+                  <option value="buyer">Potential Buyer</option>
+                  <option value="tenant">Potential Tenant</option>
+                  <option value="seller">Seller / Landlord</option>
+                  <option value="investor">Investor</option>
+                  <option value="other">Other</option>
+                </select>
               </div>
               <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Sales Team / Territory</label>
+                <div className="relative">
+                   <ShieldCheck size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary opacity-50" />
+                   <select 
+                    name="sales_team" 
+                    value={formData.sales_team} 
+                    onChange={handleChange} 
+                    className="form-input w-full pl-10"
+                   >
+                    <option value="">No Team Assigned</option>
+                    {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Lead Source</label>
                 <select name="source" value={formData.source} onChange={handleChange} className="form-input w-full">
                   <option value="Website">Company Website</option>
                   <option value="Property24">Property24</option>
+                  <option value="Private Property">Private Property</option>
                   <option value="Referral">Referral</option>
                   <option value="Walk-in">Walk-in</option>
+                  <option value="Facebook/Meta">Facebook / Meta</option>
                   <option value="Other">Other</option>
                 </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">ID / Reg Number</label>
+                <input type="text" name="id_number" value={formData.id_number} onChange={handleChange} className="form-input w-full" />
               </div>
             </div>
           </div>
 
           {/* Contact Details */}
           <div className="space-y-4">
-            <h4 className="text-[10px] font-bold text-primary uppercase tracking-widest border-b border-white/5 pb-2">
-              Contact Details
+            <h4 className="text-[10px] font-black text-primary uppercase tracking-widest border-b border-white/5 pb-2">
+              Contact Connectivity
             </h4>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -135,13 +175,13 @@ export default function TenantForm() {
 
           {/* Notes */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Notes</label>
-            <textarea name="notes" value={formData.notes} onChange={handleChange} rows={3} className="form-input w-full" placeholder="Internal notes..." />
+            <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Internal CRM Notes</label>
+            <textarea name="notes" value={formData.notes} onChange={handleChange} rows={3} className="form-input w-full" placeholder="Internal background information..." />
           </div>
 
           <div className="space-y-4 pt-4 border-t border-white/5">
-            <h4 className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest pb-2">
-              Financial Information & Budget
+            <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest pb-2">
+              Profiling & Preferences
             </h4>
             
             <div className="grid grid-cols-1 gap-4">
@@ -154,29 +194,18 @@ export default function TenantForm() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Annual Income</label>
+                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Annual Income (USD)</label>
                 <input type="number" name="annual_income" value={formData.annual_income} onChange={handleChange} className="form-input w-full" />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Affordability</label>
-                <input type="number" name="affordability" value={formData.affordability} onChange={handleChange} className="form-input w-full" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Min Budget</label>
-                <input type="number" name="budget_min" value={formData.budget_min} onChange={handleChange} className="form-input w-full" />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Max Budget</label>
+                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Max Budget (USD)</label>
                 <input type="number" name="budget_max" value={formData.budget_max} onChange={handleChange} className="form-input w-full" />
               </div>
             </div>
 
             <div className="space-y-4 pt-4 border-t border-white/5">
-              <h4 className="text-[10px] font-bold text-amber-500 uppercase tracking-widest pb-2">
-                Guarantor Information
+              <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-widest pb-2">
+                Compliance / Guarantor Info
               </h4>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -186,16 +215,6 @@ export default function TenantForm() {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Relationship</label>
                   <input type="text" name="guarantor_relationship" value={formData.guarantor_relationship} onChange={handleChange} className="form-input w-full" placeholder="e.g. Parent, Employer" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Guarantor Email</label>
-                  <input type="email" name="guarantor_email" value={formData.guarantor_email} onChange={handleChange} className="form-input w-full" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Guarantor Phone</label>
-                  <input type="tel" name="guarantor_phone" value={formData.guarantor_phone} onChange={handleChange} className="form-input w-full" />
                 </div>
               </div>
             </div>
@@ -209,9 +228,9 @@ export default function TenantForm() {
           type="submit"
           form="tenant-form"
           disabled={mutation.isPending}
-          className="flex-1 btn-primary py-3 flex items-center justify-center gap-2"
+          className="flex-1 btn-primary py-3 flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
         >
-          {mutation.isPending ? 'Saving...' : <><Save size={18} /> {isEdit ? 'Update Record' : 'Create Tenant'}</>}
+          {mutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <><Save size={18} /> {isEdit ? 'Update Details' : 'Create Record'}</>}
         </button>
         <button type="button" onClick={closeSidePanel} className="btn-secondary px-8 py-3">
           Cancel

@@ -1,4 +1,4 @@
-// Stohil Properties - Property Management Module
+// Stohill Properties - Property Management Module
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -134,19 +134,19 @@ export default function RentalsPage() {
           {activeTab === 'properties' && (
             <DataManagementButtons 
               module="properties" 
-              onImportSuccess={() => queryClient.invalidateQueries(['rental-properties'])} 
+              onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['rental-properties'] })} 
             />
           )}
           {activeTab === 'tenants' && (
             <DataManagementButtons 
               module="crm" 
-              onImportSuccess={() => queryClient.invalidateQueries(['rental-tenants'])} 
+              onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['rental-tenants'] })} 
             />
           )}
           {activeTab === 'leases' && (
             <DataManagementButtons 
               module="leases" 
-              onImportSuccess={() => queryClient.invalidateQueries(['rental-leases'])} 
+              onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['rental-leases'] })} 
             />
           )}
 

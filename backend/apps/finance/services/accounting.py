@@ -128,6 +128,10 @@ class AccountingService:
         'DEPRECIATION': '5700',
         'ADMIN_EXPENSES': '5800',
         'SALARIES': '5900',
+        'SALE_REVENUE': '4000',
+        'COST_OF_SALES': '5000',
+        'PROPERTY_INVENTORY': '1510',
+        'COMMISSION_EXPENSE': '5100',
     }
 
     def __init__(self, user=None):
@@ -156,7 +160,10 @@ class AccountingService:
                 if account:
                     return account.code
         
-        return self.DEFAULT_ACCOUNTS.get(account_key)
+        code = self.DEFAULT_ACCOUNTS.get(account_key)
+        if not code:
+            raise AccountingError(f"System configuration error: GL account key '{account_key}' is not mapped and has no default.")
+        return code
 
     @property
     def ACCOUNTS(self):
@@ -175,20 +182,28 @@ class AccountingService:
 
     def _get_fiscal_period(self, entry_date: date) -> FiscalPeriod:
         """Find the open fiscal period for a given date."""
-        try:
-            period = FiscalPeriod.objects.select_related('fiscal_year').get(
-                start_date__lte=entry_date,
-                end_date__gte=entry_date,
-            )
-        except FiscalPeriod.DoesNotExist:
+        # Try to find exactly one period that is currently open
+        periods = FiscalPeriod.objects.select_related('fiscal_year').filter(
+            start_date__lte=entry_date,
+            end_date__gte=entry_date,
+        )
+
+        if not periods.exists():
             raise AccountingError(
                 f'No fiscal period found for date {entry_date}. '
                 f'Please ensure fiscal periods are configured.'
             )
 
+        # Prioritize OPEN periods if there are multiple (due to duplicates/overlaps)
+        period = periods.filter(status=FiscalPeriod.PeriodStatus.OPEN).first()
+        
+        # Fallback to any period if none are open (though it will fail the check below)
+        if not period:
+            period = periods.first()
+
         if not period.is_open_for_posting():
             raise AccountingError(
-                f'Fiscal period "{period.name}" is {period.status}. '
+                f'Fiscal period "{period.name}" is "{period.status}". '
                 f'Cannot post to a locked or closed period.'
             )
 
@@ -427,61 +442,114 @@ class AccountingService:
     @transaction.atomic
     def post_sale_transaction(self, sale_transaction) -> JournalEntry:
         """
-        Post accounting entries for a completed property sale.
-
-        Debits:
-          Bank/Trust Account (full proceeds)
-        Credits:
-          Sale Proceeds (revenue)
-          VAT Payable (15% of commission/fees)
-          Commission Payable (agent commission owed)
+        Post accounting entries for a completed property sale using an automated workflow.
+        
+        Steps:
+        1. Raise Customer Invoice (Debit AR, Credit Revenue)
+        2. Record Commission (Liability to agent)
+        3. Recognize Cost of Sale (Debit COS, Credit Inventory)
         """
-        from apps.sales.models import SaleTransaction  # type: ignore
+        from apps.finance.models import CustomerInvoice, CustomerInvoiceLine, CustomerProfile  # type: ignore
+        from apps.commissions.models import CommissionRecord  # type: ignore
+        from apps.properties.models import Property  # type: ignore
+        from decimal import Decimal
 
-        amount = sale_transaction.sale_price
-        commission_amount = sale_transaction.commission_amount or Decimal('0.00')
-        vat_amount = commission_amount * Decimal('0.15')  # 15% VAT on commission
-
-        posting = PostingData(
-            description=f'Property Sale - {sale_transaction.property.reference_number}',
-            entry_date=sale_transaction.transfer_date or sale_transaction.created_at.date(),
-            source_module='sales',
-            source_id=sale_transaction.id,
-            source_reference=sale_transaction.sale_reference,
+        # 1. Create/Get Customer Profile
+        customer_profile, _ = CustomerProfile.objects.get_or_create(
+            contact_link=sale_transaction.buyer,
+            defaults={
+                'name': sale_transaction.buyer.full_name,
+                'ar_account_id': self._get_account(self.ACCOUNTS['ACCOUNTS_RECEIVABLE']).id
+            }
         )
 
-        # Debit bank with full proceeds
-        posting.add_debit(
-            self.ACCOUNTS['BANK_TRUST'],
-            amount,
-            f'Sale proceeds - {sale_transaction.property.reference_number}',
-            property_ref=sale_transaction.property,
-        )
+        # 2. Create/Get Customer Invoice
+        invoice = CustomerInvoice.objects.filter(
+            reference=sale_transaction.sale_reference,
+            customer=customer_profile
+        ).first()
 
-        # Credit revenue
-        posting.add_credit(
-            self.ACCOUNTS['SALE_PROCEEDS'],
-            amount - commission_amount,
-            f'Sale revenue - {sale_transaction.property.reference_number}',
-            property_ref=sale_transaction.property,
-        )
-
-        # Credit commission payable
-        if commission_amount > 0:
-            posting.add_credit(
-                self.ACCOUNTS['COMMISSION_PAYABLE'],
-                commission_amount - vat_amount,
-                f'Commission payable - {sale_transaction.sale_reference}',
+        if not invoice:
+            invoice = CustomerInvoice.objects.create(
+                customer=customer_profile,
+                invoice_date=sale_transaction.transfer_date or date.today(),
+                due_date=sale_transaction.transfer_date or date.today(),
+                currency=sale_transaction.currency,
+                subtotal=sale_transaction.sale_price,
+                total_amount=sale_transaction.sale_price,
+                reference=sale_transaction.sale_reference,
+                status=CustomerInvoice.InvoiceStatus.DRAFT
             )
 
-            # Credit VAT
-            posting.add_credit(
-                self.ACCOUNTS['VAT_PAYABLE'],
-                vat_amount,
-                f'Output VAT on commission - {sale_transaction.sale_reference}',
+        # Add Invoice Line if not exists
+        if not invoice.lines.filter(description__icontains=sale_transaction.property.reference_number).exists():
+            CustomerInvoiceLine.objects.create(
+                invoice=invoice,
+                description=f"Property Sale: {sale_transaction.property.reference_number}",
+                revenue_account=self._get_account(self.ACCOUNTS['SALE_REVENUE']),
+                unit_price=sale_transaction.sale_price,
+                line_total=sale_transaction.sale_price
             )
 
-        return self.post_entry(posting, journal_code='SJ')  # Sales Journal
+        # Post Invoice (Debits AR, Credits Revenue) if not already posted
+        if invoice.status == CustomerInvoice.InvoiceStatus.DRAFT:
+            invoice_entry = self.post_customer_invoice(invoice)
+            invoice.status = CustomerInvoice.InvoiceStatus.POSTED
+            invoice.journal_entry = invoice_entry
+            invoice.save()
+        else:
+            invoice_entry = invoice.journal_entry
+
+        # 3. Create/Get Commission Record
+        if sale_transaction.commission_amount > 0:
+            comm_ref = f"COMM-{sale_transaction.sale_reference}"
+            commission = CommissionRecord.objects.filter(reference=comm_ref).first()
+            
+            if not commission:
+                commission = CommissionRecord.objects.create(
+                reference=f"COMM-{sale_transaction.sale_reference}",
+                agent=sale_transaction.selling_agent or sale_transaction.listing_agent,
+                transaction_type='sale',
+                sale_transaction=sale_transaction,
+                property=sale_transaction.property,
+                transaction_amount=sale_transaction.sale_price,
+                company_commission_rate=sale_transaction.commission_rate,
+                company_commission_amount=sale_transaction.commission_amount,
+                agent_split_rate=Decimal('100.00'), # Default to 100% of the recorded amount for now
+                gross_commission=sale_transaction.commission_amount,
+                net_commission=sale_transaction.commission_amount,
+                status=CommissionRecord.CommissionStatus.APPROVED,
+                approved_by=self.user,
+                approved_date=date.today()
+            )
+
+        # 4. Recognize Cost of Sale & Update Inventory Status
+        property_obj = sale_transaction.property
+        cost_amount = property_obj.purchase_price or Decimal('0.00')
+        
+        if cost_amount > 0:
+            cos_posting = PostingData(
+                description=f'Cost Recognition - {property_obj.reference_number}',
+                entry_date=sale_transaction.transfer_date or date.today(),
+                source_module='sales',
+                source_id=sale_transaction.id,
+                source_reference=sale_transaction.sale_reference,
+            )
+            
+            cos_posting.add_debit(
+                self.ACCOUNTS['COST_OF_SALES'],
+                cost_amount,
+                f'Cost of sales - {property_obj.reference_number}'
+            )
+            cos_posting.add_credit(
+                self.ACCOUNTS['PROPERTY_INVENTORY'],
+                cost_amount,
+                f'Inventory reduction - {property_obj.reference_number}'
+            )
+            
+            self.post_entry(cos_posting, journal_code='GJ')
+
+        return invoice_entry
 
     @transaction.atomic
     def post_rental_invoice(self, lease, amount: Decimal, invoice_ref: str) -> JournalEntry:

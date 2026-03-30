@@ -34,6 +34,39 @@ class SaleTransactionViewSet(viewsets.ModelViewSet):
             sale.journal_entry = entry
             sale.is_posted_to_finance = True
             sale.save(update_fields=['journal_entry', 'is_posted_to_finance'])
-            return Response({'status': 'posted', 'journal_reference': entry.reference})
+            
+            # If the entry has a source_id (invoice), return it
+            return Response({
+                'status': 'posted', 
+                'journal_reference': entry.reference,
+                'source_id': entry.source_id,
+                'source_module': entry.source_module
+            })
         except Exception as e:
             return Response({'error': str(e)}, status=400)
+
+    @action(detail=True, methods=['post'])
+    def confirm_deal(self, request, pk=None):
+        """Mark deal as registered and update closing date."""
+        from django.utils import timezone
+        sale = self.get_object()
+        
+        # Update status and dates
+        sale.status = SaleTransaction.TransactionStatus.REGISTERED
+        sale.transfer_date = timezone.now().date()
+        if not sale.accepted_date:
+            sale.accepted_date = timezone.now().date()
+            
+        sale.save(update_fields=['status', 'transfer_date', 'accepted_date'])
+        
+        # Update Property Status to SOLD
+        prop = sale.property
+        from apps.properties.models import Property
+        prop.status = Property.PropertyStatus.SOLD
+        prop.save(update_fields=['status'])
+        
+        return Response({
+            'status': 'confirmed',
+            'closing_date': sale.transfer_date,
+            'transaction_status': sale.status
+        })

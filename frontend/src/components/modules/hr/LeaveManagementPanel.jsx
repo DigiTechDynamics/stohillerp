@@ -14,13 +14,13 @@ export default function LeaveManagementPanel() {
     queryKey: ['hr-leaves'],
     queryFn: () => hrAPI.leave.list(),
   })
-  const leaves = leaveData?.data || []
+  const leaves = leaveData?.data?.results || leaveData?.data || []
 
   const { data: empsData } = useQuery({
     queryKey: ['hr-employees-lite'],
     queryFn: () => hrAPI.employees.list({ page_size: 1000 }),
   })
-  const employees = empsData?.data || []
+  const employees = empsData?.data?.results || empsData?.data || []
 
   const [formData, setFormData] = useState({
     employee: '',
@@ -43,12 +43,28 @@ export default function LeaveManagementPanel() {
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }) => hrAPI.leave.update(id, { status }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['hr-leaves'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr-leaves'] })
+      queryClient.invalidateQueries({ queryKey: ['hr-employees'] })
+      queryClient.invalidateQueries({ queryKey: ['hr-employees-lite'] })
+    },
   })
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setFormData(prev => {
+      const next = { ...prev, [name]: value }
+      if ((name === 'start_date' || name === 'end_date') && next.start_date && next.end_date) {
+        const start = new Date(next.start_date)
+        const end = new Date(next.end_date)
+        if (start <= end) {
+          const diffTime = Math.abs(end - start)
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
+          next.days_requested = diffDays.toString()
+        }
+      }
+      return next
+    })
   }
 
   const handleStatusChange = (id, status) => {

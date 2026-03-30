@@ -24,7 +24,7 @@ export default function FiscalYearForm() {
       return financeAPI.fiscalYears.create(data)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['fiscal-years'])
+      queryClient.invalidateQueries({ queryKey: ['fiscal-years'] })
       toast.success(fiscalYear ? 'Fiscal year updated' : 'Fiscal year created')
       closeSidePanel()
     },

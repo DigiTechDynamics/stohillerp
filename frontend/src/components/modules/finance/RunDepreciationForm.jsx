@@ -21,9 +21,9 @@ export default function RunDepreciationForm() {
   const mutation = useMutation({
     mutationFn: (data) => fixedAssetsAPI.assets.runDepreciation(data),
     onSuccess: (data) => {
-      queryClient.invalidateQueries(['fixed-assets'])
-      queryClient.invalidateQueries(['asset-transactions'])
-      queryClient.invalidateQueries(['finance-entries'])
+      queryClient.invalidateQueries({ queryKey: ['fixed-assets'] })
+      queryClient.invalidateQueries({ queryKey: ['asset-transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['finance-entries'] })
       setSuccess(true)
       toast.success('Depreciation run completed successfully')
       setTimeout(() => closeSidePanel(), 2000)

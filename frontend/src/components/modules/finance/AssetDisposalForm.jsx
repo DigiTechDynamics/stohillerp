@@ -19,7 +19,7 @@ export default function AssetDisposalForm({ asset, onClose }) {
   const mutation = useMutation({
     mutationFn: (data) => fixedAssetsAPI.assets.dispose(asset.id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['fixed-assets'])
+      queryClient.invalidateQueries({ queryKey: ['fixed-assets'] })
       onClose()
     }
   })

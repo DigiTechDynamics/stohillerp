@@ -9,17 +9,30 @@ from apps.core.models import AuditedModel, TimeStampedModel
 
 class CommissionStructure(TimeStampedModel):
     """Commission rate configurations for different transaction types."""
+    class CalculationType(models.TextChoices):
+        STANDARD = 'standard', 'Standard Flat Rate'
+        TIERED = 'tiered', 'Tiered Target'
+
     name = models.CharField(max_length=100)
-    transaction_type = models.CharField(max_length=20, choices=[('sale', 'Sale'), ('rental', 'Rental'), ('commercial', 'Commercial')])
-    company_rate = models.DecimalField(max_digits=5, decimal_places=2, help_text='% of sale/rental price')
-    agent_split = models.DecimalField(max_digits=5, decimal_places=2, help_text='% of company commission to agent')
+    calculation_type = models.CharField(max_length=20, choices=CalculationType.choices, default=CalculationType.STANDARD)
+    base_rate = models.DecimalField(max_digits=5, decimal_places=2, help_text='Base % rate', default=Decimal('0.00'))
     is_default = models.BooleanField(default=False)
 
     class Meta:
         db_table = 'commission_structures'
 
     def __str__(self):
-        return f'{self.name} ({self.company_rate}%)'
+        return f'{self.name} ({self.base_rate}%)'
+
+
+class CommissionTier(models.Model):
+    structure = models.ForeignKey(CommissionStructure, related_name='tiers', on_delete=models.CASCADE)
+    threshold_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    rate_percentage = models.DecimalField(max_digits=5, decimal_places=2)
+
+    class Meta:
+        db_table = 'commission_tiers'
+        ordering = ['threshold_amount']
 
 
 class CommissionRecord(AuditedModel):

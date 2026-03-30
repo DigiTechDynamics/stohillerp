@@ -2,7 +2,7 @@ from django.db import models
 from apps.core.models import AuditedModel, TimeStampedModel
 from decimal import Decimal
 
-class CorporateBankAccount(AuditedModel, TimeStampedModel):
+class CorporateBankAccount(AuditedModel):
     ACCOUNT_TYPES = [
         ('current', 'Current/Checking'),
         ('savings', 'Savings'),
@@ -32,7 +32,7 @@ class CorporateBankAccount(AuditedModel, TimeStampedModel):
     class Meta:
         ordering = ['code']
 
-class CorporateBankStatement(AuditedModel, TimeStampedModel):
+class CorporateBankStatement(AuditedModel):
     STATUS_CHOICES = [
         ('draft', 'Draft'),
         ('reconciling', 'Reconciling'),
@@ -66,7 +66,7 @@ class CorporateBankStatementLine(models.Model):
     def __str__(self):
         return f"{self.transaction_date} - {self.reference} ({self.amount})"
 
-class ReconciliationRule(AuditedModel, TimeStampedModel):
+class ReconciliationRule(AuditedModel):
     RULE_TYPES = [
         ('exact_match', 'Exact Match (Reference + Amount)'),
         ('regex_match', 'Regular Expression Match'),

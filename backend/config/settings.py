@@ -1,5 +1,5 @@
 """
-Stohil Properties - Django Settings
+Stohill Properties - Django Settings
 Production-ready configuration for real estate ERP system.
 Supports PostgreSQL, JWT auth, and modular app architecture.
 """

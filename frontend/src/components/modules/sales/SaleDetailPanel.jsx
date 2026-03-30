@@ -2,15 +2,41 @@ import React from 'react'
 import { 
   Building2, User, DollarSign, Calendar, 
   Percent, Briefcase, FileText, MapPin, 
-  CheckCircle2, Clock, XCircle, Info
+  CheckCircle2, Clock, XCircle, Info, RefreshCw, Edit2, ExternalLink, FileCheck
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { salesAPI } from '@/services/api'
+import { toast } from 'react-hot-toast'
 
 export default function SaleDetailPanel({ sale }) {
   const { openSidePanel } = useUIStore()
+  const queryClient = useQueryClient()
 
   if (!sale) return null
+
+  const confirmMutation = useMutation({
+    mutationFn: () => salesAPI.confirmDeal(sale.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales-transactions'] })
+      toast.success('Deal confirmed successfully')
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Failed to confirm deal')
+    }
+  })
+
+  const postMutation = useMutation({
+    mutationFn: () => salesAPI.postToFinance(sale.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales-transactions'] })
+      toast.success('Posted to Finance successfully')
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Failed to post to finance')
+    }
+  })
 
   const getStatusInfo = (status) => {
     switch (status) {
@@ -137,6 +163,65 @@ export default function SaleDetailPanel({ sale }) {
           </div>
         </section>
 
+        {/* Financial Integration Automation */}
+        {(sale.is_posted_to_finance || sale.related_invoice_id) && (
+          <section className="space-y-4 pt-4 border-t border-white/5">
+            <div className="flex items-center gap-2 text-dark-500 mb-2">
+              <RefreshCw size={16} className="text-primary" />
+              <span className="text-sm font-bold uppercase tracking-widest text-primary">System Automation</span>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              {sale.related_invoice_id && (
+                <button 
+                  onClick={() => openSidePanel('ar-invoice-detail', { invoice: { id: sale.related_invoice_id } })}
+                  className="w-full bg-primary/5 hover:bg-primary/10 border border-primary/20 rounded-xl p-3 flex items-center justify-between group transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <FileCheck size={18} className="text-primary" />
+                    <div className="text-left">
+                      <p className="text-[10px] text-primary/70 uppercase font-bold">Sales Invoice</p>
+                      <p className="text-xs text-white">Generated Revenue Invoice</p>
+                    </div>
+                  </div>
+                  <ExternalLink size={14} className="text-dark-500 group-hover:text-primary transition-colors" />
+                </button>
+              )}
+              
+              {sale.journal_entry && (
+                <button 
+                  onClick={() => openSidePanel('journal-entry-detail', { entry: { id: sale.journal_entry } })}
+                  className="w-full bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl p-3 flex items-center justify-between group transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <FileText size={18} className="text-dark-400" />
+                    <div className="text-left">
+                      <p className="text-[10px] text-dark-500 uppercase font-bold">General Ledger</p>
+                      <p className="text-xs text-white">{sale.journal_entry_ref || 'Journal Entry'}</p>
+                    </div>
+                  </div>
+                  <ExternalLink size={14} className="text-dark-500 group-hover:text-white transition-colors" />
+                </button>
+              )}
+
+              {sale.related_commission_id && (
+                <button 
+                  onClick={() => openSidePanel('commission-detail', { commission: { id: sale.related_commission_id } })}
+                  className="w-full bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex items-center justify-between group transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <Percent size={18} className="text-emerald-500" />
+                    <div className="text-left">
+                      <p className="text-[10px] text-emerald-500/70 uppercase font-bold">Commission Record</p>
+                      <p className="text-xs text-white">Agent Payout Calculation</p>
+                    </div>
+                  </div>
+                  <ExternalLink size={14} className="text-dark-500 group-hover:text-emerald-500 transition-colors" />
+                </button>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* Dates */}
         <section className="grid grid-cols-2 gap-6 pt-4 border-t border-white/5">
            <div className="space-y-1">
@@ -169,13 +254,39 @@ export default function SaleDetailPanel({ sale }) {
       </div>
 
       {/* Footer Actions */}
-      <div className="p-6 border-t border-white/5 bg-dark-800/30 flex gap-3">
-        <button 
-          className="flex-1 btn-primary py-3 flex items-center justify-center gap-2"
-          onClick={() => openSidePanel('sale-form', { sale })}
-        >
-          <Briefcase size={18} /> Edit Transaction
-        </button>
+      <div className="p-6 border-t border-white/5 bg-dark-800/30">
+        <div className="flex flex-col gap-3">
+          {sale.status !== 'registered' && (
+            <button 
+              onClick={() => confirmMutation.mutate()}
+              disabled={confirmMutation.isPending}
+              className="w-full btn-primary py-3 flex items-center justify-center gap-2"
+            >
+              {confirmMutation.isPending ? <RefreshCw size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+              Confirm Completion
+            </button>
+          )}
+
+          <div className="flex gap-3">
+            <button 
+              className="flex-1 btn-secondary py-3 flex items-center justify-center gap-2"
+              onClick={() => openSidePanel('sale-form', { sale })}
+            >
+              <Edit2 size={18} /> Edit Record
+            </button>
+            
+            {sale.status === 'registered' && !sale.is_posted_to_finance && (
+              <button 
+                onClick={() => postMutation.mutate()}
+                disabled={postMutation.isPending}
+                className="flex-1 btn-primary py-3 flex items-center justify-center gap-2"
+              >
+                {postMutation.isPending ? <RefreshCw size={18} className="animate-spin" /> : <DollarSign size={18} />}
+                Post to Finance
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -123,6 +123,7 @@ export default function AccountCombobox({ value, onChange, placeholder = "Search
 
               {results.map((item, idx) => (
                 <button
+                  type="button"
                   key={item.id}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-white/5 transition-colors group ${idx === selectedIndex ? 'bg-white/5' : ''}`}
                   onClick={() => handleSelect(item)}

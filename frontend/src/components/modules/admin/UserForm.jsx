@@ -145,7 +145,7 @@ export default function UserForm({ id, initialData }) {
                 <p className="text-xs text-rose-400 font-medium">Failed to load roles</p>
                 <button 
                   type="button"
-                  onClick={() => queryClient.invalidateQueries(['admin-roles-list'])}
+                  onClick={() => queryClient.invalidateQueries({ queryKey: ['admin-roles-list'] })}
                   className="mt-2 text-[10px] text-primary hover:underline uppercase font-bold"
                 >
                   Try Again

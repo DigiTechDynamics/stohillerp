@@ -9,19 +9,34 @@ import CurrencySelect from '@/components/common/CurrencySelect'
 export default function CustomerInvoiceForm() {
   const queryClient = useQueryClient()
   const { closeSidePanel, sidePanelData } = useUIStore()
+  const invoice = sidePanelData?.invoice
+  const isEdit = !!invoice
   const [error, setError] = useState(null)
   
   const [formData, setFormData] = useState({
-    customer: sidePanelData?.customer?.id || '',
-    invoice_date: new Date().toISOString().split('T')[0],
-    due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    reference: '',
-    currency: '',
-    notes: '',
-    lines: [
+    customer: invoice?.customer || sidePanelData?.customer?.id || '',
+    invoice_date: invoice?.invoice_date || new Date().toISOString().split('T')[0],
+    due_date: invoice?.due_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    reference: invoice?.reference || '',
+    currency: invoice?.currency || '',
+    notes: invoice?.notes || '',
+    lines: invoice?.lines?.map(l => ({
+      ...l,
+      quantity: l.quantity.toString(),
+      unit_price: l.unit_price.toString(),
+      tax_amount: l.tax_amount.toString(),
+      line_total: l.line_total.toString()
+    })) || [
       { description: '', revenue_account: '', quantity: 1, unit_price: '0.00', tax_code: '', tax_amount: '0.00', line_total: '0.00' }
     ]
   })
+
+  // Ensure lines are correctly structured if editing
+  useEffect(() => {
+    if (invoice && invoice.lines && formData.lines.length === invoice.lines.length) {
+       // already initialized or manually edited
+    }
+  }, [invoice])
 
   // Fetch Customers
   const { data: customersData } = useQuery({
@@ -87,8 +102,14 @@ export default function CustomerInvoiceForm() {
 
   const mutation = useMutation({
     mutationFn: async (payload) => {
-      const res = await financeAPI.ar.invoices.create(payload)
-      // Auto-post after creation
+      let res;
+      if (isEdit) {
+        res = await financeAPI.ar.invoices.update(invoice.id, payload)
+      } else {
+        res = await financeAPI.ar.invoices.create(payload)
+      }
+      
+      // Auto-post after creation/update
       await financeAPI.ar.invoices.post(res.data.id)
       return res.data
     },
@@ -111,9 +132,19 @@ export default function CustomerInvoiceForm() {
   })
 
   const handleSubmit = (e) => {
-    e.preventDefault()
-    setError(null)
-    
+    if (!formData.customer) {
+      setError('Please select a customer.')
+      return
+    }
+    if (!formData.currency) {
+      setError('Please select an invoice currency.')
+      return
+    }
+    if (formData.lines.some(l => !l.revenue_account)) {
+      setError('Please select a revenue account for all line items.')
+      return
+    }
+
     // Clean up lines: replace empty strings with null for nullable ForeignKeys
     const cleanedLines = formData.lines.map(line => ({
       ...line,
@@ -146,8 +177,8 @@ export default function CustomerInvoiceForm() {
               <FileText size={24} />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">New Sales Invoice</h3>
-              <p className="text-xs text-dark-500">Create a standard customer invoice.</p>
+              <h3 className="text-lg font-semibold text-white">{isEdit ? 'Edit Sales Invoice' : 'New Sales Invoice'}</h3>
+              <p className="text-xs text-dark-500">{isEdit ? `Modifying ${invoice.invoice_number}` : 'Create a standard customer invoice.'}</p>
             </div>
           </div>
 
@@ -318,7 +349,7 @@ export default function CustomerInvoiceForm() {
           disabled={mutation.isPending}
           className="flex-1 btn-primary py-3 flex items-center justify-center gap-2"
         >
-          {mutation.isPending ? 'Saving...' : <><Save size={18} /> Save & Post Invoice</>}
+          {mutation.isPending ? 'Saving...' : <><Save size={18} /> {isEdit ? 'Update & Post Invoice' : 'Save & Post Invoice'}</>}
         </button>
         <button type="button" onClick={closeSidePanel} className="btn-secondary px-8 py-3">
           Cancel

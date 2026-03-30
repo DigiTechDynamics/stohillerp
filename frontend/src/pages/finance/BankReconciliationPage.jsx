@@ -35,7 +35,7 @@ export default function BankReconciliationPage() {
   const handleReconcile = async (glTxnId) => {
     try {
       await bankingAPI.lines.reconcile(selectedBankTxn.id, { journal_line_id: glTxnId })
-      queryClient.invalidateQueries(['banking-lines'])
+      queryClient.invalidateQueries({ queryKey: ['banking-lines'] })
       setSelectedBankTxn(null)
     } catch (err) {
       console.error('Reconciliation failed:', err)
@@ -55,7 +55,7 @@ export default function BankReconciliationPage() {
           </button>
           <DataManagementButtons 
             module="statements" 
-            onImportSuccess={() => queryClient.invalidateQueries(['banking-statements'])} 
+            onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['banking-statements'] })} 
           />
         </div>
       </div>

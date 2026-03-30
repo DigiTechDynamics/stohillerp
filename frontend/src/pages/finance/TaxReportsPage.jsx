@@ -278,15 +278,37 @@ export default function TaxReportsPage() {
                 <div className="card overflow-hidden">
                   <div className="p-4 bg-dark-900 border-b border-white/5 flex items-center justify-between">
                     <h4 className="text-sm font-bold text-white uppercase tracking-widest">Transaction Breakdown</h4>
-                    <button 
-                      onClick={() => {
-                        const params = new URLSearchParams(vatDates).toString()
-                        window.open(`${import.meta.env.VITE_API_URL}/finance/reports/export/vat-return/?${params}`, '_blank')
-                      }}
-                      className="text-xs text-primary hover:underline flex items-center gap-1"
-                    >
-                      <Download size={12} /> Detailed Export
-                    </button>
+                    <div className="flex items-center gap-4">
+                      <button 
+                        onClick={async () => {
+                          try {
+                            const res = await financeAPI.reports.export('vat-return', 'csv', { from_date: vatDates.from, to_date: vatDates.to })
+                            const url = window.URL.createObjectURL(new Blob([res.data]))
+                            const link = document.createElement('a')
+                            link.href = url
+                            link.setAttribute('download', `VAT_Return_${vatDates.from}_to_${vatDates.to}.csv`)
+                            document.body.appendChild(link)
+                            link.click()
+                            link.remove()
+                          } catch(err) { toast.error("Failed to download CSV") }
+                        }}
+                        className="text-xs text-primary hover:underline flex items-center gap-1"
+                      >
+                        <Download size={12} /> Detailed CSV
+                      </button>
+                      <button 
+                        onClick={async () => {
+                          try {
+                            const res = await financeAPI.reports.export('vat-return', 'pdf', { from_date: vatDates.from, to_date: vatDates.to })
+                            const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
+                            window.open(url, '_blank')
+                          } catch(err) { toast.error("Failed to generate PDF preview") }
+                        }}
+                        className="text-xs text-indigo-400 hover:underline flex items-center gap-1"
+                      >
+                        <FileText size={12} /> PDF Report
+                      </button>
+                    </div>
                   </div>
                   <div className="p-6 space-y-8">
                     {/* Output Section */}

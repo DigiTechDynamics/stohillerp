@@ -1,4 +1,4 @@
-// Stohil Properties - Commission Calculator
+// Stohill Properties - Commission Calculator
 import { useState } from 'react'
 import { X, Calculator as CalcIcon, DollarSign, ArrowRight } from 'lucide-react'
 import { useUIStore } from '@/stores/authStore'

@@ -37,7 +37,7 @@ export default function AssetsPage() {
   const deprecationMutation = useMutation({
     mutationFn: (data) => fixedAssetsAPI.assets.runDepreciation(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['fixed-assets'])
+      queryClient.invalidateQueries({ queryKey: ['fixed-assets'] })
       // Add notification here if available
     }
   })
@@ -64,7 +64,7 @@ export default function AssetsPage() {
         <div className="flex items-center gap-3">
           <DataManagementButtons 
             module="assets" 
-            onImportSuccess={() => queryClient.invalidateQueries(['fixed-assets'])} 
+            onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['fixed-assets'] })} 
           />
           <button 
             className="btn-secondary flex items-center gap-2"

@@ -1,4 +1,4 @@
-// Stohil Properties - Commission Management Page
+// Stohill Properties - Commission Management Page
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -133,11 +133,11 @@ export default function CommissionsPage() {
                     className="hover:bg-white/2 transition-colors cursor-pointer"
                     onClick={() => openPanel('commission-detail', { record })}
                   >
-                    <td className="px-4 py-3 font-mono text-xs text-primary">{record.reference_number}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-primary">{record.reference}</td>
                     <td className="px-4 py-3 text-sm text-white font-medium">{record.agent_name}</td>
-                    <td className="px-4 py-3 text-sm text-dark-300">{record.transaction_ref || 'Direct Record'}</td>
+                    <td className="px-4 py-3 text-sm text-dark-300">{record.property_ref || 'Direct Record'}</td>
                     <td className="px-4 py-3 text-sm text-white font-semibold">
-                      {formatCurrency(parseFloat(record.amount), record.currency_code)}
+                      {formatCurrency(parseFloat(record.net_commission), record.currency_code)}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`badge text-[10px] uppercase font-bold
@@ -146,7 +146,7 @@ export default function CommissionsPage() {
                         {record.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-dark-400">{formatDate(record.calculation_date)}</td>
+                    <td className="px-4 py-3 text-sm text-dark-400">{formatDate(record.created_at)}</td>
                   </motion.tr>
                 ))}
               </AnimatePresence>

@@ -1,4 +1,4 @@
-"""WSGI config for Stohil Properties."""
+"""WSGI config for Stohill Properties."""
 import os
 from django.core.wsgi import get_wsgi_application
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')

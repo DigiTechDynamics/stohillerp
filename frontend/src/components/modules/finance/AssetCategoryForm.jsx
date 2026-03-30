@@ -24,7 +24,7 @@ export default function AssetCategoryForm({ category, onClose }) {
         ? fixedAssetsAPI.categories.update(category.id, data)
         : fixedAssetsAPI.categories.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['asset-categories'])
+      queryClient.invalidateQueries({ queryKey: ['asset-categories'] })
       onClose()
     }
   })

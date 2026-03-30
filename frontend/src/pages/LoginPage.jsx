@@ -1,11 +1,12 @@
-// Stohil Properties - Login Page
+// Stohill Properties - Login Page
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Building2, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react'
 import { authAPI } from '@/services/api'
 import { useAuthStore } from '@/stores/authStore'
 import toast from 'react-hot-toast'
+import { AlertCircle, Eye, EyeOff } from 'lucide-react'
+import logo from '@/assets/logo.png'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -62,11 +63,11 @@ export default function LoginPage() {
       >
         <div className="bg-dark-900 border border-white/8 rounded-2xl p-8 shadow-dark">
           <div className="flex items-center gap-4 mb-8">
-            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shadow-gold-lg">
-              <Building2 size={22} className="text-dark-900" />
+            <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center shadow-lg border border-white/5">
+              <img src={logo} alt="Stohill Logo" className="w-9 h-9 object-contain" />
             </div>
             <div>
-              <h1 className="font-display text-2xl text-white leading-none">Stohil Properties</h1>
+              <h1 className="font-display text-2xl text-white leading-none">Stohill Properties</h1>
               <p className="text-xs text-primary/70 tracking-[0.2em] uppercase font-body mt-0.5">
                 ERP Platform
               </p>
@@ -139,7 +140,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs text-dark-600 mt-4">
-          © 2025 Stohill Properties. All rights reserved.
+          © 2026 Stohill Properties. All rights reserved.
         </p>
       </motion.div>
     </div>

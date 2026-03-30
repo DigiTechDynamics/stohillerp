@@ -1,4 +1,4 @@
-// Stohil Properties - Rental Payment Form
+// Stohill Properties - Rental Payment Form
 import { useState, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Save, AlertCircle, DollarSign, Calculator, Info } from 'lucide-react'

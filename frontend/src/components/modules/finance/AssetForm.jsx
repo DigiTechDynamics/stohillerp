@@ -46,7 +46,7 @@ export default function AssetForm({ asset, onClose }) {
         ? fixedAssetsAPI.assets.update(asset.id, data)
         : fixedAssetsAPI.assets.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['fixed-assets'])
+      queryClient.invalidateQueries({ queryKey: ['fixed-assets'] })
       onClose()
     }
   })

@@ -1,4 +1,4 @@
-// Stohil Properties - Formatting Utilities
+// Stohill Properties - Formatting Utilities
 
 export function formatCurrency(amount, currencyCode = 'USD', style = 'full') {
   if (isNaN(amount) || amount === null) return `${currencyCode} 0`

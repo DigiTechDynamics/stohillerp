@@ -4,7 +4,7 @@ def test_dashboard():
     # Login as admin
     login_res = requests.post('http://127.0.0.1:8000/api/v1/auth/login/', json={
         'email': 'admin@stohill.co.za',
-        'password': 'admin' # Assuming standard default password, but just in case we can use ceo@
+        'password': 'admin123!' # Updated to match README.md default
     })
     
     if login_res.status_code != 200:

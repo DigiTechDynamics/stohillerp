@@ -50,13 +50,28 @@ export default function PostingProfileForm({ profile, onClose }) {
         ? financeAPI.postingProfiles.update(profile.id, data)
         : financeAPI.postingProfiles.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['posting-profiles'])
+      queryClient.invalidateQueries({ queryKey: ['posting-profiles'] })
       onClose()
     },
   })
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    
+    // Validate all account fields are present
+    const requiredAccounts = [
+      'bank_main', 'bank_trust', 'accounts_receivable', 'accounts_payable',
+      'vat_receivable', 'vat_payable', 'commission_receivable', 'commission_payable',
+      'retained_earnings', 'rental_income', 'commission_income'
+    ]
+    
+    const missing = requiredAccounts.filter(key => !formData[key])
+    if (missing.length > 0) {
+      // Set error manually if mutation hasn't run
+      setError(`Please map all GL accounts. Missing: ${missing.join(', ').replace(/_/g, ' ')}`)
+      return
+    }
+
     mutation.mutate(formData)
   }
 

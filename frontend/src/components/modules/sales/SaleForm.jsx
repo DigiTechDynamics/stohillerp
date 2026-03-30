@@ -63,10 +63,25 @@ export default function SaleForm({ sale, onSaveSuccess }) {
     },
     onError: (err) => {
       const resp = err.response?.data
-      if (typeof resp === 'string') setError(resp)
-      else if (resp?.detail || resp?.message) setError(resp.detail || resp.message)
-      else if (typeof resp === 'object') {
-        const firstError = Object.entries(resp).map(([key, value]) => `${key}: ${Array.isArray(value) ? value[0] : value}`)[0]
+      if (typeof resp === 'string') {
+        setError(resp)
+      } else if (resp?.success === false && resp?.error) {
+        // Handle custom exception format: { success: false, error: { message: ... } }
+        const errorData = resp.error.message
+        if (typeof errorData === 'string') {
+          setError(errorData)
+        } else if (typeof errorData === 'object') {
+          const firstError = Object.entries(errorData)
+            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value[0] : value}`)[0]
+          setError(firstError || 'Validation error occurred.')
+        } else {
+          setError('An error occurred on the server.')
+        }
+      } else if (resp?.detail || resp?.message) {
+        setError(resp.detail || resp.message)
+      } else if (typeof resp === 'object') {
+        const firstError = Object.entries(resp)
+          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value[0] : value}`)[0]
         setError(firstError || 'Failed to save sale transaction.')
       } else {
         setError('Failed to save sale transaction.')

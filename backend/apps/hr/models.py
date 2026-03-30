@@ -57,6 +57,8 @@ class Employee(AuditedModel):
 
     # Compensation
     basic_salary = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    bonus = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), help_text='Recurring fixed bonus')
+    other_deductions = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), help_text='Recurring fixed deductions (e.g. medical)')
     commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('50.00'), help_text='% of company commission earned by agent')
 
     # Agent-specific (EAAB registration)

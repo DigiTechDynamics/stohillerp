@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Calendar, Hash, User, Clock, CheckCircle2, FileText, Send, Mail } from 'lucide-react'
+import { Calendar, Hash, User, Clock, CheckCircle2, FileText, Send, Mail, Edit2 } from 'lucide-react'
 import { financeAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
@@ -7,7 +7,7 @@ import { toast } from 'react-hot-toast'
 
 export default function ARInvoiceDetailPanel({ invoice: initialInvoice }) {
   const queryClient = useQueryClient()
-  const { closeSidePanel } = useUIStore()
+  const { openSidePanel, closeSidePanel } = useUIStore()
 
   const { data, isLoading } = useQuery({
     queryKey: ['ar-invoice', initialInvoice.id],
@@ -21,7 +21,7 @@ export default function ARInvoiceDetailPanel({ invoice: initialInvoice }) {
     mutationFn: () => financeAPI.ar.invoices.post(invoice.id),
     onSuccess: () => {
       toast.success('Invoice posted successfully!')
-      queryClient.invalidateQueries(['ar-invoices'])
+      queryClient.invalidateQueries({ queryKey: ['ar-invoices'] })
       closeSidePanel()
     },
     onError: (err) => {
@@ -40,11 +40,22 @@ export default function ARInvoiceDetailPanel({ invoice: initialInvoice }) {
             <Hash size={12} />
             {invoice.invoice_number}
           </div>
-          <span className={`badge text-[10px] uppercase font-bold
-            ${invoice.status === 'posted' ? 'bg-primary/10 text-primary' : 
-              invoice.status === 'paid' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-dark-700 text-dark-400'}`}>
-            {invoice.status}
-          </span>
+          <div className="flex items-center gap-2">
+            {invoice.status === 'draft' && (
+              <button 
+                onClick={() => openSidePanel('new-ar-invoice', { invoice: invoice })}
+                className="p-1.5 hover:bg-white/10 rounded-lg text-dark-400 hover:text-primary transition-colors"
+                title="Edit Invoice"
+              >
+                <Edit2 size={14} />
+              </button>
+            )}
+            <span className={`badge text-[10px] uppercase font-bold
+              ${invoice.status === 'posted' ? 'bg-primary/10 text-primary' : 
+                invoice.status === 'paid' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-dark-700 text-dark-400'}`}>
+              {invoice.status}
+            </span>
+          </div>
         </div>
 
         <div>

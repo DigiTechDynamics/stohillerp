@@ -1,11 +1,13 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  darkMode: 'class', // Class-based dark/light mode toggling
   theme: {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#E5A645',
+          DEFAULT: 'rgb(var(--primary-rgb) / <alpha-value>)',
+          hover: 'var(--primary-hover)',
           50: '#FDF6E9',
           100: '#FAECD3',
           200: '#F5D9A7',
@@ -18,18 +20,26 @@ export default {
           900: '#684A14',
         },
         dark: {
-          DEFAULT: '#222222',
+          DEFAULT: 'var(--bg-main)',
           50: '#F4F4F4',
-          100: '#E8E8E8',
+          100: 'var(--text-main)',
           200: '#D1D1D1',
-          300: '#BBBBBB',
-          400: '#999999',
-          500: '#777777',
+          300: 'var(--text-muted)',
+          400: 'var(--text-muted)',
+          500: 'var(--text-muted)',
           600: '#555555',
-          700: '#444444',
-          800: '#333333',
-          900: '#222222',
-          950: '#111111',
+          700: 'var(--bg-input)',
+          800: 'var(--bg-card)',
+          900: 'var(--bg-main)',
+          950: 'var(--bg-main-dark)',
+        },
+        surface: {
+          main: 'var(--bg-main)',
+          card: 'var(--bg-card)',
+        },
+        content: {
+          main: 'var(--text-main)',
+          muted: 'var(--text-muted)',
         },
       },
       fontFamily: {
@@ -41,7 +51,7 @@ export default {
         'gold': '0 4px 24px -4px rgba(229, 166, 69, 0.4)',
         'gold-lg': '0 8px 40px -8px rgba(229, 166, 69, 0.5)',
         'dark': '0 4px 24px -4px rgba(0, 0, 0, 0.6)',
-        'panel': '0 0 0 1px rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.4)',
+        'panel': 'var(--shadow-panel)',
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
@@ -55,6 +65,7 @@ export default {
         'pulse-gold': 'pulse-gold 2s infinite',
         'slide-in-right': 'slide-in-right 0.3s ease-out',
         'fade-in': 'fade-in 0.2s ease-out',
+        'theme-spin': 'spin 0.4s ease-in-out',
       },
       keyframes: {
         shimmer: { '0%': { backgroundPosition: '-200% 0' }, '100%': { backgroundPosition: '200% 0' } },

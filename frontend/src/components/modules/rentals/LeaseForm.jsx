@@ -1,4 +1,4 @@
-// Stohil Properties - Lease Form (Create/Edit)
+// Stohill Properties - Lease Form (Create/Edit)
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Save, AlertCircle, Key, Calendar } from 'lucide-react'

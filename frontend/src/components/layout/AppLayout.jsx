@@ -1,4 +1,5 @@
-// Stohil Properties - Main Application Layout
+// Stohill Properties - Main Application Layout
+import React, { useState } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -6,11 +7,48 @@ import {
   Award, FileText, UserCog, ChevronLeft, ChevronRight, Search,
   Bell, LogOut, Settings, Zap, Menu, X, Landmark, Briefcase, FileSearch, Box
 } from 'lucide-react'
-import { useState } from 'react'
 import { useAuthStore, useUIStore } from '@/stores/authStore'
 import CommandPalette from '@/components/common/CommandPalette'
 import SidePanelContainer from '@/components/common/SidePanelContainer'
 import ExecutiveModeToggle from '@/components/common/ExecutiveModeToggle'
+import ThemeToggle from '@/components/common/ThemeToggle'
+import logo from '@/assets/logo.png'
+
+// Simple Error Boundary Fallback for robust UI
+class ErrorBoundaryFallback extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full p-6 text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 mb-2">
+            <X size={32} />
+          </div>
+          <h2 className="text-xl font-display text-white">Something went wrong</h2>
+          <p className="text-dark-400 max-w-md mx-auto">
+            The module failed to load due to a rendering error. Our team has been notified.
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="btn-primary mt-4"
+          >
+            Reload Platform
+          </button>
+          <pre className="mt-8 p-4 bg-black/40 rounded text-[10px] font-mono text-red-400/60 max-w-2xl overflow-auto text-left">
+            {this.state.error?.toString()}
+          </pre>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 const navItems = [
   // Overview
@@ -38,13 +76,13 @@ const navItems = [
 
 export default function AppLayout() {
   const { user, logout } = useAuthStore()
-  const { sidebarCollapsed, toggleSidebar, openCommandPalette } = useUIStore()
+  const { sidebarCollapsed, toggleSidebar, openCommandPalette, theme } = useUIStore()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const groups = ['Overview', 'Operations', 'Finance', 'Admin']
 
   return (
-    <div className="flex h-screen overflow-hidden bg-dark-950 text-dark-100 font-body">
+    <div className={`flex h-screen overflow-hidden ${theme === 'light' ? 'bg-surface-main text-content-main' : 'bg-dark-950 text-dark-100'} font-body`}>
       {/* Mobile Overlay */}
       <AnimatePresence>
         {mobileOpen && (
@@ -64,15 +102,15 @@ export default function AppLayout() {
         transition={{ duration: 0.2, ease: 'easeInOut' }}
         className={`
           fixed lg:static z-50 h-full flex flex-col
-          bg-dark-900 border-r border-white/5
+          ${theme === 'light' ? 'bg-surface-main border-border-color' : 'bg-dark-900 border-white/5'}
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           transition-transform duration-200
         `}
       >
         {/* Logo */}
-        <div className="flex items-center gap-3 px-4 py-5 border-b border-white/5">
-          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center flex-shrink-0 shadow-gold">
-            <Building2 size={18} className="text-dark-900" />
+        <div className={`flex items-center gap-3 px-4 py-5 border-b ${theme === 'light' ? 'border-border-color' : 'border-white/5'}`}>
+          <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
+            <img src={logo} alt="Stohill Logo" className="w-8 h-8 object-contain" />
           </div>
           <AnimatePresence>
             {!sidebarCollapsed && (
@@ -82,7 +120,7 @@ export default function AppLayout() {
                 exit={{ opacity: 0, width: 0 }}
                 className="overflow-hidden whitespace-nowrap"
               >
-                <span className="font-display text-white text-lg leading-none">Stohil Properties</span>
+                <span className="font-display text-white text-lg leading-none">Stohill Properties</span>
                 <span className="block text-[10px] text-primary/70 font-body tracking-[0.15em] uppercase">
                   ERP Platform
                 </span>
@@ -173,8 +211,8 @@ export default function AppLayout() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Topbar */}
-        <header className="h-14 flex items-center justify-between px-4 lg:px-6
-                            border-b border-white/5 bg-dark-900/80 backdrop-blur-sm flex-shrink-0">
+        <header className={`h-14 flex items-center justify-between px-4 lg:px-6
+                            border-b ${theme === 'light' ? 'border-border-color bg-white/80' : 'border-white/5 bg-dark-900/80'} backdrop-blur-sm flex-shrink-0`}>
           <div className="flex items-center gap-3">
             <button
               className="lg:hidden btn-ghost p-2"
@@ -204,6 +242,8 @@ export default function AppLayout() {
           </div>
 
           <div className="flex items-center gap-3">
+            <ThemeToggle />
+
             <button className="btn-ghost p-2 relative group">
               <Bell size={18} className="text-dark-400 group-hover:text-white transition-colors" />
               <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary ring-2 ring-dark-900" />
@@ -228,7 +268,9 @@ export default function AppLayout() {
 
         {/* Page View */}
         <main className="flex-1 overflow-y-auto custom-scrollbar">
-          <Outlet />
+          <ErrorBoundaryFallback>
+            <Outlet />
+          </ErrorBoundaryFallback>
         </main>
       </div>
 

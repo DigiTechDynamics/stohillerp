@@ -13,7 +13,7 @@ export default function PasswordResetModal({ user, isOpen, onClose }) {
   const mutation = useMutation({
     mutationFn: (data) => adminAPI.users.setPassword(user.id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['admin-users'])
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
       onClose()
       setPassword('')
       setConfirmPassword('')

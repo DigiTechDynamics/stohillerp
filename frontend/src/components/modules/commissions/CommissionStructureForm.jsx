@@ -1,4 +1,4 @@
-// Stohil Properties - Commission Structure Form
+// Stohill Properties - Commission Structure Form
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { X, Plus, Trash2, Award, Percent } from 'lucide-react'
@@ -61,7 +61,7 @@ export default function CommissionStructureForm() {
         ? commissionsAPI.structures.update(payload.structure.id, data)
         : commissionsAPI.structures.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['commissions-structures'])
+      queryClient.invalidateQueries({ queryKey: ['commissions-structures'] })
       closePanel()
     }
   })

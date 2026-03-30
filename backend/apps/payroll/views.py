@@ -20,8 +20,8 @@ class PayrollRunViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def process(self, request, pk=None):
         payroll_run = self.get_object()
-        if payroll_run.status != PayrollRun.Status.DRAFT:
-            return Response({'error': 'Can only process draft payroll runs'}, status=status.HTTP_400_BAD_REQUEST)
+        if payroll_run.status in [PayrollRun.Status.APPROVED, PayrollRun.Status.PAID, PayrollRun.Status.CANCELLED]:
+            return Response({'error': 'Can only process draft or processing payroll runs'}, status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
             # 0. Assign Currency if not set
@@ -51,7 +51,7 @@ class PayrollRunViewSet(viewsets.ModelViewSet):
                 ).aggregate(total=models.Sum('net_commission'))['total'] or Decimal('0.00')
 
                 # Calculate Deductions (Zimbabwe Environment)
-                gross_for_tax = emp.basic_salary + commissions
+                gross_for_tax = emp.basic_salary + commissions + emp.bonus
                 currency_code = payroll_run.currency.code if payroll_run.currency else "USD"
                 
                 paye = ZimbabweTaxService.calculate_paye(gross_for_tax, currency_code)
@@ -63,14 +63,16 @@ class PayrollRunViewSet(viewsets.ModelViewSet):
                     employee=emp,
                     basic_salary=emp.basic_salary,
                     commission_amount=commissions,
+                    bonus=emp.bonus,
                     tax_amount=paye,
                     aids_levy=aids_levy,
                     nssa_deduction=nssa,
+                    other_deductions=emp.other_deductions,
                     bank_account_snapshot=f"{emp.bank_name} / {emp.bank_account_number}"
                 )
                 total_gross += item.gross_amount
                 total_net += item.net_amount
-                payroll_run.total_deductions += (paye + aids_levy + nssa)
+                payroll_run.total_deductions += (paye + aids_levy + nssa + emp.other_deductions)
             
             # 3. Update run totals
             payroll_run.total_gross = total_gross

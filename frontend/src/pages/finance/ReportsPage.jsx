@@ -1,4 +1,4 @@
-// Stohil Properties - Financial Reports Page
+// Stohill Properties - Financial Reports Page
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'

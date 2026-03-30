@@ -1,4 +1,4 @@
-// Stohil Properties - Properties Page
+// Stohill Properties - Properties Page
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -176,7 +176,7 @@ export default function PropertiesPage() {
         <div className="flex items-center gap-3">
           <DataManagementButtons 
             module="properties" 
-            onImportSuccess={() => queryClient.invalidateQueries(['properties'])} 
+            onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['properties'] })} 
           />
           <button 
             onClick={() => openPanel('property-form')}

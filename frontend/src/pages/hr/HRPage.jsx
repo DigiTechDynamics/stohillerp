@@ -1,5 +1,5 @@
-// Stohil Properties - HR Management Page
-import { useState } from 'react'
+// Stohill Properties - HR Management Page
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Plus, User, Briefcase, MapPin, Mail, Phone, Filter, MoreVertical, BadgeCheck } from 'lucide-react'
@@ -9,6 +9,7 @@ import { useUIStore } from '@/stores/authStore'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
 import Pagination from '@/components/common/Pagination'
 import { useQueryClient } from '@tanstack/react-query'
+import { useLocation } from 'react-router-dom'
 
 export default function HRPage() {
   const [search, setSearch] = useState('')
@@ -16,6 +17,13 @@ export default function HRPage() {
   const [page, setPage] = useState(1)
   const queryClient = useQueryClient()
   const openPanel = useUIStore((s) => s.openSidePanel)
+  const location = useLocation()
+
+  useEffect(() => {
+    if (location.pathname === '/hr/leave-management') {
+      openPanel('leave-management')
+    }
+  }, [location.pathname, openPanel])
 
   const { data, isLoading } = useQuery({
     queryKey: ['hr-employees', { search, ordering: sort, page }],
@@ -41,7 +49,8 @@ export default function HRPage() {
         <div className="flex items-center gap-3">
           <DataManagementButtons 
             module="employees" 
-            onImportSuccess={() => queryClient.invalidateQueries(['hr-employees'])} 
+            filters={{ search, ordering: sort, page }}
+            onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['hr-employees'] })} 
           />
           <button className="btn-primary flex items-center gap-2" onClick={() => openPanel('employee-form')}>
             <Plus size={16} /> New Employee
@@ -52,12 +61,15 @@ export default function HRPage() {
       {/* Departments Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
         {departments.map((dept) => (
-          <div key={dept.id} className="card p-3 text-center hover:border-primary/30 transition-colors cursor-pointer">
-            <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-primary mx-auto mb-2">
-              <Briefcase size={16} />
+          <div key={dept.id} className="card p-3 border-white/5 bg-dark-800/50 hover:border-primary/30 transition-all cursor-pointer group">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-3 group-hover:scale-110 transition-transform">
+              <Briefcase size={20} />
             </div>
-            <p className="text-sm font-semibold text-white truncate">{dept.name}</p>
-            <p className="text-[10px] text-dark-500 uppercase">{dept.manager_name || 'No Manager'}</p>
+            <p className="text-sm font-bold text-white truncate text-left">{dept.name}</p>
+            <div className="flex flex-col items-start mt-1">
+              <span className="text-[8px] text-dark-500 font-bold uppercase tracking-widest">Manager</span>
+              <p className="text-[10px] text-primary truncate w-full text-left">{dept.manager_name || 'Unassigned'}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -87,7 +99,7 @@ export default function HRPage() {
           </select>
         </div>
         <div className="flex gap-2">
-          <button className="btn-secondary text-xs" onClick={() => openPanel('department-form')}>Manage Departments</button>
+          <button className="btn-secondary text-xs" onClick={() => openPanel('department-list')}>Manage Departments</button>
           <button className="btn-secondary text-xs" onClick={() => openPanel('leave-management')}>Manage Leave</button>
         </div>
       </div>

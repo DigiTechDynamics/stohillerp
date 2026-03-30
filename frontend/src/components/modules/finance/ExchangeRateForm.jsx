@@ -31,7 +31,7 @@ export default function ExchangeRateForm() {
       return api.post('/finance/exchange-rates/', data)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['exchange-rates'])
+      queryClient.invalidateQueries({ queryKey: ['exchange-rates'] })
       toast.success(rate ? 'Rate updated' : 'Rate captured')
       closeSidePanel()
     },

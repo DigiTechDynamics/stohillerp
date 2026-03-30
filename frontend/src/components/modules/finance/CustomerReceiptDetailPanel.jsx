@@ -21,8 +21,8 @@ export default function CustomerReceiptDetailPanel({ receipt: initialReceipt }) 
     mutationFn: () => financeAPI.ar.receipts.post(receipt.id),
     onSuccess: () => {
       toast.success('Receipt posted successfully!')
-      queryClient.invalidateQueries(['customer-receipts'])
-      queryClient.invalidateQueries(['ar-customers'])
+      queryClient.invalidateQueries({ queryKey: ['customer-receipts'] })
+      queryClient.invalidateQueries({ queryKey: ['ar-customers'] })
       closeSidePanel()
     },
     onError: (err) => {

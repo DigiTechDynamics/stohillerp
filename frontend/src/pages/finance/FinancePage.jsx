@@ -1,4 +1,4 @@
-// Stohil Properties - Financial Management Page
+// Stohill Properties - Financial Management Page
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -22,6 +22,12 @@ export default function FinancePage() {
   const [page, setPage] = useState(1)
   const queryClient = useQueryClient()
   const openPanel = useUIStore((s) => s.openSidePanel)
+
+  const { data: summaryData } = useQuery({
+    queryKey: ['finance-summary'],
+    queryFn: () => financeAPI.summary(),
+  })
+  const summary = summaryData?.data || {}
 
   const { data, isLoading } = useQuery({
     queryKey: ['finance-accounts', { search, page }],
@@ -93,10 +99,10 @@ export default function FinancePage() {
                   </div>
                   <span className="text-[10px] text-primary font-bold uppercase tracking-wider">Cash Position</span>
                 </div>
-                <p className="text-2xl font-semibold text-white">{formatCurrency(1450230, 'USD')}</p>
+                <p className="text-2xl font-semibold text-white">{formatCurrency(parseFloat(summary.cash_position || 0), 'USD')}</p>
                 <p className="text-xs text-dark-400 mt-1 flex items-center gap-1">
                   <TrendingUp size={12} className="text-emerald-400" />
-                  +4.2% from last month
+                  Real-time balance
                 </p>
               </div>
 
@@ -107,8 +113,8 @@ export default function FinancePage() {
                   </div>
                   <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Accounts Receivable</span>
                 </div>
-                <p className="text-2xl font-semibold text-white">{formatCurrency(842000, 'USD')}</p>
-                <p className="text-xs text-dark-400 mt-1">12 overdue invoices pending</p>
+                <p className="text-2xl font-semibold text-white">{formatCurrency(parseFloat(summary.accounts_receivable || 0), 'USD')}</p>
+                <p className="text-xs text-dark-400 mt-1">{summary.overdue_count || 0} overdue invoices pending</p>
               </div>
 
               <div className="card p-5">
@@ -118,8 +124,8 @@ export default function FinancePage() {
                   </div>
                   <span className="text-[10px] text-purple-400 font-bold uppercase tracking-wider">Operating Margin</span>
                 </div>
-                <p className="text-2xl font-semibold text-white">32.4%</p>
-                <p className="text-xs text-dark-400 mt-1">Targets: 35.0% by Q4</p>
+                <p className="text-2xl font-semibold text-white">{summary.operating_margin || 0}%</p>
+                <p className="text-xs text-dark-400 mt-1">Targets: {summary.operating_target || 35.0}% by Q4</p>
               </div>
             </div>
 
@@ -140,7 +146,7 @@ export default function FinancePage() {
                   </div>
                   <DataManagementButtons 
                     module="coa" 
-                    onImportSuccess={() => queryClient.invalidateQueries(['finance-accounts'])} 
+                    onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['finance-accounts'] })} 
                   />
                 </div>
               </div>

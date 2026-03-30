@@ -76,7 +76,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=8)
+    password = serializers.CharField(write_only=True, min_length=8, required=False)
     role_ids = serializers.ListField(child=serializers.UUIDField(), write_only=True, required=False)
 
     class Meta:
@@ -85,7 +85,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         role_ids = validated_data.pop('role_ids', [])
-        password = validated_data.pop('password')
+        password = validated_data.pop('password', User.objects.make_random_password(length=12))
         user = User.objects.create_user(password=password, **validated_data)
         if role_ids:
             user.roles.set(Role.objects.filter(id__in=role_ids))

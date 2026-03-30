@@ -1,4 +1,4 @@
-// Stohil Properties - Executive Command Center Dashboard
+// Stohill Properties - Executive Command Center Dashboard
 // The centerpiece KPIs, charts, pipeline overview, top agents
 
 import { useQuery } from '@tanstack/react-query'
@@ -87,13 +87,13 @@ export default function ExecutiveDashboard() {
   if (isLoading) return <DashboardSkeleton />
   if (error || !data) return <DashboardError onRetry={refetch} error={error} />
 
-  const { kpis, charts } = data
-  const revenueData = charts.revenue_trend.map((d) => ({
+  const { kpis, charts, trends } = data
+  const revenueData = (charts?.revenue_trend || []).map((d) => ({
     month: d.month,
     revenue: d.revenue,
   }))
-  const pipelineData = charts.pipeline_stages.map((d) => ({
-    stage: d.stage.split(' ')[0], // Short label
+  const pipelineData = (charts?.pipeline_stages || []).map((d) => ({
+    stage: d.stage?.split?.(' ')?.[0] || 'Unknown', // Short label
     count: d.count,
     value: d.value,
     color: d.color,
@@ -131,37 +131,38 @@ export default function ExecutiveDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           title="Portfolio Value"
-          value={formatCurrency(parseFloat(kpis.properties.portfolio_value), 'USD')}
-          subtitle={`${kpis.properties.total} properties`}
+          value={formatCurrency(parseFloat(kpis?.properties?.portfolio_value || 0), 'USD')}
+          subtitle={`${kpis?.properties?.total || 0} properties`}
           icon={<Building2 size={20} />}
-          trend={4.2}
-          trendLabel="vs last quarter"
+          trend={trends?.portfolio}
+          trendLabel="vs last month"
           delay={0}
           onClick={() => navigate('/properties')}
         />
         <KpiCard
           title="YTD Sales Revenue"
-          value={formatCurrency(parseFloat(kpis.sales.ytd_value), 'USD')}
-          subtitle={`${kpis.sales.ytd_count} transactions`}
+          value={formatCurrency(parseFloat(kpis?.sales?.ytd_value || 0), 'USD')}
+          subtitle={`${kpis?.sales?.ytd_count || 0} transactions`}
           icon={<TrendingUp size={20} />}
           accent="text-emerald-400"
-          trend={12.8}
+          trend={trends?.sales}
           delay={0.05}
           onClick={() => navigate('/sales')}
         />
         <KpiCard
           title="Monthly Rental Income"
-          value={formatCurrency(parseFloat(kpis.rentals.monthly_income))}
-          subtitle={`${kpis.rentals.active_leases} active leases`}
+          value={formatCurrency(parseFloat(kpis?.rentals?.monthly_income || 0))}
+          subtitle={`${kpis?.rentals?.active_leases || 0} active leases`}
           icon={<Home size={20} />}
           accent="text-blue-400"
-          trendLabel={`${formatCurrency(parseFloat(kpis.rentals.annual_income))} annualised`}
+          trend={trends?.rentals}
+          trendLabel={`${formatCurrency(parseFloat(kpis?.rentals?.annual_income || 0))} annualised`}
           delay={0.1}
           onClick={() => navigate('/rentals')}
         />
         <KpiCard
           title="Pipeline Value"
-          value={formatCurrency(parseFloat(kpis.sales.pipeline_value), 'USD')}
+          value={formatCurrency(parseFloat(kpis?.sales?.pipeline_value || 0), 'USD')}
           subtitle="Active opportunities"
           icon={<BarChart3 size={20} />}
           accent="text-purple-400"
@@ -174,8 +175,8 @@ export default function ExecutiveDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           title="Occupancy Rate"
-          value={`${kpis.properties.occupancy_rate}%`}
-          subtitle={`${kpis.properties.occupied} of ${kpis.properties.total} occupied`}
+          value={`${kpis?.properties?.occupancy_rate || 0}%`}
+          subtitle={`${kpis?.properties?.occupied || 0} of ${kpis?.properties?.total || 1} occupied`}
           icon={<Building2 size={20} />}
           accent="text-primary"
           delay={0.2}
@@ -183,8 +184,8 @@ export default function ExecutiveDashboard() {
         />
         <KpiCard
           title="Available Properties"
-          value={String(kpis.properties.available)}
-          subtitle={`${kpis.properties.under_contract} under contract`}
+          value={String(kpis?.properties?.available || 0)}
+          subtitle={`${kpis?.properties?.under_contract || 0} under contract`}
           icon={<Building2 size={20} />}
           accent="text-primary"
           delay={0.25}
@@ -192,22 +193,22 @@ export default function ExecutiveDashboard() {
         />
         <KpiCard
           title="YTD Commissions Paid"
-          value={formatCurrency(parseFloat(kpis.commissions.ytd_paid))}
-          subtitle={`${formatCurrency(parseFloat(kpis.commissions.pending))} pending`}
+          value={formatCurrency(parseFloat(kpis?.commissions?.ytd_paid || 0))}
+          subtitle={`${formatCurrency(parseFloat(kpis?.commissions?.pending || 0))} pending`}
           icon={<Award size={20} />}
           accent="text-amber-400"
           delay={0.3}
           onClick={() => navigate('/commissions')}
         />
         <KpiCard
-          title={kpis.rentals.overdue_count > 0 ? '⚠ Overdue Rentals' : 'Active Contacts'}
-          value={kpis.rentals.overdue_count > 0
-            ? formatCurrency(parseFloat(kpis.rentals.overdue_amount))
-            : formatNumber(kpis.crm.total_contacts)
+          title={kpis?.rentals?.overdue_count > 0 ? '⚠ Overdue Rentals' : 'Active Contacts'}
+          value={kpis?.rentals?.overdue_count > 0
+            ? formatCurrency(parseFloat(kpis?.rentals?.overdue_amount || 0))
+            : formatNumber(kpis?.crm?.total_contacts || 0)
           }
-          subtitle={kpis.rentals.overdue_count > 0
-            ? `${kpis.rentals.overdue_count} invoices overdue`
-            : `+${kpis.crm.new_leads_this_month} new leads this month`
+          subtitle={kpis?.rentals?.overdue_count > 0
+            ? `${kpis?.rentals?.overdue_count} invoices overdue`
+            : `+${kpis?.crm?.new_leads_this_month || 0} new leads this month`
           }
           icon={kpis.rentals.overdue_count > 0 ? <AlertTriangle size={20} /> : <Users size={20} />}
           accent={kpis.rentals.overdue_count > 0 ? 'text-red-400' : 'text-emerald-400'}

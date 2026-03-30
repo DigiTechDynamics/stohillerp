@@ -1,4 +1,4 @@
-// Stohil Properties - Commission Detail Panel
+// Stohill Properties - Commission Detail Panel
 import { useUIStore } from '@/stores/authStore'
 import { motion } from 'framer-motion'
 import { X, Award, MapPin, Building2, User, CheckCircle2, DollarSign, Calendar } from 'lucide-react'
@@ -20,7 +20,7 @@ export default function CommissionDetailPanel() {
           </div>
           <div>
             <h2 className="text-xl font-display text-white">Commission Record</h2>
-            <p className="text-sm font-mono text-primary">{record.reference_number}</p>
+            <p className="text-sm font-mono text-primary">{record.reference}</p>
           </div>
         </div>
         <button onClick={closePanel} className="p-2 hover:bg-white/5 rounded-full transition-colors">
@@ -41,7 +41,7 @@ export default function CommissionDetailPanel() {
           </div>
           <div className="text-right">
             <p className="text-xs text-dark-400 uppercase tracking-widest mb-1">Calculated Amount</p>
-            <p className="text-2xl font-bold text-white leading-none">{formatCurrency(parseFloat(record.amount))}</p>
+            <p className="text-2xl font-bold text-white leading-none">{formatCurrency(parseFloat(record.net_commission))}</p>
           </div>
         </div>
 
@@ -58,13 +58,13 @@ export default function CommissionDetailPanel() {
           <div className="flex items-center gap-3 text-sm">
             <Building2 size={16} className="text-dark-500 w-5" />
             <span className="text-dark-400 w-24">Transaction</span>
-            <span className="text-white font-medium">{record.transaction_ref || 'N/A'}</span>
+            <span className="text-white font-medium">{record.property_ref || 'N/A'}</span>
           </div>
 
           <div className="flex items-center gap-3 text-sm">
             <Calendar size={16} className="text-dark-500 w-5" />
             <span className="text-dark-400 w-24">Calculation Date</span>
-            <span className="text-white">{formatDate(record.calculation_date)}</span>
+            <span className="text-white">{formatDate(record.created_at)}</span>
           </div>
 
           {record.approved_date && (

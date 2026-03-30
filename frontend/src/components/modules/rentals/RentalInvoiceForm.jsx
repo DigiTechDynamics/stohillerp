@@ -1,4 +1,4 @@
-// Stohil Properties - Rental Invoice Form
+// Stohill Properties - Rental Invoice Form
 import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Save, AlertCircle, Receipt, Calculator } from 'lucide-react'

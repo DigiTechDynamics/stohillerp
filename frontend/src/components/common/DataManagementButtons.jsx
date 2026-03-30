@@ -6,9 +6,10 @@ import { toast } from 'react-hot-toast'
 /**
  * Reusable component for Data Management (Import, Export, Template)
  * @param {string} module - The module name (properties, leases, crm, coa, assets, employees, statements)
+ * @param {object} filters - Current filters/sort applied to the data
  * @param {function} onImportSuccess - Callback after successful import
  */
-export default function DataManagementButtons({ module, onImportSuccess }) {
+export default function DataManagementButtons({ module, filters, onImportSuccess }) {
   const [isExporting, setIsExporting] = React.useState(false)
   const [isImporting, setIsImporting] = React.useState(false)
   const [isDownloadingTemplate, setIsDownloadingTemplate] = React.useState(false)
@@ -51,7 +52,7 @@ export default function DataManagementButtons({ module, onImportSuccess }) {
   const handleExport = async () => {
     setIsExporting(true)
     try {
-      const response = await dataManagementAPI.exportData(module)
+      const response = await dataManagementAPI.exportData(module, filters)
       const url = window.URL.createObjectURL(new Blob([response.data]))
       const link = document.createElement('a')
       link.href = url

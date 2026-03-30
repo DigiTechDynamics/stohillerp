@@ -26,7 +26,7 @@ export default function CurrencyForm() {
       return api.post('/finance/currencies/', data)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['currencies'])
+      queryClient.invalidateQueries({ queryKey: ['currencies'] })
       toast.success(currency ? 'Currency updated' : 'Currency created')
       closeSidePanel()
     },

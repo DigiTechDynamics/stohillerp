@@ -136,7 +136,7 @@ export default function AccountsPayablePage() {
           {activeTab === 'suppliers' && (
             <DataManagementButtons 
               module="suppliers" 
-              onImportSuccess={() => queryClient.invalidateQueries(['ap-suppliers'])} 
+              onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['ap-suppliers'] })} 
             />
           )}
         </div>

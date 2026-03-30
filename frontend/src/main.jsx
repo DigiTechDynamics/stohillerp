@@ -1,4 +1,4 @@
-// Stohil Properties - Main Entry Point
+// Stohill Properties - Main Entry Point
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'

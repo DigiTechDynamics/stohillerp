@@ -1,4 +1,4 @@
-"""Stohil Properties - Custom Exception Handler"""
+"""Stohill Properties - Custom Exception Handler"""
 from rest_framework.views import exception_handler
 from rest_framework.response import Response
 import logging

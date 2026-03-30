@@ -1,5 +1,5 @@
 """
-Stohil Properties - URL Configuration
+Stohill Properties - URL Configuration
 Central URL routing for all API modules.
 """
 
@@ -49,6 +49,6 @@ if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 # Customize admin
-admin.site.site_header = 'Stohil Properties Administration'
-admin.site.site_title = 'Stohil Properties'
+admin.site.site_header = 'Stohill Properties Administration'
+admin.site.site_title = 'Stohill Properties'
 admin.site.index_title = 'Property Management System'

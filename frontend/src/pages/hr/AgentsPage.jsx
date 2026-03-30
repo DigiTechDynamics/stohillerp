@@ -1,4 +1,4 @@
-// Stohil Properties - Agent Management Page
+// Stohill Properties - Agent Management Page
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -19,8 +19,8 @@ export default function AgentsPage() {
   const openPanel = useUIStore((s) => s.openSidePanel)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['hr-agents', { search, ordering: sort, page }],
-    queryFn: () => hrAPI.employees.list({ search, ordering: sort, page }), // TODO: Add specific agent filtering if available
+    queryKey: ['hr-employees', { search, ordering: sort, page }],
+    queryFn: () => hrAPI.employees.list({ search, ordering: sort, page }),
   })
 
   // Filter to just show agents if possible based on job_title or department
@@ -39,7 +39,7 @@ export default function AgentsPage() {
         <div className="flex items-center gap-3">
           <DataManagementButtons 
             module="agents" 
-            onImportSuccess={() => queryClient.invalidateQueries(['hr-agents'])} 
+            onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['hr-agents'] })} 
           />
           <button className="btn-primary flex items-center gap-2" onClick={() => openPanel('employee-form')}>
             <Plus size={16} /> New Agent

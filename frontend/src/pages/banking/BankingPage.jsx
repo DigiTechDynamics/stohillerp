@@ -64,7 +64,7 @@ export default function BankingPage() {
           {tab === 'statements' && (
             <DataManagementButtons 
               module="statements" 
-              onImportSuccess={() => queryClient.invalidateQueries(['bank-statements'])} 
+              onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['bank-statements'] })} 
             />
           )}
           <button className="btn-secondary" onClick={() => refetch()}>
@@ -340,7 +340,12 @@ export default function BankingPage() {
                           </td>
                           <td className="px-6 py-4 text-right text-white">{stmt.transaction_count} items</td>
                           <td className="px-6 py-4 text-right">
-                            <button className="text-primary hover:text-white transition-colors">View Details</button>
+                            <button 
+                              onClick={() => { setTab('reconciliation') }}
+                              className="text-primary hover:text-white transition-colors"
+                            >
+                              View Details
+                            </button>
                           </td>
                         </tr>
                       ))}

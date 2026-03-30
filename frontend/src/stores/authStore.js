@@ -1,4 +1,4 @@
-// Stohil Properties - Authentication & App State Store
+// Stohill Properties - Authentication & App State Store
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
@@ -53,16 +53,26 @@ export const useAuthStore = create()(
   )
 )
 
-// UI State (not persisted)
-export const useUIStore = create((set) => ({
-  sidebarCollapsed: false,
-  commandPaletteOpen: false,
-  activeSidePanel: null,
-  sidePanelData: null,
+// UI State (persisted for theme, rest is session-only)
+export const useUIStore = create()(
+  persist(
+    (set) => ({
+      sidebarCollapsed: false,
+      commandPaletteOpen: false,
+      activeSidePanel: null,
+      sidePanelData: null,
+      theme: 'dark', // 'dark' | 'light'
 
-  toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
-  openCommandPalette: () => set({ commandPaletteOpen: true }),
-  closeCommandPalette: () => set({ commandPaletteOpen: false }),
-  openSidePanel: (panelId, data) => set({ activeSidePanel: panelId, sidePanelData: data || null }),
-  closeSidePanel: () => set({ activeSidePanel: null, sidePanelData: null }),
-}))
+      toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+      openCommandPalette: () => set({ commandPaletteOpen: true }),
+      closeCommandPalette: () => set({ commandPaletteOpen: false }),
+      openSidePanel: (panelId, data) => set({ activeSidePanel: panelId, sidePanelData: data || null }),
+      closeSidePanel: () => set({ activeSidePanel: null, sidePanelData: null }),
+      toggleTheme: () => set((s) => ({ theme: s.theme === 'light' ? 'dark' : 'light' })),
+    }),
+    {
+      name: 'stohill-ui',
+      partialize: (state) => ({ theme: state.theme }),
+    }
+  )
+)

@@ -137,7 +137,7 @@ export default function AccountsReceivablePage() {
         {activeTab === 'customers' && (
           <DataManagementButtons 
             module="customers" 
-            onImportSuccess={() => queryClient.invalidateQueries(['ar-customers'])} 
+            onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['ar-customers'] })} 
           />
         )}
       </div>
@@ -228,7 +228,10 @@ export default function AccountsReceivablePage() {
               </thead>
               <tbody>
                 {customers.map((c) => (
-                  <tr key={c.id} className="hover:bg-white/2 cursor-pointer transition-colors">
+                  <tr key={c.id} 
+                      className="hover:bg-white/2 cursor-pointer transition-colors"
+                      onClick={() => openPanel('new-customer', { customer: c })}
+                  >
                     <td className="px-4 py-3 text-sm text-white font-medium">{c.name}</td>
                     <td className="px-4 py-3 text-xs text-dark-300">{c.ar_account_code} - {c.ar_account_name}</td>
                     <td className="px-4 py-3 text-sm text-dark-300 text-right">{formatCurrency(c.credit_limit, c.currency_code)}</td>

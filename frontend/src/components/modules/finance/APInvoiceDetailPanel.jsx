@@ -21,7 +21,7 @@ export default function APInvoiceDetailPanel({ invoice: initialInvoice }) {
     mutationFn: () => financeAPI.ap.invoices.post(invoice.id),
     onSuccess: () => {
       toast.success('Invoice posted successfully!')
-      queryClient.invalidateQueries(['ap-invoices'])
+      queryClient.invalidateQueries({ queryKey: ['ap-invoices'] })
       closeSidePanel()
     },
     onError: (err) => {
@@ -33,8 +33,8 @@ export default function APInvoiceDetailPanel({ invoice: initialInvoice }) {
     mutationFn: () => financeAPI.ap.invoices.review(invoice.id),
     onSuccess: () => {
       toast.success('Invoice reviewed and ready for posting!')
-      queryClient.invalidateQueries(['ap-invoices'])
-      queryClient.invalidateQueries(['ap-invoice', invoice.id])
+      queryClient.invalidateQueries({ queryKey: ['ap-invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['ap-invoice', invoice.id] })
     },
     onError: (err) => {
       toast.error(err.response?.data?.error || 'Failed to review invoice')
@@ -45,7 +45,7 @@ export default function APInvoiceDetailPanel({ invoice: initialInvoice }) {
     mutationFn: () => financeAPI.ap.invoices.delete(invoice.id),
     onSuccess: () => {
       toast.success('Invoice deleted successfully')
-      queryClient.invalidateQueries(['ap-invoices'])
+      queryClient.invalidateQueries({ queryKey: ['ap-invoices'] })
       closeSidePanel()
     },
     onError: (err) => {

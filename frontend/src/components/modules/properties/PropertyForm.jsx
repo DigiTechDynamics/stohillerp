@@ -49,7 +49,7 @@ const PropertyForm = forwardRef((props, ref) => {
       ? propertiesAPI.update(property.id, data) 
       : propertiesAPI.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['properties'])
+      queryClient.invalidateQueries({ queryKey: ['properties'] })
       toast.success(`Property ${isEdit ? 'updated' : 'created'} successfully`)
       closeSidePanel()
     },

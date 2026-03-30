@@ -1,8 +1,9 @@
-// Stohil Properties - Root Application Component
+// Stohill Properties - Root Application Component
 // Handles routing, auth guards, and global layout
 
+import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuthStore } from '@/stores/authStore'
+import { useAuthStore, useUIStore } from '@/stores/authStore'
 import AppLayout from '@/components/layout/AppLayout'
 import LoginPage from '@/pages/LoginPage'
 
@@ -10,7 +11,6 @@ import LoginPage from '@/pages/LoginPage'
 import ExecutiveDashboard from '@/pages/dashboard/ExecutiveDashboard'
 import PropertiesPage from '@/pages/properties/PropertiesPage'
 import CRMPage from '@/pages/crm/CRMPage'
-import KanbanPage from '@/pages/crm/KanbanPage'
 import SalesPage from '@/pages/sales/SalesPage'
 import RentalsPage from '@/pages/rentals/RentalsPage'
 import FinancePage from '@/pages/finance/FinancePage'
@@ -38,6 +38,16 @@ function PrivateRoute({ children }) {
 }
 
 export default function App() {
+  const theme = useUIStore((s) => s.theme)
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('light')
+    } else {
+      document.documentElement.classList.remove('light')
+    }
+  }, [theme])
+
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
@@ -53,7 +63,6 @@ export default function App() {
         <Route path="dashboard" element={<ExecutiveDashboard />} />
         <Route path="properties" element={<PropertiesPage />} />
         <Route path="crm" element={<CRMPage />} />
-        <Route path="crm/kanban" element={<KanbanPage />} />
         <Route path="sales" element={<SalesPage />} />
         <Route path="rentals" element={<RentalsPage />} />
         <Route path="finance" element={<FinancePage />} />
@@ -71,6 +80,7 @@ export default function App() {
         <Route path="commissions" element={<CommissionsPage />} />
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="hr" element={<HRPage />} />
+        <Route path="hr/leave-management" element={<HRPage />} />
         <Route path="payroll" element={<PayrollPage />} />
         <Route path="agents" element={<AgentsPage />} />
         <Route path="admin/access" element={<UserAccessPage />} />

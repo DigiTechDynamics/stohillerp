@@ -1,8 +1,8 @@
-// Stohil Properties - Side Panel Container
+// Stohill Properties - Side Panel Container
 // Slide-in contextual panels for record details
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, Building2, MapPin, BedDouble, Bath, Square, Calendar, DollarSign, Briefcase, FileText, User, Mail, Phone, ExternalLink, Trash2, Edit2, Loader2, Key } from 'lucide-react'
-import { useQueryClient, useMutation } from '@tanstack/react-query'
+import { X, Building2, MapPin, BedDouble, Bath, Square, Calendar, DollarSign, Briefcase, FileText, User, Mail, Phone, ExternalLink, Trash2, Edit2, Loader2, Key, MessageSquare, CheckCircle, Plus } from 'lucide-react'
+import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
 import { propertiesAPI, crmAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
@@ -13,7 +13,10 @@ import JournalEntryDetailPanel from '@/components/modules/finance/JournalEntryDe
 import EmployeeForm from '@/components/modules/hr/EmployeeForm'
 import EmployeeDetailPanel from '@/components/modules/hr/EmployeeDetailPanel'
 import LeaveManagementPanel from '@/components/modules/hr/LeaveManagementPanel'
+import DocumentUploadForm from '@/components/modules/documents/DocumentUploadForm'
+import ComplianceAuditPanel from '@/components/modules/documents/ComplianceAuditPanel'
 import DepartmentForm from '@/components/modules/hr/DepartmentForm'
+import DepartmentListPanel from '@/components/modules/hr/DepartmentListPanel'
 import LeaseForm from '@/components/modules/rentals/LeaseForm'
 import LeaseDetailPanel from '@/components/modules/rentals/LeaseDetailPanel'
 import RentalInvoiceForm from '@/components/modules/rentals/RentalInvoiceForm'
@@ -34,6 +37,7 @@ import APInvoiceDetailPanel from '@/components/modules/finance/APInvoiceDetailPa
 import SupplierDetailPanel from '@/components/modules/finance/SupplierDetailPanel'
 import TaxCodeForm from '@/components/modules/finance/TaxCodeForm'
 import PostingProfileForm from '@/components/modules/finance/PostingProfileForm'
+import Chatter from '@/components/common/Chatter'
 import AssetForm from '@/components/modules/finance/AssetForm'
 import AssetCategoryForm from '@/components/modules/finance/AssetCategoryForm'
 import AssetDetailPanel from '@/components/modules/finance/AssetDetailPanel'
@@ -45,6 +49,9 @@ import CommissionDetailPanel from '@/components/modules/commissions/CommissionDe
 import CurrencyForm from '@/components/modules/finance/CurrencyForm'
 import ExchangeRateForm from '@/components/modules/finance/ExchangeRateForm'
 import OpportunityForm from '@/components/modules/crm/OpportunityForm'
+import ActivityForm from '@/components/modules/crm/ActivityForm'
+import CrmDetailPanel from '@/components/modules/crm/CrmDetailPanel'
+import CrmContactDetailPanel from '@/components/modules/crm/ContactDetailPanel'
 import BankAccountForm from '@/components/modules/finance/BankAccountForm'
 import BankTransactionView from '@/components/modules/finance/BankTransactionView'
 import StatementUploadForm from '@/components/modules/finance/StatementUploadForm'
@@ -67,7 +74,7 @@ function PropertyDetailPanel({ property }) {
   const deleteMutation = useMutation({
     mutationFn: () => propertiesAPI.delete(property.id),
     onSuccess: () => {
-      queryClient.invalidateQueries(['properties'])
+      queryClient.invalidateQueries({ queryKey: ['properties'] })
       toast.success('Property archived successfully')
       closePanel()
     },
@@ -181,7 +188,27 @@ function PropertyDetailPanel({ property }) {
 
 function ContactDetailPanel({ contact }) {
   const openPanel = useUIStore(s => s.openSidePanel)
+  
+  const { data: activitiesRes, isLoading: activitiesLoading } = useQuery({
+    queryKey: ['crm-activities', contact?.id],
+    queryFn: () => crmAPI.activities.list({ contact: contact?.id }),
+    enabled: !!contact?.id
+  })
+  
+  const activities = activitiesRes?.data?.results || []
+
   if (!contact) return null
+
+  const getActivityIcon = (type) => {
+    switch(type) {
+      case 'call': return <Phone size={14} className="text-blue-400" />
+      case 'email': return <Mail size={14} className="text-amber-400" />
+      case 'meeting': return <User size={14} className="text-purple-400" />
+      case 'viewing': return <Building2 size={14} className="text-emerald-400" />
+      case 'whatsapp': return <MessageSquare size={14} className="text-green-400" />
+      default: return <FileText size={14} className="text-dark-400" />
+    }
+  }
 
   return (
     <div className="p-6 space-y-8">
@@ -296,14 +323,9 @@ function ContactDetailPanel({ contact }) {
         </div>
       )}
 
-      {/* Interaction Timeline Summary */}
-      <div className="space-y-4">
-        <h3 className="text-xs font-bold text-dark-500 uppercase tracking-widest">Recent Activity</h3>
-        <div className="border border-white/5 rounded-xl divide-y divide-white/5">
-          <div className="p-4 text-center">
-            <p className="text-xs text-dark-500 italic">No recent activities logged.</p>
-          </div>
-        </div>
+      {/* Unified Chatter & Activities */}
+      <div className="border-t border-white/5 -mx-6 pt-6">
+        <Chatter contactId={contact.id} contactData={contact} />
       </div>
     </div>
   )
@@ -345,7 +367,10 @@ export default function SidePanelContainer() {
                     activeSidePanel === 'employee-form' ? (sidePanelData?.employee ? 'Edit Employee' : 'New Employee') :
                     activeSidePanel === 'employee-detail' ? 'Employee Profile' :
                     activeSidePanel === 'leave-management' ? 'Leave Management' :
+                    activeSidePanel === 'document-upload' ? 'Upload Document' :
+                    activeSidePanel === 'compliance-check' ? 'Compliance Audit' :
                     activeSidePanel === 'department-form' ? (sidePanelData?.department ? 'Edit Department' : 'New Department') :
+                    activeSidePanel === 'department-list' ? 'Departments' :
                     activeSidePanel === 'lease-form' ? (sidePanelData?.lease ? 'Edit Lease' : 'New Lease') :
                     activeSidePanel === 'lease-detail' ? 'Lease Overview' :
                     activeSidePanel === 'rental-invoice-form' ? 'New Rental Invoice' :
@@ -374,6 +399,9 @@ export default function SidePanelContainer() {
                     activeSidePanel === 'currency-form' ? (sidePanelData?.currency ? 'Edit Currency' : 'New Currency') :
                     activeSidePanel === 'exchange-rate-form' ? (sidePanelData?.rate ? 'Capture Exchange Rate' : 'Capture Exchange Rate') :
                     activeSidePanel === 'opportunity-form' ? (sidePanelData?.opportunity ? 'Edit Opportunity' : 'New Opportunity') :
+                    activeSidePanel === 'crm-detail' ? (sidePanelData?.type === 'lead' ? 'Lead Profile' : 'Opportunity Profile') :
+                    activeSidePanel === 'activity-form' ? 'Log New Activity' :
+                    activeSidePanel === 'contact-detail' ? 'Contact Profile' :
                     activeSidePanel === 'bank-account-form' ? (sidePanelData?.account ? 'Edit Bank Account' : 'New Bank Account') :
                     activeSidePanel === 'bank-transaction-view' ? 'Bank Account Transactions' :
                     activeSidePanel === 'statement-upload-form' ? 'Upload Bank Statement' :
@@ -396,8 +424,13 @@ export default function SidePanelContainer() {
                 <PropertyDetailPanel property={sidePanelData.property} />
               )}
 
-              {activeSidePanel === 'contact-detail' && sidePanelData?.contact && (
-                <ContactDetailPanel contact={sidePanelData.contact} />
+              {activeSidePanel === 'contact-detail' && (sidePanelData?.contactId || sidePanelData?.contact) && (
+                <div className="h-full min-h-screen">
+                  <CrmContactDetailPanel 
+                    contactId={sidePanelData.contactId || sidePanelData.contact?.id} 
+                    contact={sidePanelData.contact} 
+                  />
+                </div>
               )}
 
               {activeSidePanel === 'contact-form' && (
@@ -406,6 +439,14 @@ export default function SidePanelContainer() {
 
               {activeSidePanel === 'opportunity-form' && (
                 <OpportunityForm />
+              )}
+
+              {activeSidePanel === 'crm-detail' && sidePanelData?.id && (
+                <CrmDetailPanel id={sidePanelData.id} type={sidePanelData.type} />
+              )}
+
+              {activeSidePanel === 'activity-form' && (
+                <ActivityForm />
               )}
 
               {activeSidePanel === 'bank-account-form' && (
@@ -449,8 +490,20 @@ export default function SidePanelContainer() {
                 <LeaveManagementPanel />
               )}
 
+              {activeSidePanel === 'document-upload' && (
+                <DocumentUploadForm />
+              )}
+
+              {activeSidePanel === 'compliance-check' && (
+                <ComplianceAuditPanel />
+              )}
+
               {activeSidePanel === 'department-form' && (
                 <DepartmentForm />
+              )}
+
+              {activeSidePanel === 'department-list' && (
+                <DepartmentListPanel />
               )}
 
               {activeSidePanel === 'lease-form' && (
@@ -620,7 +673,7 @@ export default function SidePanelContainer() {
               )}
 
               {/* Fallback for other panels if not implemented yet */}
-              {!['property-detail', 'contact-form', 'account-form', 'account-detail', 'journal-entry-detail', 'employee-form', 'employee-detail', 'leave-management', 'department-form', 'lease-form', 'lease-detail', 'rental-invoice-form', 'rental-payment-form', 'tenant-form', 'maintenance-form', 'property-form', 'new-customer', 'new-ar-invoice', 'new-ar-receipt', 'new-supplier', 'new-ap-invoice', 'new-ap-payment', 'customer-receipt-detail', 'supplier-payment-detail', 'ar-invoice-detail', 'ap-invoice-detail', 'supplier-detail', 'tax-code-form', 'posting-profile-form', 'commission-structure-form', 'commission-calculator', 'commission-detail', 'currency-form', 'exchange-rate-form', 'opportunity-form', 'bank-account-form', 'bank-transaction-view', 'statement-upload-form', 'reconciliation-rules-form', 'user-form', 'role-form', 'sod-rule-form', 'sale-form', 'sale-detail', 'asset-form', 'asset-category-form', 'asset-detail', 'asset-disposal', 'run-depreciation', 'payroll-run-form'].includes(activeSidePanel) && (
+              {!['property-detail', 'contact-detail', 'contact-form', 'account-form', 'account-detail', 'journal-entry-detail', 'employee-form', 'employee-detail', 'leave-management', 'document-upload', 'compliance-check', 'department-form', 'lease-form', 'lease-detail', 'rental-invoice-form', 'rental-payment-form', 'tenant-form', 'maintenance-form', 'property-form', 'new-customer', 'new-ar-invoice', 'new-ar-receipt', 'new-supplier', 'new-ap-invoice', 'new-ap-payment', 'customer-receipt-detail', 'supplier-payment-detail', 'ar-invoice-detail', 'ap-invoice-detail', 'supplier-detail', 'tax-code-form', 'posting-profile-form', 'commission-structure-form', 'commission-calculator', 'commission-detail', 'currency-form', 'exchange-rate-form', 'opportunity-form', 'crm-detail', 'activity-form', 'bank-account-form', 'bank-transaction-view', 'statement-upload-form', 'reconciliation-rules-form', 'user-form', 'role-form', 'sod-rule-form', 'sale-form', 'sale-detail', 'asset-form', 'asset-category-form', 'asset-detail', 'asset-disposal', 'run-depreciation', 'payroll-run-form', 'fiscal-year-form'].includes(activeSidePanel) && (
                 <div className="p-20 text-center">
                   <div className="w-16 h-16 rounded-2xl bg-dark-800 flex items-center justify-center mx-auto mb-4 border border-white/5">
                     <FileText size={32} className="text-dark-600" />

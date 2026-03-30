@@ -325,6 +325,10 @@ class SupplierInvoiceSerializer(serializers.ModelSerializer):
             'invoice_date', 'due_date', 'currency', 'currency_code', 'subtotal', 'tax_total', 'total_amount', 
             'amount_paid', 'status', 'journal_entry', 'journal_entry_details', 'balance_due', 'lines'
         ]
+        read_only_fields = ['status', 'total_amount', 'subtotal', 'tax_total', 'amount_paid', 'journal_entry']
+        extra_kwargs = {
+            'invoice_number': {'required': False}
+        }
 
     def get_balance_due(self, obj):
         return str(obj.balance_due)
@@ -430,6 +434,7 @@ class CustomerInvoiceSerializer(serializers.ModelSerializer):
             'invoice_date', 'due_date', 'currency', 'currency_code', 'subtotal', 'tax_total', 'total_amount', 
             'amount_paid', 'status', 'journal_entry', 'journal_entry_details', 'balance_due', 'lines'
         ]
+        read_only_fields = ['invoice_number', 'status', 'total_amount', 'subtotal', 'tax_total', 'amount_paid', 'journal_entry']
 
     def get_balance_due(self, obj):
         return str(obj.balance_due)

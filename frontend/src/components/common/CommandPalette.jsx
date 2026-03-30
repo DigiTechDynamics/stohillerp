@@ -1,4 +1,4 @@
-// Stohil Properties - Command Palette (⌘K)
+// Stohill Properties - Command Palette (⌘K)
 // Global search and action launcher
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'

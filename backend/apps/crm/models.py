@@ -1,12 +1,95 @@
 """
 Stohil Properties - CRM Module Models
-Contact management, lead pipeline, and Kanban board functionality.
+Contact management, lead pipeline, Kanban board, activities, and full Odoo-parity features.
 """
 
 import uuid
+import builtins
 from django.db import models  # type: ignore
+from django.utils import timezone  # type: ignore
 from apps.core.models import AuditedModel, TimeStampedModel  # type: ignore
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Supporting / Lookup Models
+# ─────────────────────────────────────────────────────────────────────────────
+
+class SalesTeam(TimeStampedModel):
+    """
+    Sales teams for grouping agents and territories.
+    """
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    team_leader = models.ForeignKey(
+        'hr.Employee', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='led_teams'
+    )
+    members = models.ManyToManyField('hr.Employee', related_name='sales_teams', blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'crm_sales_teams'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class LostReason(TimeStampedModel):
+    """
+    Normalised list of reasons an opportunity can be lost.
+    Seeded with common real-estate reasons; can be extended by admin.
+    """
+    name = models.CharField(max_length=200, unique=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'crm_lost_reasons'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class EmailTemplate(TimeStampedModel):
+    """
+    Reusable email body templates for use in Activity email logging.
+    """
+    name = models.CharField(max_length=100)
+    subject = models.CharField(max_length=200, blank=True)
+    body = models.TextField()
+    created_by = models.ForeignKey(
+        'core.User', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='email_templates'
+    )
+
+    class Meta:
+        db_table = 'crm_email_templates'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class CrmTag(TimeStampedModel):
+    """
+    Flexible tags for leads and opportunities (e.g., 'Retirement', 'Family', 'Investor').
+    Inspired by Odoo tags.
+    """
+    name = models.CharField(max_length=50, unique=True)
+    color = models.CharField(max_length=7, default='#E5A645', help_text='Hex color for UI badge')
+
+    class Meta:
+        db_table = 'crm_tags'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Contact
+# ─────────────────────────────────────────────────────────────────────────────
 
 class Contact(AuditedModel):
     """
@@ -73,9 +156,22 @@ class Contact(AuditedModel):
     budget_min = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     budget_max = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
+    # Enrichment (Odoo-style lead enrichment fields)
+    linkedin_url = models.URLField(blank=True, help_text='LinkedIn profile URL')
+    website = models.URLField(blank=True, help_text='Company or personal website')
+    industry = models.CharField(max_length=100, blank=True, help_text='Industry / Sector')
+    lead_score = models.PositiveSmallIntegerField(
+        default=0,
+        help_text='Lead score 0-100 based on activity and profile completeness'
+    )
+
     # Assignment
     assigned_agent = models.ForeignKey(
         'hr.Employee', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='contacts'
+    )
+    sales_team = models.ForeignKey(
+        SalesTeam, null=True, blank=True,
         on_delete=models.SET_NULL, related_name='contacts'
     )
 
@@ -83,6 +179,9 @@ class Contact(AuditedModel):
 
     notes = models.TextField(blank=True)
     avatar = models.ImageField(upload_to='contacts/avatars/', null=True, blank=True)
+
+    # SLA Tracking
+    last_activity_at = models.DateTimeField(null=True, blank=True)
 
     # Guarantor Info
     guarantor_name = models.CharField(max_length=200, blank=True)
@@ -96,6 +195,7 @@ class Contact(AuditedModel):
         indexes = [
             models.Index(fields=['contact_type', 'status']),
             models.Index(fields=['assigned_agent']),
+            models.Index(fields=['email']),
         ]
 
     def __str__(self):
@@ -105,6 +205,64 @@ class Contact(AuditedModel):
     def full_name(self):
         return f'{self.first_name} {self.last_name}'.strip()
 
+    def compute_lead_score(self):
+        """
+        Compute a 0-100 lead score based on profile completeness + activity.
+        Higher score = hotter lead.
+        """
+        score = 0
+        if self.email:
+            score += 15
+        if self.phone_mobile:
+            score += 10
+        if self.company:
+            score += 10
+        if self.budget_min or self.budget_max:
+            score += 15
+        if self.annual_income:
+            score += 10
+        if self.rating == 'hot':
+            score += 20
+        elif self.rating == 'warm':
+            score += 10
+        activity_count = self.contact_activities.filter(status='completed').count()
+        score += min(activity_count * 5, 20)
+        self.lead_score = min(score, 100)
+        return self.lead_score
+
+
+class ContactDocument(AuditedModel):
+    """
+    KYC and compliance documents for a contact.
+    """
+    contact = models.ForeignKey(Contact, on_delete=models.CASCADE, related_name='kyc_documents')
+    name = models.CharField(max_length=200, help_text='e.g., ID Copy, Proof of Residence')
+    document_type = models.CharField(max_length=50, choices=[
+        ('id', 'ID / Passport'),
+        ('residence', 'Proof of Residence'),
+        ('tax', 'Tax Clearance'),
+        ('contract', 'Signed Contract'),
+        ('other', 'Other')
+    ])
+    file = models.FileField(upload_to='crm/documents/')
+    expiry_date = models.DateField(null=True, blank=True)
+    is_verified = models.BooleanField(default=False)
+    verified_by = models.ForeignKey(
+        'core.User', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='verified_crm_docs'
+    )
+
+    class Meta:
+        db_table = 'crm_contact_documents'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.contact.full_name} - {self.name}'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Pipeline & Stages
+# ─────────────────────────────────────────────────────────────────────────────
 
 class Pipeline(TimeStampedModel):
     """
@@ -134,7 +292,7 @@ class PipelineStage(TimeStampedModel):
     """
 
     class StageType(models.TextChoices):
-        INITIAL = 'initial', 'Initial Contact'
+        INITIAL = 'initial', 'Initial Contact / Lead'
         QUALIFIED = 'qualified', 'Qualified'
         VIEWING = 'viewing', 'Viewing Scheduled'
         OFFER = 'offer', 'Offer Submitted'
@@ -154,6 +312,9 @@ class PipelineStage(TimeStampedModel):
     probability = models.PositiveSmallIntegerField(default=0, help_text='% probability of closing')
     is_terminal = models.BooleanField(default=False, help_text='Won or Lost stage')
     is_won = models.BooleanField(default=False)
+    
+    # SLA Logic
+    sla_days = models.PositiveSmallIntegerField(default=0, help_text='Maximum days a deal should stay in this stage before alert')
 
     class Meta:
         db_table = 'crm_pipeline_stages'
@@ -163,24 +324,36 @@ class PipelineStage(TimeStampedModel):
         return f'{self.pipeline.name} - {self.name}'
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Opportunity / Lead
+# ─────────────────────────────────────────────────────────────────────────────
+
 class Opportunity(AuditedModel):
     """
-    A sales/rental opportunity (deal) in the pipeline.
-    This is the card on the Kanban board.
+    Unified Lead and Opportunity model.
+    A 'Lead' is an un-qualified opportunity (contact might not exist yet).
     """
 
     class Priority(models.TextChoices):
-        LOW = 'low', 'Low'
-        MEDIUM = 'medium', 'Medium'
-        HIGH = 'high', 'High'
-        URGENT = 'urgent', 'Urgent'
+        LOW = '0', 'Low'
+        MEDIUM = '1', 'Medium'
+        HIGH = '2', 'High'
+        URGENT = '3', 'Very High'
 
-    # Identity
-    title = models.CharField(max_length=200)
+    # Identity & Classification
+    title = models.CharField(max_length=200, help_text='Lead or Opportunity title')
     reference = models.CharField(max_length=50, unique=True)
+    is_lead = models.BooleanField(default=True, help_text='False once converted to an Opportunity')
 
-    # Relationships
-    contact = models.ForeignKey(Contact, on_delete=models.CASCADE, related_name='opportunities')
+    # Lead-specific fields (when no Contact is linked yet)
+    contact_name = models.CharField(max_length=200, blank=True)
+    partner_name = models.CharField(max_length=200, blank=True, help_text='Company Name')
+    email_from = models.EmailField(blank=True, db_index=True)
+    phone = models.CharField(max_length=20, blank=True)
+    mobile = models.CharField(max_length=20, blank=True)
+
+    # Core Relationships
+    contact = models.ForeignKey(Contact, on_delete=models.SET_NULL, null=True, blank=True, related_name='contact_opportunities')
     property = models.ForeignKey(
         'properties.Property', null=True, blank=True,
         on_delete=models.SET_NULL, related_name='opportunities'
@@ -191,33 +364,130 @@ class Opportunity(AuditedModel):
         'hr.Employee', null=True, blank=True,
         on_delete=models.SET_NULL, related_name='opportunities'
     )
+    sales_team = models.ForeignKey(
+        SalesTeam, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='opportunities'
+    )
 
     currency = models.ForeignKey('core.Currency', on_delete=models.PROTECT, related_name='opportunities', null=True, blank=True)
+    tags = models.ManyToManyField(CrmTag, blank=True, related_name='opportunities')
 
-    # Details
+    # Financials
     priority = models.CharField(max_length=10, choices=Priority.choices, default=Priority.MEDIUM)
-    expected_value = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
-    expected_close_date = models.DateField(null=True, blank=True)
+    expected_revenue = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
     probability = models.PositiveSmallIntegerField(default=0)
-    notes = models.TextField(blank=True)
-    lost_reason = models.CharField(max_length=300, blank=True)
+    expected_closing = models.DateField(null=True, blank=True)
 
-    # Kanban position (for manual reordering within a stage)
+    # Closing Info
+    date_closed = models.DateTimeField(null=True, blank=True)
+    lost_reason = models.ForeignKey(
+        LostReason, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='opportunities',
+        help_text='Normalised reason why deal was lost'
+    )
+    lost_reason_text = models.CharField(
+        max_length=300, blank=True,
+        help_text='Free-text override or additional notes on loss reason'
+    )
+
+    # SLA Tracking
+    last_activity_at = models.DateTimeField(null=True, blank=True)
+    stage_entered_at = models.DateTimeField(default=timezone.now)
+
+    # Kanban position
     position = models.PositiveIntegerField(default=0)
 
     class Meta:
         db_table = 'crm_opportunities'
         ordering = ['stage__position', 'position']
+        verbose_name_plural = 'opportunities'
         indexes = [models.Index(fields=['stage', 'position'])]
 
     def __str__(self):
         return f'{self.reference} - {self.title}'
 
+    def save(self, *args, **kwargs):
+        if not self.reference:
+            prefix = 'LD' if self.is_lead else 'OP'
+            import datetime
+            self.reference = f"{prefix}-{datetime.datetime.now().strftime('%y%m')}-{uuid.uuid4().hex[:6].upper()}"
+        
+        # Track stage entries
+        if self.pk:
+            old_obj = self.__class__.objects.get(pk=self.pk)
+            if old_obj.stage != self.stage:
+                from django.utils import timezone
+                self.stage_entered_at = timezone.now()
+
+        super().save(*args, **kwargs)
+
+    def convert_to_opportunity(self, partner_id=None):
+        """Converts lead to opportunity, optionally linking to a partner."""
+        self.is_lead = False
+        if partner_id:
+            self.contact_id = partner_id
+        self.save()
+
+    def mark_won(self):
+        """Move opportunity to the Won terminal stage."""
+        from django.utils import timezone
+        won_stage = PipelineStage.objects.filter(pipeline=self.pipeline, is_won=True).first()
+        if won_stage:
+            self.stage = won_stage
+        self.is_lead = False
+        self.probability = 100
+        self.date_closed = timezone.now()
+        self.save(update_fields=['stage', 'is_lead', 'probability', 'date_closed'])
+
+    def mark_lost(self, reason=None, reason_text=''):
+        """Move opportunity to the Lost terminal stage."""
+        from django.utils import timezone
+        lost_stage = PipelineStage.objects.filter(
+            pipeline=self.pipeline, is_terminal=True, is_won=False
+        ).first()
+        if lost_stage:
+            self.stage = lost_stage
+        self.probability = 0
+        self.date_closed = timezone.now()
+        if reason:
+            self.lost_reason = reason
+        self.lost_reason_text = reason_text
+        self.save(update_fields=['stage', 'probability', 'date_closed', 'lost_reason', 'lost_reason_text'])
+
+    @builtins.property
+    def is_stale(self):
+        """Check if deal has exceeded stage SLA."""
+        if not self.stage.sla_days or not self.stage_entered_at:
+            return False
+        from django.utils import timezone
+        delta = timezone.now() - self.stage_entered_at
+        return delta.days >= self.stage.sla_days
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Notes & Activities (Chatter)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class CrmNote(AuditedModel):
+    """
+    Chatter thread messages / notes.
+    """
+    opportunity = models.ForeignKey(Opportunity, on_delete=models.CASCADE, related_name='opportunity_notes', null=True, blank=True)
+    contact = models.ForeignKey(Contact, on_delete=models.CASCADE, related_name='contact_notes', null=True, blank=True)
+    body = models.TextField()
+    is_internal = models.BooleanField(default=True)
+    attachment = models.FileField(upload_to='crm/attachments/', null=True, blank=True)
+
+    class Meta:
+        db_table = 'crm_notes'
+        ordering = ['-created_at']
+
 
 class Activity(AuditedModel):
     """
-    Activity log for contacts and opportunities.
+    Activity log for leads and opportunities.
     Tracks calls, emails, viewings, meetings, tasks.
+    Includes optional email template linkage.
     """
 
     class ActivityType(models.TextChoices):
@@ -235,18 +505,33 @@ class Activity(AuditedModel):
         CANCELLED = 'cancelled', 'Cancelled'
         OVERDUE = 'overdue', 'Overdue'
 
-    contact = models.ForeignKey(Contact, null=True, blank=True, on_delete=models.CASCADE, related_name='activities')
-    opportunity = models.ForeignKey(Opportunity, null=True, blank=True, on_delete=models.CASCADE, related_name='activities')
-    property = models.ForeignKey('properties.Property', null=True, blank=True, on_delete=models.SET_NULL)
+    opportunity = models.ForeignKey(Opportunity, on_delete=models.CASCADE, related_name='opportunity_activities', null=True, blank=True)
+    contact = models.ForeignKey(Contact, on_delete=models.CASCADE, related_name='contact_activities', null=True, blank=True)
     activity_type = models.CharField(max_length=20, choices=ActivityType.choices)
     status = models.CharField(max_length=20, choices=ActivityStatus.choices, default=ActivityStatus.PLANNED)
     subject = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     due_date = models.DateTimeField(null=True, blank=True)
     completed_date = models.DateTimeField(null=True, blank=True)
-    duration_minutes = models.PositiveSmallIntegerField(null=True, blank=True)
     assigned_to = models.ForeignKey('hr.Employee', null=True, blank=True, on_delete=models.SET_NULL)
+
+    # Email template linkage
+    email_template = models.ForeignKey(
+        EmailTemplate, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='activities'
+    )
 
     class Meta:
         db_table = 'crm_activities'
-        ordering = ['-created_at']
+        ordering = ['-due_date']
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Update last activity timestamp on target
+        from django.utils import timezone
+        if self.opportunity:
+            self.opportunity.last_activity_at = timezone.now()
+            self.opportunity.save(update_fields=['last_activity_at'])
+        if self.contact:
+            self.contact.last_activity_at = timezone.now()
+            self.contact.save(update_fields=['last_activity_at'])

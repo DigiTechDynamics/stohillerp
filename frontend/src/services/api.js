@@ -1,4 +1,4 @@
-// Stohil Properties - API Service Layer
+// Stohill Properties - API Service Layer
 import axios from 'axios'
 import { useAuthStore } from '@/stores/authStore'
 
@@ -69,19 +69,65 @@ export const crmAPI = {
     create: (data) => api.post('crm/contacts/', data),
     update: (id, data) => api.patch(`crm/contacts/${id}/`, data),
     delete: (id) => api.delete(`crm/contacts/${id}/`),
+    duplicateCheck: (params) => api.get('crm/contacts/duplicate_check/', { params }),
+    recomputeScore: (id) => api.post(`crm/contacts/${id}/recompute_score/`),
   },
   opportunities: {
     list: (params) => api.get('crm/opportunities/', { params }),
-    kanban: (pipelineId) => api.get('crm/opportunities/kanban/', { params: pipelineId ? { pipeline: pipelineId } : {} }),
-    moveStage: (id, stageId) => api.post(`crm/opportunities/${id}/move_stage/`, { stage_id: stageId }),
+    kanban: (params) => api.get('crm/opportunities/kanban/', { params }),
+    detail: (id) => api.get(`crm/opportunities/${id}/`),
     create: (data) => api.post('crm/opportunities/', data),
     update: (id, data) => api.patch(`crm/opportunities/${id}/`, data),
+    delete: (id) => api.delete(`crm/opportunities/${id}/`),
+    moveStage: (id, stageId) => api.post(`crm/opportunities/${id}/move_stage/`, { stage_id: stageId }),
+    convertToOpportunity: (id, contactId) => api.post(`crm/opportunities/${id}/convert_to_opportunity/`, { contact_id: contactId }),
+    markWon: (id) => api.post(`crm/opportunities/${id}/mark_won/`),
+    markLost: (id, reasonId, reasonText) => api.post(`crm/opportunities/${id}/mark_lost/`, { reason_id: reasonId, reason_text: reasonText }),
+    bulkAction: (data) => api.post('crm/opportunities/bulk_action/', data),
+    duplicateCheck: (params) => api.get('crm/opportunities/duplicate_check/', { params }),
   },
-  pipelines: { list: () => api.get('crm/pipelines/') },
+  pipelines: { 
+    list: () => api.get('crm/pipelines/'),
+    create: (data) => api.post('crm/pipelines/', data),
+    update: (id, data) => api.patch(`crm/pipelines/${id}/`, data),
+    delete: (id) => api.delete(`crm/pipelines/${id}/`),
+    stages: {
+      create: (data) => api.post('crm/pipeline-stages/', data),
+      update: (id, data) => api.patch(`crm/pipeline-stages/${id}/`, data),
+      delete: (id) => api.delete(`crm/pipeline-stages/${id}/`),
+    }
+  },
   activities: {
     list: (params) => api.get('crm/activities/', { params }),
     create: (data) => api.post('crm/activities/', data),
     update: (id, data) => api.patch(`crm/activities/${id}/`, data),
+    complete: (id) => api.post(`crm/activities/${id}/complete/`),
+  },
+  tags: {
+    list: () => api.get('crm/tags/'),
+    create: (data) => api.post('crm/tags/', data),
+  },
+  notes: {
+    list: (params) => api.get('crm/notes/', { params }),
+    create: (data) => api.post('crm/notes/', data),
+  },
+  lostReasons: {
+    list: () => api.get('crm/lost-reasons/'),
+    create: (data) => api.post('crm/lost-reasons/', data),
+    update: (id, data) => api.patch(`crm/lost-reasons/${id}/`, data),
+  },
+  emailTemplates: {
+    list: () => api.get('crm/email-templates/'),
+    create: (data) => api.post('crm/email-templates/', data),
+    update: (id, data) => api.patch(`crm/email-templates/${id}/`, data),
+    delete: (id) => api.delete(`crm/email-templates/${id}/`),
+  },
+  reports: {
+    overview: (pipelineId) => api.get('crm/reports/', { params: { type: 'overview', pipeline: pipelineId || undefined } }),
+    pipeline: (pipelineId) => api.get('crm/reports/', { params: { type: 'pipeline', pipeline: pipelineId || undefined } }),
+    forecast: () => api.get('crm/reports/', { params: { type: 'forecast' } }),
+    winLoss: (pipelineId) => api.get('crm/reports/', { params: { type: 'win_loss', pipeline: pipelineId || undefined } }),
+    activities: () => api.get('crm/reports/', { params: { type: 'activities' } }),
   },
 }
 
@@ -91,6 +137,7 @@ export const salesAPI = {
   create: (data) => api.post('sales/transactions/', data),
   update: (id, data) => api.patch(`sales/transactions/${id}/`, data),
   postToFinance: (id) => api.post(`sales/transactions/${id}/post_to_finance/`),
+  confirmDeal: (id) => api.post(`sales/transactions/${id}/confirm_deal/`),
 }
 
 export const rentalsAPI = {
@@ -177,7 +224,7 @@ export const financeAPI = {
       api.get('finance/reports/vat-return/', { params: { from_date: fromDate, to_date: toDate } }),
     export: (reportId, format, params) => 
       api.get(`finance/reports/export/${reportId}/`, { 
-        params: { ...params, format },
+        params: { ...params, export_format: format },
         responseType: 'blob'
       }),
   },
@@ -230,11 +277,13 @@ export const financeAPI = {
       list: (params) => api.get('finance/customers/', { params }),
       detail: (id) => api.get(`finance/customers/${id}/`),
       create: (data) => api.post('finance/customers/', data),
+      update: (id, data) => api.patch(`finance/customers/${id}/`, data),
     },
     invoices: {
       list: (params) => api.get('finance/customer-invoices/', { params }),
       detail: (id) => api.get(`finance/customer-invoices/${id}/`),
       create: (data) => api.post('finance/customer-invoices/', data),
+      update: (id, data) => api.patch(`finance/customer-invoices/${id}/`, data),
       post: (id) => api.post(`finance/customer-invoices/${id}/post_invoice/`),
       email: (id) => api.post(`finance/customer-invoices/${id}/email_invoice/`),
     },
@@ -261,7 +310,8 @@ export const financeAPI = {
   },
   transactions: {
     list: (params) => api.get('finance/transactions/', { params }),
-  }
+  },
+  summary: () => api.get('finance/summary/'),
 }
 
 export const bankingAPI = {
@@ -317,6 +367,7 @@ export const hrAPI = {
     detail: (id) => api.get(`hr/employees/${id}/`),
     create: (data) => api.post('hr/employees/', data),
     update: (id, data) => api.patch(`hr/employees/${id}/`, data),
+    statement: (id) => api.get(`hr/employees/${id}/statement/`),
   },
   departments: { 
     list: () => api.get('hr/departments/'),
