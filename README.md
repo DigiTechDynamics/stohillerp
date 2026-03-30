@@ -4,6 +4,13 @@ A production-grade, full-stack Enterprise Resource Planning (ERP) system for rea
 
 ---
 
+## ✨ Key Features
+- **Modern UI/UX**: Comprehensive Dark/Light mode support with a premium, responsive interface using Tailwind CSS.
+- **Robust Architecture**: "Zero-Crash" React Error Boundaries and null-safe data access for maximum stability.
+- **Regional Flexibility**: Support for regional localizations, multi-currency (including USD), and customizable tax configurations.
+
+---
+
 ## 🏗️ Architecture Overview
 
 ```
@@ -114,7 +121,11 @@ Open: **http://localhost:5173**
 
 ### 2. CRM Pipeline with Kanban
 - Contact management (Buyers, Sellers, Tenants, Investors)
-- Visual Kanban board with drag-friendly stage management
+- Visual Kanban board with drag-friendly stage management and **SLA Tracking** for stale deals
+- Inbound Lead API (Web-to-Lead ingestion) for property portal integrations
+- KYC & Document Vault with a structured verification workflow
+- Visual Team Calendar for scheduling viewings, meetings, and follow-ups
+- Territory and Sales Team management
 - Activity log: calls, emails, viewings, tasks
 - Lead rating (Hot/Warm/Cold) and source tracking
 
@@ -139,7 +150,7 @@ Open: **http://localhost:5173**
 - Fiscal period locking prevents backdating
 - All module transactions auto-post via `AccountingService`
 
-**Account Structure (South African CoA):**
+**Account Structure (Standard CoA):**
 ```
 1xxx - Assets      (Bank, Receivables, Fixed Assets)
 2xxx - Liabilities (Payables, VAT, Deposits, Bonds)
@@ -265,9 +276,9 @@ npm run build
 - **UUID keys:** All models use UUID primary keys for security
 - **Transactions:** Finance operations wrapped in `@transaction.atomic`
 - **Immutability:** Posted journal entries raise `ValidationError` on save attempt
-- **SA Tax Year:** Fiscal year runs March 1 – February 28 (South Africa)
-- **VAT:** 15% South African VAT applied to commercial leases and commissions
+- **Configurable Fiscal Year:** Fiscal year dates can be adapted to match regional tax requirements.
+- **Localization:** Support for multiple currencies (e.g., ZAR, USD) and configurable VAT/Tax rates applied to commercial leases and commissions.
 
 ---
 
-*Stohill Properties — Built for South African real estate professionals*
+*Stohill Properties — Built for modern real estate professionals*
