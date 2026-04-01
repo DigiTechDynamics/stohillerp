@@ -265,6 +265,20 @@ class JournalBatch(AuditedModel):
     def is_balanced(self):
         return self.total_debits == self.total_credits
 
+    def recalculate_totals(self):
+        """
+        Recalculate total debits and credits from all entries in this batch.
+        Updates the model fields directly.
+        """
+        from django.db.models import Sum
+        totals = self.entries.aggregate(
+            debits=Sum('lines__amount', filter=models.Q(lines__side='debit')),
+            credits=Sum('lines__amount', filter=models.Q(lines__side='credit'))
+        )
+        self.total_debits = totals['debits'] or Decimal('0.00')
+        self.total_credits = totals['credits'] or Decimal('0.00')
+        self.save(update_fields=['total_debits', 'total_credits'])
+
     def save(self, *args, **kwargs):
         if not self.batch_number:
             from apps.core.services.number_sequence import NumberSequenceService
@@ -309,7 +323,7 @@ class JournalEntry(AuditedModel):
 
     # Reference
     reference = models.CharField(max_length=50, unique=True, db_index=True)
-    batch = models.ForeignKey(JournalBatch, null=True, blank=True, on_delete=models.PROTECT, related_name='entries')
+    batch = models.ForeignKey(JournalBatch, null=True, blank=True, on_delete=models.CASCADE, related_name='entries')
     journal = models.ForeignKey(Journal, on_delete=models.PROTECT, related_name='entries')
     fiscal_period = models.ForeignKey(FiscalPeriod, on_delete=models.PROTECT, related_name='entries')
     currency = models.ForeignKey('core.Currency', on_delete=models.PROTECT, related_name='entries', null=True)
@@ -373,13 +387,29 @@ class JournalEntry(AuditedModel):
         if self.status == self.EntryStatus.POSTED:
             raise ValidationError('Cannot modify a posted journal entry. Create a reversal instead.')
 
-    def save(self, *args, **kwargs):
+        if not self.reference:
+            from apps.core.services.number_sequence import NumberSequenceService
+            prefix = f"{self.journal.code}-" if self.journal else "JNL-"
+            self.reference = NumberSequenceService.get_next_number(
+                f"Journal {self.journal.code if self.journal else 'General'}",
+                prefix=prefix,
+                padding=6
+            )
+
         if self.pk:
             # Prevent modification of posted entries (immutability rule)
             original = JournalEntry.objects.filter(pk=self.pk).first()
             if original and original.status == self.EntryStatus.POSTED:
                 raise ValidationError('Posted journal entries are immutable.')
         super().save(*args, **kwargs)
+        if self.batch:
+            self.batch.recalculate_totals()
+
+    def delete(self, *args, **kwargs):
+        batch = self.batch
+        super().delete(*args, **kwargs)
+        if batch:
+            batch.recalculate_totals()
 
 
 class JournalLine(models.Model):
@@ -426,6 +456,17 @@ class JournalLine(models.Model):
     def clean(self):
         if self.amount <= 0:
             raise ValidationError('Journal line amount must be positive.')
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.entry and self.entry.batch:
+            self.entry.batch.recalculate_totals()
+
+    def delete(self, *args, **kwargs):
+        batch = self.entry.batch if self.entry else None
+        super().delete(*args, **kwargs)
+        if batch:
+            batch.recalculate_totals()
 
 
 # ─── Financial Reporting Views (computed) ─────────────────────────────────────

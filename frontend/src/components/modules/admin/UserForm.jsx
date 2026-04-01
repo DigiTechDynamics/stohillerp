@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { authAPI, adminAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
+import { toast } from 'react-hot-toast'
 
 export default function UserForm({ id, initialData }) {
   const closePanel = useUIStore(s => s.closeSidePanel)
@@ -34,13 +35,33 @@ export default function UserForm({ id, initialData }) {
     mutationFn: (data) => id ? adminAPI.users.update(id, data) : adminAPI.users.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+      toast.success(id ? 'User account updated successfully' : 'New user created successfully')
       closePanel()
+    },
+    onError: (err) => {
+      const msg = err.response?.data?.detail || 'An unexpected error occurred'
+      toast.error(msg)
     }
   })
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    mutation.mutate(formData)
+    
+    // Create a clean payload for the API
+    // Strip out read-only fields and nested objects that DRF might reject
+    const { 
+      id: _id,
+      roles, 
+      full_name, 
+      date_joined, 
+      last_login, 
+      sod_conflicts, 
+      accessible_modules, 
+      is_superuser,
+      ...cleanData 
+    } = formData
+
+    mutation.mutate(cleanData)
   }
 
   const toggleRole = (roleId) => {

@@ -42,6 +42,8 @@ export default function JournalBatchGrid() {
     description: '',
   })
 
+  const [deletedEntryIds, setDeletedEntryIds] = useState([])
+
   const initialLine = { id: null, date: new Date().toISOString().split('T')[0], reference: '', account: null, offsetAccount: null, description: '', currency: '', debit: 0, credit: 0 }
   const [lines, setLines] = useState([{ ...initialLine }])
 
@@ -80,10 +82,20 @@ export default function JournalBatchGrid() {
   }, [entriesRes])
 
   const addLine = () => setLines([...lines, { ...initialLine, date: lines[lines.length-1]?.date || initialLine.date, currency: lines[lines.length-1]?.currency || '' }])
+  
   const removeLine = (index) => {
-    if (lines.length <= 1) return
-    setLines(lines.filter((_, i) => i !== index))
+    const lineToRemove = lines[index]
+    if (lineToRemove.id) {
+      setDeletedEntryIds(prev => [...prev, lineToRemove.id])
+    }
+    const newLines = lines.filter((_, i) => i !== index)
+    if (newLines.length === 0) {
+        setLines([{ ...initialLine }])
+    } else {
+        setLines(newLines)
+    }
   }
+
   const updateLine = (index, field, value) => {
     const newLines = [...lines]
     newLines[index] = { ...newLines[index], [field]: value }
@@ -104,6 +116,7 @@ export default function JournalBatchGrid() {
   const updateBatchMut = useMutation({ mutationFn: (params) => financeAPI.batches.update(params.id, params.data) })
   const createEntryMut = useMutation({ mutationFn: (data) => financeAPI.entries.create(data) })
   const updateEntryMut = useMutation({ mutationFn: (params) => financeAPI.entries.update(params.id, params.data) })
+  const deleteEntryMut = useMutation({ mutationFn: (id) => financeAPI.entries.delete(id) })
   const submitMut = useMutation({ mutationFn: (id) => financeAPI.batches.submit(id) })
 
   const handleSave = async (submitForApproval = false) => {
@@ -112,7 +125,9 @@ export default function JournalBatchGrid() {
     if (!batchData.description) return setError('Please provide a Batch Description.')
 
     const validLines = lines.filter(l => l.account && (parseFloat(l.debit) > 0 || parseFloat(l.credit) > 0))
-    if (validLines.length === 0) return setError('At least one valid line entry is required.')
+    if (validLines.length === 0 && deletedEntryIds.length === 0) {
+        return setError('At least one valid line entry is required.')
+    }
 
     try {
       // 1. Save or Update Batch
@@ -124,7 +139,13 @@ export default function JournalBatchGrid() {
           await updateBatchMut.mutateAsync({ id: batchId, data: batchData })
       }
 
-      // 2. Process Entries (Each Row is an Entry)
+      // 2. Delete entries that were removed from the grid
+      if (deletedEntryIds.length > 0) {
+          await Promise.all(deletedEntryIds.map(id => deleteEntryMut.mutateAsync(id)))
+          setDeletedEntryIds([])
+      }
+
+      // 3. Process Entries (Each Row is an Entry)
       const promises = validLines.map(async (row) => {
           const side = parseFloat(row.debit) > 0 ? 'debit' : 'credit'
           const amount = parseFloat(row.debit) > 0 ? parseFloat(row.debit) : parseFloat(row.credit)
@@ -158,12 +179,13 @@ export default function JournalBatchGrid() {
 
       await Promise.all(promises)
 
-      // 3. Submit if requested
+      // 4. Submit if requested
       if (submitForApproval) {
           await submitMut.mutateAsync(batchId)
       }
 
       queryClient.invalidateQueries({ queryKey: ['journal-batches'] })
+      queryClient.invalidateQueries({ queryKey: ['journal-entries-batch', batchId] })
       navigate('/finance/entries')
 
     } catch (err) {
@@ -171,11 +193,22 @@ export default function JournalBatchGrid() {
     }
   }
 
+  const clearLine = (index) => {
+    const newLines = [...lines]
+    newLines[index] = { ...initialLine, date: lines[index].date }
+    setLines(newLines)
+  }
+
   // Handle Tab key for quick insertion
   const handleKeyDown = (e, idx) => {
-      if (e.key === 'Tab' && idx === lines.length - 1 && document.activeElement.name === 'credit') {
+      if (e.key === 'Tab' && !e.shiftKey && idx === lines.length - 1 && e.target.name === 'credit') {
           e.preventDefault()
           addLine()
+          // Focus the next row's date field after a short delay
+          setTimeout(() => {
+              const inputs = document.querySelectorAll('input[type="date"]')
+              if (inputs[idx + 1]) inputs[idx + 1].focus()
+          }, 0)
       }
   }
 
@@ -193,7 +226,7 @@ export default function JournalBatchGrid() {
             <h1 className="text-2xl font-display text-white tracking-tight">
               {isEditing ? 'Edit Batch' : 'Batch Data Entry Grid'}
             </h1>
-            <p className="text-dark-400 text-sm mt-1">High-speed keyboard-friendly data entry</p>
+            <p className="text-dark-400 text-sm mt-1">High-speed keyboard-friendly data entry • <span className="text-primary font-bold">ALT + N</span> to add row</p>
           </div>
         </div>
         
@@ -239,13 +272,13 @@ export default function JournalBatchGrid() {
               <thead className="bg-dark-800/80 sticky top-0 z-10 backdrop-blur-md">
                 <tr className="text-[10px] text-dark-500 uppercase font-bold border-b border-white/5">
                   <th className="px-3 py-3 w-32">Date</th>
-                  <th className="px-3 py-3 w-40">Main Account</th>
-                  <th className="px-3 py-3 w-40">Contra Account</th>
-                  <th className="px-3 py-3">Line Description</th>
+                  <th className="px-3 py-3 w-56">Main Account</th>
+                  <th className="px-3 py-3 w-56">Contra Account (Offset)</th>
+                  <th className="px-3 py-3 min-w-[200px]">Line Narration</th>
                   <th className="px-3 py-3 w-28">Currency</th>
                   <th className="px-3 py-3 w-32 text-right">Debit</th>
                   <th className="px-3 py-3 w-32 text-right">Credit</th>
-                  <th className="px-3 py-3 w-10"></th>
+                  <th className="px-3 py-3 w-16"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 bg-transparent overflow-y-auto">
@@ -255,25 +288,21 @@ export default function JournalBatchGrid() {
                        <input type="date" className="form-input w-full text-sm border-transparent hover:border-white/10 focus:border-primary bg-transparent text-white" 
                               value={line.date} onChange={(e) => updateLine(idx, 'date', e.target.value)} />
                     </td>
-                    <td className="p-1 relative">
-                       <div className="w-full rounded border border-transparent hover:border-white/10 focus-within:border-primary">
-                           <AccountCombobox value={line.account} onChange={(val) => updateLine(idx, 'account', val)} placeholder="Account..." />
-                       </div>
-                    </td>
-                    <td className="p-1 relative">
-                       <div className="w-full rounded border border-transparent hover:border-white/10 focus-within:border-primary">
-                           <AccountCombobox value={line.offsetAccount} onChange={(val) => updateLine(idx, 'offsetAccount', val)} placeholder="Contra..." />
-                       </div>
+                    <td className="p-1">
+                        <AccountCombobox value={line.account} onChange={(val) => updateLine(idx, 'account', val)} placeholder="Search account..." />
                     </td>
                     <td className="p-1">
-                       <input type="text" className="form-input w-full text-sm border-transparent hover:border-white/10 focus:border-primary bg-transparent" placeholder="Narration..." 
+                        <AccountCombobox value={line.offsetAccount} onChange={(val) => updateLine(idx, 'offsetAccount', val)} placeholder="Search offset..." />
+                    </td>
+                    <td className="p-1">
+                       <input type="text" className="form-input w-full text-sm border-transparent hover:border-white/10 focus:border-primary bg-transparent" placeholder="Line description..." 
                               value={line.description} onChange={(e) => updateLine(idx, 'description', e.target.value)} />
                     </td>
                     <td className="p-1">
                         <select className="form-input w-full text-sm border-transparent hover:border-white/10 focus:border-primary bg-transparent" 
                                 value={line.currency} onChange={(e) => updateLine(idx, 'currency', e.target.value)}>
-                            <option value="">Base</option>
-                            {currencies.map(c => <option key={c.id} value={c.id}>{c.code}</option>)}
+                            <option value="">(Base)</option>
+                            {currencies.map(c => <option key={c.id} value={c.name}>{c.code}</option>)}
                         </select>
                     </td>
                     <td className="p-1">
@@ -285,18 +314,31 @@ export default function JournalBatchGrid() {
                                placeholder="0.00" value={line.credit || ''} onChange={(e) => updateLine(idx, 'credit', e.target.value)} onKeyDown={(e) => handleKeyDown(e, idx)} />
                     </td>
                     <td className="p-1 text-center">
-                        <button onClick={() => removeLine(idx)} className="p-1.5 text-dark-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-0" title="Remove row">
-                          <Trash2 size={14} />
-                        </button>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => clearLine(idx)} className="p-1 text-dark-600 hover:text-amber-500" title="Clear line">
+                                <Calculator size={14} />
+                            </button>
+                            <button onClick={() => removeLine(idx)} className="p-1 text-dark-600 hover:text-red-500" title="Delete line">
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
          </div>
-         <button onClick={addLine} className="w-full py-2.5 text-xs font-bold text-dark-500 hover:text-primary hover:bg-white/2 transition-all flex items-center justify-center gap-2 border-t border-white/5 uppercase tracking-widest bg-dark-800">
-            <Plus size={14} /> Add Row (or press Tab on last cell)
-         </button>
+         <div className="flex items-center justify-between px-4 py-2 bg-dark-800 border-t border-white/10 shrink-0">
+             <button onClick={addLine} className="text-xs font-bold text-primary hover:text-white transition-colors flex items-center gap-2 uppercase tracking-widest">
+                <Plus size={14} /> Add Row
+             </button>
+             <div className="flex items-center gap-6 text-[11px] font-bold text-dark-500 uppercase tracking-widest font-mono">
+                <span>Row Count: {lines.length}</span>
+                <span className={totals.debit === totals.credit ? 'text-emerald-500' : 'text-red-500'}>
+                    Diff: {formatCurrency(Math.abs(totals.debit - totals.credit))}
+                </span>
+             </div>
+         </div>
       </div>
     </div>
   )

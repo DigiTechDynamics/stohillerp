@@ -44,8 +44,13 @@ api.interceptors.response.use(
 
 export const authAPI = {
   login: (email, password) => api.post('auth/login/', { email, password }),
+  forgotPassword: (email) => api.post('auth/forgot-password/', { email }),
+  resetPassword: (uid, token, new_password) => api.post('auth/reset-password/', { uid, token, new_password }),
   me: () => api.get('core/me/'),
-  updateMe: (data) => api.patch('core/me/', data),
+  updateMe: (data) => {
+    const headers = data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}
+    return api.patch('core/me/', data, { headers })
+  },
   currencies: {
     list: (params) => api.get('core/currencies/', { params }),
   },
@@ -367,6 +372,19 @@ export const documentsAPI = {
   list: (params) => api.get('documents/', { params }),
   detail: (id) => api.get(`documents/${id}/`),
   upload: (formData) => api.post('documents/', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  update: (id, data) => api.patch(`documents/${id}/`, data),
+  delete: (id) => api.delete(`documents/${id}/`),
+  workspaces: {
+    list: (params) => api.get('documents/workspaces/', { params }),
+    create: (data) => api.post('documents/workspaces/', data),
+  },
+  categories: {
+    list: (params) => api.get('documents/categories/', { params }),
+  },
+  tags: {
+    list: (params) => api.get('documents/tags/', { params }),
+    create: (data) => api.post('documents/tags/', data),
+  },
   compliance: { list: (params) => api.get('documents/compliance/', { params }) },
 }
 

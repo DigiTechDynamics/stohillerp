@@ -28,10 +28,12 @@ from apps.crm.serializers import (
 # ─────────────────────────────────────────────────────────────────────────────
 
 class SalesTeamViewSet(viewsets.ModelViewSet):
-    queryset = SalesTeam.objects.all()
-    serializer_class = SalesTeamSerializer
-    permission_classes = [IsAuthenticated]
-    pagination_class = None
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_superuser or user.has_role('super_admin') or user.has_role('admin'):
+            return SalesTeam.objects.all()
+        # Managers see their own teams
+        return SalesTeam.objects.filter(Q(team_leader=user) | Q(members=user)).distinct()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -39,13 +41,19 @@ class SalesTeamViewSet(viewsets.ModelViewSet):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class ContactViewSet(viewsets.ModelViewSet):
-    queryset = Contact.objects.select_related('assigned_agent', 'sales_team').order_by('last_name')
-    serializer_class = ContactSerializer
-    permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['contact_type', 'status', 'rating', 'assigned_agent', 'sales_team']
-    search_fields = ['first_name', 'last_name', 'email', 'phone_mobile', 'company']
-    ordering_fields = ['first_name', 'last_name', 'company', 'created_at', 'lead_score', 'last_activity_at']
+    def get_queryset(self):
+        user = self.request.user
+        base_qs = Contact.objects.select_related('assigned_agent', 'sales_team').order_by('last_name')
+        
+        if user.is_superuser or user.has_role('super_admin') or user.has_role('admin'):
+            return base_qs
+        
+        # Agents see their assigned contacts OR contacts in their team (if manager)
+        return base_qs.filter(
+            Q(assigned_agent=user) | 
+            Q(sales_team__team_leader=user) |
+            Q(sales_team__members=user)
+        ).distinct()
 
     @action(detail=False, methods=['get'])
     def duplicate_check(self, request):
@@ -134,15 +142,20 @@ class EmailTemplateViewSet(viewsets.ModelViewSet):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class OpportunityViewSet(viewsets.ModelViewSet):
-    queryset = Opportunity.objects.select_related(
-        'contact', 'property', 'stage', 'assigned_agent', 'lost_reason', 'pipeline', 'sales_team'
-    ).prefetch_related('tags', 'opportunity_activities', 'opportunity_notes')
-    serializer_class = OpportunitySerializer
-    permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['pipeline', 'stage', 'priority', 'assigned_agent', 'is_lead', 'sales_team']
-    search_fields = ['title', 'reference', 'contact__first_name', 'contact__last_name', 'contact_name', 'email_from']
-    ordering_fields = ['created_at', 'expected_revenue', 'expected_closing', 'probability', 'last_activity_at']
+    def get_queryset(self):
+        user = self.request.user
+        base_qs = Opportunity.objects.select_related(
+            'contact', 'property', 'stage', 'assigned_agent', 'lost_reason', 'pipeline', 'sales_team'
+        ).prefetch_related('tags', 'opportunity_activities', 'opportunity_notes')
+
+        if user.is_superuser or user.has_role('super_admin') or user.has_role('admin'):
+            return base_qs
+
+        return base_qs.filter(
+            Q(assigned_agent=user) | 
+            Q(sales_team__team_leader=user) |
+            Q(sales_team__members=user)
+        ).distinct()
 
     @action(detail=False, methods=['get'])
     def kanban(self, request):
@@ -189,6 +202,7 @@ class OpportunityViewSet(viewsets.ModelViewSet):
                     'reference': o.reference,
                     'contact_display': o.contact.full_name if o.contact else (o.contact_name or o.email_from or "Unnamed Lead"),
                     'property_ref': o.property.reference_number if o.property else '',
+                    'property_thumbnail': o.property.images.order_by('-is_primary').first().image.url if o.property and o.property.images.exists() else None,
                     'expected_revenue': str(o.expected_revenue or 0),
                     'priority': o.priority,
                     'probability': o.probability,

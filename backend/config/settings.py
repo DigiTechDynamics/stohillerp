@@ -15,6 +15,31 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'stohill-dev-secret-key-change-
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
+# Security Headers Refinement
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'False') == 'True'
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_HSTS_SECONDS = 0 if DEBUG else 31536000 # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
+REFERRER_POLICY = 'strict-origin-when-cross-origin'
+
+# Content Security Policy (CSP) - Updated for django-csp 4.0 format
+CONTENT_SECURITY_POLICY = {
+    "DIRECTIVES": {
+        "default-src": ["'self'"],
+        "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        "font-src": ["'self'", "https://fonts.gstatic.com"],
+        "img-src": ["'self'", "data:", "blob:"],
+        "connect-src": ["'self'", "http://127.0.0.1:8000", "ws://localhost:5173", "http://localhost:5173"],
+        "frame-ancestors": ["'none'"],
+    }
+}
+
 # ─── Applications ─────────────────────────────────────────────────────────────
 DJANGO_APPS = [
     'django.contrib.admin',
@@ -23,6 +48,7 @@ DJANGO_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'csp',
 ]
 
 THIRD_PARTY_APPS = [
@@ -54,6 +80,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + STOHILL_APPS
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'csp.middleware.CSPMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -119,12 +146,20 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '30/minute',   # Protect against brute-force login
+        'user': '1000/minute', # General API usage
+    },
     'EXCEPTION_HANDLER': 'utils.exceptions.custom_exception_handler',
 }
 
 # ─── JWT Configuration ────────────────────────────────────────────────────────
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=8),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
@@ -216,3 +251,6 @@ LOGGING = {
 
 # Create logs directory
 os.makedirs(BASE_DIR / 'logs', exist_ok=True)
+
+# ─── Email ────────────────────────────────────────────────────────────────────
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

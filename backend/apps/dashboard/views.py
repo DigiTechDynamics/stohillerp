@@ -80,9 +80,13 @@ class ExecutiveDashboardView(APIView):
             account__account_type='expense'
         ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
         
+        # Ensure we are working with Decimal types
+        revenue = Decimal(str(revenue))
+        expenses = Decimal(str(expenses))
+        
         operating_margin = 0
         if revenue > 0:
-            operating_margin = round(((revenue - expenses) / revenue) * 100, 1)
+            operating_margin = round(float(((revenue - expenses) / revenue) * 100), 1)
 
         # Commissions KPIs
         commissions_ytd = CommissionRecord.objects.filter(
@@ -138,9 +142,11 @@ class ExecutiveDashboardView(APIView):
         })
 
     def _calc_trend(self, current, previous):
+        current = Decimal(str(current or '0'))
+        previous = Decimal(str(previous or '0'))
         if not previous or previous == 0:
             return 100.0 if current > 0 else 0.0
-        return round(((current - previous) / previous) * 100, 1)
+        return round(float(((current - previous) / previous) * 100), 1)
 
     def _revenue_chart(self):
         from apps.finance.models import JournalLine, JournalEntry

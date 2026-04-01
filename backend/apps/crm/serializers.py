@@ -1,5 +1,6 @@
 """Stohil Properties - CRM Serializers (Odoo CRM parity)"""
 from rest_framework import serializers
+from utils.serializers import SanitizedModelSerializer
 from apps.crm.models import (
     Contact, Opportunity, Pipeline, PipelineStage,
     Activity, CrmTag, CrmNote, LostReason, EmailTemplate,
@@ -7,7 +8,7 @@ from apps.crm.models import (
 )
 
 
-class SalesTeamSerializer(serializers.ModelSerializer):
+class SalesTeamSerializer(SanitizedModelSerializer):
     team_leader_name = serializers.ReadOnlyField(source='team_leader.full_name')
     member_count = serializers.IntegerField(source='members.count', read_only=True)
 
@@ -16,7 +17,7 @@ class SalesTeamSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'team_leader', 'team_leader_name', 'members', 'member_count', 'is_active']
 
 
-class ContactDocumentSerializer(serializers.ModelSerializer):
+class ContactDocumentSerializer(SanitizedModelSerializer):
     verified_by_name = serializers.ReadOnlyField(source='verified_by.full_name')
 
     class Meta:
@@ -25,20 +26,21 @@ class ContactDocumentSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'verified_by']
 
 
-class LostReasonSerializer(serializers.ModelSerializer):
+class LostReasonSerializer(SanitizedModelSerializer):
     class Meta:
         model = LostReason
         fields = ['id', 'name', 'is_active']
 
 
-class EmailTemplateSerializer(serializers.ModelSerializer):
+class EmailTemplateSerializer(SanitizedModelSerializer):
     class Meta:
         model = EmailTemplate
         fields = ['id', 'name', 'subject', 'body', 'created_at']
         read_only_fields = ['created_at']
+        non_sanitized_fields = ['body']
 
 
-class ContactSerializer(serializers.ModelSerializer):
+class ContactSerializer(SanitizedModelSerializer):
     full_name = serializers.ReadOnlyField()
     currency_code = serializers.ReadOnlyField(source='currency.code')
     active_leases = serializers.SerializerMethodField()
@@ -72,19 +74,19 @@ class ContactSerializer(serializers.ModelSerializer):
         return obj.documents.count()
 
 
-class CrmTagSerializer(serializers.ModelSerializer):
+class CrmTagSerializer(SanitizedModelSerializer):
     class Meta:
         model = CrmTag
         fields = ['id', 'name', 'color']
 
 
-class PipelineStageSerializer(serializers.ModelSerializer):
+class PipelineStageSerializer(SanitizedModelSerializer):
     class Meta:
         model = PipelineStage
         fields = ['id', 'name', 'stage_type', 'position', 'color', 'probability', 'is_terminal', 'is_won', 'sla_days']
 
 
-class PipelineSerializer(serializers.ModelSerializer):
+class PipelineSerializer(SanitizedModelSerializer):
     stages = PipelineStageSerializer(many=True, read_only=True)
 
     class Meta:
@@ -92,7 +94,7 @@ class PipelineSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'pipeline_type', 'is_default', 'stages']
 
 
-class CrmNoteSerializer(serializers.ModelSerializer):
+class CrmNoteSerializer(SanitizedModelSerializer):
     author_name = serializers.ReadOnlyField(source='created_by.full_name')
 
     class Meta:
@@ -101,12 +103,13 @@ class CrmNoteSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'author_name']
 
 
-class OpportunitySerializer(serializers.ModelSerializer):
+class OpportunitySerializer(SanitizedModelSerializer):
     contact_display = serializers.SerializerMethodField()
     property_ref = serializers.CharField(source='property.reference_number', read_only=True)
     property_name = serializers.CharField(source='property.name', read_only=True)
     stage_name = serializers.CharField(source='stage.name', read_only=True)
     stage_color = serializers.CharField(source='stage.color', read_only=True)
+    property_thumbnail = serializers.SerializerMethodField()
     currency_code = serializers.ReadOnlyField(source='currency.code')
     tags_display = CrmTagSerializer(source='tags', many=True, read_only=True)
     next_activity_date = serializers.SerializerMethodField()
@@ -127,6 +130,15 @@ class OpportunitySerializer(serializers.ModelSerializer):
         if obj.contact:
             return obj.contact.full_name
         return obj.contact_name or obj.email_from or "Unnamed Lead"
+
+    def get_property_thumbnail(self, obj):
+        if obj.property:
+            primary_img = obj.property.images.filter(is_primary=True).first()
+            if primary_img:
+                return primary_img.image.url
+            first_img = obj.property.images.first()
+            return first_img.image.url if first_img else None
+        return None
 
     def get_next_activity_date(self, obj):
         activity = obj.opportunity_activities.filter(status='planned').order_by('due_date').first()
@@ -168,7 +180,7 @@ class OpportunitySerializer(serializers.ModelSerializer):
         return note.body if note else ''
 
 
-class ActivitySerializer(serializers.ModelSerializer):
+class ActivitySerializer(SanitizedModelSerializer):
     assigned_to_name = serializers.ReadOnlyField(source='assigned_to.full_name')
     email_template_name = serializers.ReadOnlyField(source='email_template.name')
 

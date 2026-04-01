@@ -54,6 +54,7 @@ class Lease(AuditedModel):
     payment_due_days = models.PositiveSmallIntegerField(default=3)
     next_invoice_date = models.DateField(null=True, blank=True)
     last_invoiced_date = models.DateField(null=True, blank=True)
+    last_escalation_date = models.DateField(null=True, blank=True, help_text="Most recent date an annual rent increase was applied")
 
     # Agent
     managing_agent = models.ForeignKey(
@@ -62,6 +63,32 @@ class Lease(AuditedModel):
     )
 
     notes = models.TextField(blank=True)
+
+    def calculate_next_invoice_date(self, after_date=None):
+        """
+        Determines the next billing date based on the invoice_day.
+        Defaults to evaluating from today.
+        """
+        from datetime import date
+        import calendar
+        
+        base_date = after_date or date.today()
+        year = base_date.year
+        month = base_date.month
+        
+        # If the base date's day is already at or past the invoice_day, 
+        # the next billing should be next month.
+        if base_date.day >= self.invoice_day:
+            if month == 12:
+                month = 1
+                year += 1
+            else:
+                month += 1
+                
+        last_day = calendar.monthrange(year, month)[1]
+        day = min(self.invoice_day, last_day)
+        
+        return date(year, month, day)
 
     class Meta:
         db_table = 'rentals_leases'
@@ -75,6 +102,11 @@ class Lease(AuditedModel):
         if not self.lease_number:
             from apps.core.services.number_sequence import NumberSequenceService  # type: ignore
             self.lease_number = NumberSequenceService.get_next_number("Lease Agreement", prefix="LSE-", padding=5)
+            
+        # Initialize next_invoice_date for new active leases
+        if self.status == self.LeaseStatus.ACTIVE and not self.next_invoice_date:
+            self.next_invoice_date = self.calculate_next_invoice_date()
+            
         super().save(*args, **kwargs)
 
         # Sync tenant to AR Customers

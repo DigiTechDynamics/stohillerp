@@ -76,13 +76,14 @@ function OpportunityCard({ opp, onClick, isSelected, onToggleSelect }) {
       style={style}
       {...attributes}
       layout
+      whileHover={{ y: -2, scale: 1.01 }}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`bg-dark-700 border border-white/5 border-l-2 ${priorityColor}
-                  rounded-xl p-3.5 cursor-pointer group relative
+      className={`bg-dark-700/50 backdrop-blur-md border border-white/5 border-l-2 ${priorityColor}
+                  rounded-xl p-4 cursor-pointer group relative
                   ${isSelected ? 'ring-2 ring-primary/50 bg-primary/5' : 'hover:border-primary/30 hover:bg-white/5'}
                   ${isStale ? 'bg-red-500/[0.03] border-red-500/20' : ''}
-                  transition-all`}
+                  shadow-sm hover:shadow-xl hover:shadow-black/20 transition-all`}
     >
       {/* Drag handle strip */}
       <div
@@ -113,34 +114,45 @@ function OpportunityCard({ opp, onClick, isSelected, onToggleSelect }) {
       </div>
 
 
-      {/* Title */}
-      <h4
-        className="text-sm font-semibold text-white leading-tight mb-2.5 group-hover:text-primary transition-colors cursor-pointer"
-        onClick={onClick}
-      >
-        {opp.title}
-      </h4>
+      {/* Thumbnail + Title Group */}
+      <div className="flex gap-3 mb-3" onClick={onClick}>
+        {opp.property_thumbnail && (
+          <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border border-white/10 group-hover:border-primary/30 transition-colors">
+            <img 
+              src={opp.property_thumbnail} 
+              alt="Property" 
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+            />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <h4 className="text-sm font-semibold text-white leading-tight group-hover:text-primary transition-colors cursor-pointer line-clamp-2">
+            {opp.title}
+          </h4>
+          <p className="text-[10px] text-dark-400 mt-1 truncate">{opp.contact_display}</p>
+        </div>
+      </div>
 
       {/* Tags */}
       <div className="flex flex-wrap gap-1 mb-3">
         {opp.tags?.map(tag => (
           <span
             key={tag.id}
-            className="text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider"
-            style={{ backgroundColor: `${tag.color}20`, color: tag.color, border: `1px solid ${tag.color}30` }}
+            className="text-[9px] px-1.5 py-0.5 rounded-md uppercase font-bold tracking-wider"
+            style={{ backgroundColor: `${tag.color}15`, color: tag.color, border: `1px solid ${tag.color}25` }}
           >
             {tag.name}
           </span>
         ))}
       </div>
 
-      {/* Footer */}
+      {/* Footer / Revenue */}
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5" onClick={onClick}>
-        <div className="flex items-center gap-1.5 max-w-[140px]">
-          <div className="w-5 h-5 rounded-full bg-dark-600 flex items-center justify-center text-[8px] font-bold text-dark-300 border border-white/5">
+        <div className="flex items-center gap-1.5">
+          <div className="w-5 h-5 rounded-full bg-dark-600 flex items-center justify-center text-[7px] font-bold text-dark-300 border border-white/5 ring-1 ring-white/5">
             {opp.contact_display?.[0] || '?'}
           </div>
-          <span className="text-[10px] text-dark-400 truncate">{opp.contact_display}</span>
+          <span className="text-[9px] text-dark-500 font-mono tracking-tighter uppercase">{opp.property_ref || 'No Property'}</span>
         </div>
 
         <div className="text-right">

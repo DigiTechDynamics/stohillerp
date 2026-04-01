@@ -1,27 +1,28 @@
 """Stohil Properties - Properties serializers"""
 from rest_framework import serializers  # type: ignore
+from utils.serializers import SanitizedModelSerializer
 from apps.properties.models import Property, PropertyUnit, PropertyImage, PropertyValuation, PropertyInspection, PropertyType  # type: ignore
 
 
-class PropertyTypeSerializer(serializers.ModelSerializer):
+class PropertyTypeSerializer(SanitizedModelSerializer):
     class Meta:
         model = PropertyType
         fields = ['id', 'name', 'code']
 
 
-class PropertyImageSerializer(serializers.ModelSerializer):
+class PropertyImageSerializer(SanitizedModelSerializer):
     class Meta:
         model = PropertyImage
         fields = ['id', 'image', 'caption', 'category', 'is_primary', 'sort_order']
 
 
-class PropertyUnitSerializer(serializers.ModelSerializer):
+class PropertyUnitSerializer(SanitizedModelSerializer):
     class Meta:
         model = PropertyUnit
         fields = ['id', 'unit_number', 'floor', 'status', 'floor_size', 'bedrooms', 'bathrooms', 'monthly_rental']
 
 
-class PropertyListSerializer(serializers.ModelSerializer):
+class PropertyListSerializer(SanitizedModelSerializer):
     property_type_name = serializers.CharField(source='property_type.name', read_only=True)
     primary_image = serializers.SerializerMethodField()
     full_address = serializers.ReadOnlyField()
@@ -42,7 +43,7 @@ class PropertyListSerializer(serializers.ModelSerializer):
         return None
 
 
-class PropertyDetailSerializer(serializers.ModelSerializer):
+class PropertyDetailSerializer(SanitizedModelSerializer):
     property_type = PropertyTypeSerializer(read_only=True)  # type: ignore
     property_type_id = serializers.PrimaryKeyRelatedField(
         queryset=PropertyType.objects.all(), source='property_type', write_only=True

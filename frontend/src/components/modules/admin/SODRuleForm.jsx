@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { X, Save, Wand2, AlertTriangle, Info } from 'lucide-react'
 import { adminAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
+import { toast } from 'react-hot-toast'
 
 export default function SODRuleForm({ id, initialData }) {
   const closePanel = useUIStore(s => s.closeSidePanel)
@@ -27,14 +28,22 @@ export default function SODRuleForm({ id, initialData }) {
     mutationFn: (data) => id ? adminAPI.sodRules.update(id, data) : adminAPI.sodRules.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-sod-rules'] })
+      toast.success(id ? 'SOD Policy updated' : 'New SOD Policy created')
       closePanel()
+    },
+    onError: (err) => {
+      const msg = err.response?.data?.detail || 'Failed to save SOD rule'
+      toast.error(msg)
     }
   })
 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!formData.module_a || !formData.module_b) return
-    mutation.mutate(formData)
+    
+    // Clean payload
+    const { id: _id, module_a_name: _a, module_b_name: _b, ...cleanData } = formData
+    mutation.mutate(cleanData)
   }
 
   return (

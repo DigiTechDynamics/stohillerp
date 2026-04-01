@@ -3,16 +3,17 @@ Stohil Properties - Core App Serializers
 User, Role, and Auth serializers.
 """
 from rest_framework import serializers
+from utils.serializers import SanitizedModelSerializer
 from .models import User, Role, AuditLog, Currency, Module, SODRule
 
 
-class ModuleSerializer(serializers.ModelSerializer):
+class ModuleSerializer(SanitizedModelSerializer):
     class Meta:
         model = Module
         fields = ['id', 'name', 'code', 'description', 'icon']
 
 
-class SODRuleSerializer(serializers.ModelSerializer):
+class SODRuleSerializer(SanitizedModelSerializer):
     module_a_name = serializers.ReadOnlyField(source='module_a.name')
     module_b_name = serializers.ReadOnlyField(source='module_b.name')
 
@@ -22,7 +23,7 @@ class SODRuleSerializer(serializers.ModelSerializer):
                   'module_b_name', 'severity', 'description', 'is_active']
 
 
-class RoleSerializer(serializers.ModelSerializer):
+class RoleSerializer(SanitizedModelSerializer):
     modules = ModuleSerializer(many=True, read_only=True)
     module_ids = serializers.ListField(
         child=serializers.UUIDField(), write_only=True, required=False
@@ -47,7 +48,7 @@ class RoleSerializer(serializers.ModelSerializer):
         return instance
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UserSerializer(SanitizedModelSerializer):
     roles = RoleSerializer(many=True, read_only=True)
     role_ids = serializers.ListField(
         child=serializers.UUIDField(), write_only=True, required=False
@@ -75,7 +76,7 @@ class UserSerializer(serializers.ModelSerializer):
         return obj.check_sod_conflicts()
 
 
-class UserCreateSerializer(serializers.ModelSerializer):
+class UserCreateSerializer(SanitizedModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8, required=False)
     role_ids = serializers.ListField(child=serializers.UUIDField(), write_only=True, required=False)
 
@@ -92,7 +93,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         return user
 
 
-class AuditLogSerializer(serializers.ModelSerializer):
+class AuditLogSerializer(SanitizedModelSerializer):
     user_name = serializers.CharField(source='user.full_name', read_only=True)
 
     class Meta:
@@ -101,10 +102,16 @@ class AuditLogSerializer(serializers.ModelSerializer):
                   'object_repr', 'changes', 'ip_address', 'timestamp']
 
 
-class CurrencySerializer(serializers.ModelSerializer):
+class CurrencySerializer(SanitizedModelSerializer):
     class Meta:
         model = Currency
         fields = '__all__'
+class UserProfileSerializer(SanitizedModelSerializer):
+    """Restricted serializer for users to update their own profile."""
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'phone', 'avatar']
+
 class PasswordChangeSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, min_length=8, required=True)
     password_confirm = serializers.CharField(write_only=True, min_length=8, required=True)

@@ -1,13 +1,13 @@
 // Stohill Properties - Main Application Layout
 import React, { useState } from 'react'
-import { Outlet, NavLink, useLocation } from 'react-router-dom'
+import { useAuthStore, useUIStore } from '@/stores/authStore'
+import { Link, Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Building2, Users, TrendingUp, Home, DollarSign,
   Award, FileText, UserCog, ChevronLeft, ChevronRight, Search,
   Bell, LogOut, Settings, Zap, Menu, X, Landmark, Briefcase, FileSearch, Box
 } from 'lucide-react'
-import { useAuthStore, useUIStore } from '@/stores/authStore'
 import CommandPalette from '@/components/common/CommandPalette'
 import SidePanelContainer from '@/components/common/SidePanelContainer'
 import ExecutiveModeToggle from '@/components/common/ExecutiveModeToggle'
@@ -78,6 +78,7 @@ export default function AppLayout() {
   const { user, logout } = useAuthStore()
   const { sidebarCollapsed, toggleSidebar, openCommandPalette, theme } = useUIStore()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const navigate = useNavigate()
 
   const groups = ['Overview', 'Operations', 'Finance', 'Admin']
 
@@ -251,19 +252,36 @@ export default function AppLayout() {
             </button>
 
             <div className="h-8 w-px bg-white/5 mx-1" />
-
-            <div className="flex items-center gap-2.5">
+            
+            <button 
+              onClick={() => navigate('/profile')}
+              className="flex items-center gap-2.5 hover:bg-white/5 p-1 px-2 rounded-xl transition-all group"
+            >
               <div className="flex flex-col items-end hidden sm:flex">
-                <p className="text-xs font-semibold text-white leading-none">{user?.full_name || 'Admin User'}</p>
+                <p className="text-xs font-semibold text-white leading-none group-hover:text-primary transition-colors">{user?.full_name || 'Admin User'}</p>
                 <p className="text-[10px] text-primary font-bold uppercase tracking-wider mt-1 opacity-70">
                   {user?.roles?.[0]?.role_type?.replace(/_/g, ' ') || 'Super Admin'}
                 </p>
               </div>
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-orange-500 
-                              flex items-center justify-center text-dark-900 text-xs font-bold shadow-lg">
-                {user?.first_name?.[0]}{user?.last_name?.[0]}
+                              flex items-center justify-center text-dark-900 text-xs font-bold shadow-lg 
+                              group-hover:scale-110 transition-transform overflow-hidden">
+                {user?.avatar ? (
+                  <img 
+                    src={user.avatar.startsWith('http') ? user.avatar : `http://localhost:8000${user.avatar}`} 
+                    alt="Avatar" 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = 'none'
+                      e.target.nextSibling.style.display = 'flex'
+                    }}
+                  />
+                ) : null}
+                <span className={`${user?.avatar ? 'hidden' : 'flex'} items-center justify-center w-full h-full`}>
+                  {user?.first_name?.[0]}{user?.last_name?.[0]}
+                </span>
               </div>
-            </div>
+            </button>
           </div>
         </header>
 

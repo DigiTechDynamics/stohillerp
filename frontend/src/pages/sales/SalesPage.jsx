@@ -49,20 +49,25 @@ export default function SalesPage() {
       {/* Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'YTD Revenue', value: '$12.5M', trend: 15, icon: DollarSign, color: 'text-emerald-400' },
-          { label: 'Active Deals', value: '24', trend: 8, icon: Briefcase, color: 'text-primary' },
-          { label: 'Pending Completion', value: '$4.2M', trend: -2, icon: TrendingUp, color: 'text-amber-400' },
-          { label: 'Completed (MTD)', value: '8', trend: 12, icon: FileText, color: 'text-purple-400' },
+          { label: 'YTD Revenue', value: '$12.5M', trend: 15, icon: DollarSign, color: 'from-emerald-400/20 to-emerald-400/5', iconColor: 'text-emerald-400' },
+          { label: 'Active Deals', value: '24', trend: 8, icon: Briefcase, color: 'from-primary/20 to-primary/5', iconColor: 'text-primary' },
+          { label: 'Pending Completion', value: '$4.2M', trend: -2, icon: TrendingUp, color: 'from-amber-400/20 to-amber-400/5', iconColor: 'text-amber-400' },
+          { label: 'Completed (MTD)', value: '8', trend: 12, icon: FileText, color: 'from-purple-400/20 to-purple-400/5', iconColor: 'text-purple-400' },
         ].map((stat, i) => (
-          <div key={i} className="card p-4">
-            <div className="flex items-center justify-between mb-2">
-              <stat.icon size={18} className={stat.color} />
-              <div className={`flex items-center gap-0.5 text-[10px] font-bold ${stat.trend >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {stat.trend >= 0 ? '+' : ''}{stat.trend}%
+          <div key={i} className={`card p-5 relative overflow-hidden group hover:border-primary/30 transition-all duration-300`}>
+            <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${stat.color} blur-2xl -mr-8 -mt-8 opacity-50 group-hover:opacity-100 transition-opacity`} />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className={`p-2 rounded-lg bg-dark-800 border border-white/5 ${stat.iconColor}`}>
+                  <stat.icon size={20} />
+                </div>
+                <div className={`flex items-center gap-1 text-[11px] font-black ${stat.trend >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {stat.trend >= 0 ? '↑' : '↓'}{Math.abs(stat.trend)}%
+                </div>
               </div>
+              <p className="text-2xl font-bold text-white tracking-tight">{stat.value}</p>
+              <p className="text-xs text-dark-400 font-medium mt-1 uppercase tracking-wider">{stat.label}</p>
             </div>
-            <p className="text-lg font-semibold text-white">{stat.value}</p>
-            <p className="text-xs text-dark-400">{stat.label}</p>
           </div>
         ))}
       </div>

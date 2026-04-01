@@ -1,0 +1,124 @@
+.\venv\Scripts\python.exe 
+: C:\Users\mkavh\Desktop\D
+igital Tech Dynamics\Clien
+ts\2026\Stohil\erp-master\
+stohillerp-master\backend\
+venv\Lib\site-packages\dja
+ngo\db\models\fields\__ini
+t__.py:1611: 
+RuntimeWarning: 
+DateTimeField 
+Property.created_at 
+received a naive datetime 
+(2026-03-31 00:00:00) 
+while time zone support 
+is active.
+At line:1 char:1
++ 
+.\venv\Scripts\python.exe 
+verify_crm_pipeline.py 
+2>&1 | Out-File -Enc ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~
+    + CategoryInfo        
+      : NotSpecified: (C  
+  :\Users\mkavh\...port   
+  is active.:String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+  warnings.warn(
+C:\Users\mkavh\Desktop\Dig
+ital Tech Dynamics\Clients
+\2026\Stohil\erp-master\st
+ohillerp-master\backend\ve
+nv\Lib\site-packages\djang
+o\db\models\fields\__init_
+_.py:1611: 
+RuntimeWarning: 
+DateTimeField 
+Lease.created_at received 
+a naive datetime 
+(2026-03-31 00:00:00) 
+while time zone support 
+is active.
+  warnings.warn(
+C:\Users\mkavh\Desktop\Dig
+ital Tech Dynamics\Clients
+\2026\Stohil\erp-master\st
+ohillerp-master\backend\ve
+nv\Lib\site-packages\djang
+o\db\models\fields\__init_
+_.py:1611: 
+RuntimeWarning: 
+DateTimeField 
+Contact.created_at 
+received a naive datetime 
+(2026-04-01 00:00:00) 
+while time zone support 
+is active.
+  warnings.warn(
+[2026-04-01 22:32:04,284] 
+INFO stohill.finance 
+Posting journal entry: 
+Customer Invoice - Lead 
+Prospect - SINV-00002 
+dated 2026-04-01 via SJ
+[2026-04-01 22:32:04,301] 
+INFO stohill.finance 
+Successfully posted entry 
+SJ-000002 | DR: 1500000.00
+--- Starting CRM-to-Finance Lifecycle Verification ---
+Ensuring required GL accounts and journals exist...
+Baseline: Pipeline R1500000, Revenue R2000000
+Setting up Lead/Opportunity test data...
+Creating Opportunity (R1,500,000 Expected Revenue)...
+[OK] Pipeline Value increased correctly by R1500000
+Marking deal as WON...
+[FAIL] Pipeline Value not decremented. Current: R3000000
+Posting terminal Sale to Finance...
+Traceback (most recent 
+call last):
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\verify_crm_pipeline.
+py", line 143, in <module>
+    verify()
+    ~~~~~~^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\verify_crm_pipeline.
+py", line 131, in verify
+    service.post_sale_tran
+saction(sale)
+    ~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~^^^^^^
+  File "C:\Users\mkavh\App
+Data\Local\Programs\Python
+\Python314\Lib\contextlib.
+py", line 85, in inner
+    return func(*args, 
+**kwds)
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\apps\finance\service
+s\accounting.py", line 
+504, in 
+post_sale_transaction
+    if sale_transaction.co
+mmission_amount > 0:
+       ^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^
+TypeError: '>' not 
+supported between 
+instances of 'NoneType' 
+and 'int'

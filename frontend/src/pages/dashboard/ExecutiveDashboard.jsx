@@ -109,7 +109,7 @@ export default function ExecutiveDashboard() {
             animate={{ opacity: 1, x: 0 }}
             className="font-display text-2xl lg:text-3xl text-white"
           >
-            {executiveMode ? 'Executive Command Center' : `${getGreeting()}, ${user?.first_name}`}
+            {executiveMode ? `Executive Command Center • ${user?.first_name || 'Executive'}` : `${getGreeting()}, ${user?.first_name || 'User'}`}
           </motion.h1>
           <p className="text-dark-400 text-sm mt-1">
             {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}

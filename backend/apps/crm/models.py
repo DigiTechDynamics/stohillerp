@@ -412,12 +412,15 @@ class Opportunity(AuditedModel):
             import datetime
             self.reference = f"{prefix}-{datetime.datetime.now().strftime('%y%m')}-{uuid.uuid4().hex[:6].upper()}"
         
-        # Track stage entries
-        if self.pk:
-            old_obj = self.__class__.objects.get(pk=self.pk)
-            if old_obj.stage != self.stage:
-                from django.utils import timezone
-                self.stage_entered_at = timezone.now()
+        # Track stage entries (only on updates)
+        if not self._state.adding:
+            try:
+                old_obj = self.__class__.objects.get(pk=self.pk)
+                if old_obj.stage != self.stage:
+                    self.stage_entered_at = timezone.now()
+            except self.DoesNotExist:
+                # Fallback for edge cases where pk is set but object not in DB
+                pass
 
         super().save(*args, **kwargs)
 
@@ -429,15 +432,36 @@ class Opportunity(AuditedModel):
         self.save()
 
     def mark_won(self):
-        """Move opportunity to the Won terminal stage."""
+        """Move opportunity to the Won terminal stage and create Sale Transaction."""
         from django.utils import timezone
+        
         won_stage = PipelineStage.objects.filter(pipeline=self.pipeline, is_won=True).first()
         if won_stage:
             self.stage = won_stage
+            
         self.is_lead = False
         self.probability = 100
         self.date_closed = timezone.now()
         self.save(update_fields=['stage', 'is_lead', 'probability', 'date_closed'])
+
+        # Create formal Sale Transaction record if not already exists
+        from apps.sales.models import SaleTransaction
+        if not SaleTransaction.objects.filter(opportunity=self).exists() and self.property:
+            import datetime
+            ref = f"SL-{datetime.datetime.now().strftime('%Y')}-{uuid.uuid4().hex[:6].upper()}"
+            
+            SaleTransaction.objects.create(
+                sale_reference=ref,
+                property=self.property,
+                buyer=self.contact,
+                opportunity=self,
+                currency=self.currency,
+                selling_agent=self.assigned_agent,
+                sale_price=self.expected_revenue or 0,
+                offer_date=timezone.now().date(),
+                status=SaleTransaction.TransactionStatus.OFFER_ACCEPTED,
+                notes=f"Auto-generated from Won Opportunity: {self.reference}"
+            )
 
     def mark_lost(self, reason=None, reason_text=''):
         """Move opportunity to the Lost terminal stage."""

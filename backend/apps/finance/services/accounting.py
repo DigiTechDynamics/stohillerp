@@ -500,28 +500,56 @@ class AccountingService:
         else:
             invoice_entry = invoice.journal_entry
 
-        # 3. Create/Get Commission Record
-        if sale_transaction.commission_amount > 0:
+        # 3. Post Commission Accrual (if applicable)
+        commission_amt = sale_transaction.commission_amount or Decimal('0')
+        if commission_amt > 0:
             comm_ref = f"COMM-{sale_transaction.sale_reference}"
             commission = CommissionRecord.objects.filter(reference=comm_ref).first()
             
             if not commission:
                 commission = CommissionRecord.objects.create(
-                reference=f"COMM-{sale_transaction.sale_reference}",
-                agent=sale_transaction.selling_agent or sale_transaction.listing_agent,
-                transaction_type='sale',
-                sale_transaction=sale_transaction,
-                property=sale_transaction.property,
-                transaction_amount=sale_transaction.sale_price,
-                company_commission_rate=sale_transaction.commission_rate,
-                company_commission_amount=sale_transaction.commission_amount,
-                agent_split_rate=Decimal('100.00'), # Default to 100% of the recorded amount for now
-                gross_commission=sale_transaction.commission_amount,
-                net_commission=sale_transaction.commission_amount,
-                status=CommissionRecord.CommissionStatus.APPROVED,
-                approved_by=self.user,
-                approved_date=date.today()
-            )
+                    reference=comm_ref,
+                    agent=sale_transaction.selling_agent or sale_transaction.listing_agent,
+                    transaction_type='sale',
+                    sale_transaction=sale_transaction,
+                    property=sale_transaction.property,
+                    transaction_amount=sale_transaction.sale_price,
+                    company_commission_rate=sale_transaction.commission_rate,
+                    company_commission_amount=sale_transaction.commission_amount,
+                    agent_split_rate=Decimal('100.00'),
+                    gross_commission=sale_transaction.commission_amount,
+                    net_commission=sale_transaction.commission_amount,
+                    status=CommissionRecord.CommissionStatus.APPROVED,
+                    approved_by=self.user,
+                    approved_date=date.today()
+                )
+                
+            # Post Commission Accrual if not already linked to a journal entry
+            if not commission.journal_entry:
+                comm_accrual = PostingData(
+                    description=f"Commission Accrual - {sale_transaction.sale_reference} - {commission.agent.full_name}",
+                    entry_date=sale_transaction.transfer_date or date.today(),
+                    source_module='commission',
+                    source_id=commission.id,
+                    source_reference=commission.reference,
+                )
+                
+                # Debit Expense (increases expense), Credit Payable (increases liability)
+                comm_accrual.add_debit(
+                    self.ACCOUNTS['COMMISSION_EXPENSE'],
+                    commission.net_commission,
+                    f"Commission expense - {sale_transaction.sale_reference}"
+                )
+                comm_accrual.add_credit(
+                    self.ACCOUNTS['COMMISSION_PAYABLE'],
+                    commission.net_commission,
+                    f"Commission payable to agent - {commission.agent.full_name}"
+                )
+                
+                # Post via Commission Journal
+                comm_entry = self.post_entry(comm_accrual, journal_code='CJ')
+                commission.journal_entry = comm_entry
+                commission.save(update_fields=['journal_entry'])
 
         # 4. Recognize Cost of Sale & Update Inventory Status
         property_obj = sale_transaction.property

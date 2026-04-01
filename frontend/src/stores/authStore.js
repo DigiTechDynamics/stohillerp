@@ -9,15 +9,35 @@ export const useAuthStore = create()(
       accessToken: null,
       refreshToken: null,
       isAuthenticated: false,
+      rememberMe: false,
       executiveMode: false,
 
-      setAuth: (user, access, refresh) =>
+      setAuth: (user, access, refresh, rememberMe = false) =>
         set({
           user,
           accessToken: access,
           refreshToken: refresh,
           isAuthenticated: !!access,
+          rememberMe,
         }),
+
+      initializeAuth: () => {
+        const { rememberMe, isAuthenticated } = get()
+        if (!isAuthenticated) return
+
+        // If NOT 'remember me', check if this is a new browser session
+        if (!rememberMe) {
+          const sessionActive = sessionStorage.getItem('stohill_session_active')
+          if (!sessionActive) {
+            // New session, user didn't want to be remembered
+            get().logout()
+            return
+          }
+        }
+        
+        // Mark session as active
+        sessionStorage.setItem('stohill_session_active', 'true')
+      },
 
       setUser: (user) => set({ user }),
 
@@ -47,6 +67,7 @@ export const useAuthStore = create()(
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
+        rememberMe: state.rememberMe,
         executiveMode: state.executiveMode,
       }),
     }

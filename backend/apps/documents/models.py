@@ -6,12 +6,43 @@ from django.db import models
 from apps.core.models import AuditedModel, TimeStampedModel
 
 
+class DocumentWorkspace(TimeStampedModel):
+    """Odoo-style Workspaces for document organization."""
+    name = models.CharField(max_length=100)
+    code = models.CharField(max_length=50, unique=True)
+    description = models.TextField(blank=True)
+    icon = models.CharField(max_length=50, default='folder')
+    is_active = models.BooleanField(default=True)
+
+    class Meta(TimeStampedModel.Meta):
+        db_table = 'document_workspaces'
+        verbose_name = 'Workspace'
+        verbose_name_plural = 'Workspaces'
+
+    def __str__(self):
+        return self.name
+
+
+class DocumentTag(TimeStampedModel):
+    """Flexible tagging system for documents across workspaces."""
+    name = models.CharField(max_length=50)
+    workspace = models.ForeignKey(DocumentWorkspace, on_delete=models.CASCADE, related_name='tags')
+    color = models.CharField(max_length=7, default='#6366f1') # hex code
+
+    class Meta(TimeStampedModel.Meta):
+        db_table = 'document_tags'
+        unique_together = ('name', 'workspace')
+
+    def __str__(self):
+        return f"{self.name} ({self.workspace.name})"
+
+
 class DocumentCategory(TimeStampedModel):
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=20, unique=True)
     retention_years = models.PositiveSmallIntegerField(default=7)
 
-    class Meta:
+    class Meta(TimeStampedModel.Meta):
         db_table = 'document_categories'
 
 
@@ -28,7 +59,8 @@ class Document(AuditedModel):
 
     title = models.CharField(max_length=300)
     reference = models.CharField(max_length=100, unique=True)
-    category = models.ForeignKey(DocumentCategory, on_delete=models.PROTECT)
+    workspace = models.ForeignKey(DocumentWorkspace, on_delete=models.PROTECT, related_name='documents', null=True)
+    category = models.ForeignKey(DocumentCategory, on_delete=models.PROTECT, null=True, blank=True)
     status = models.CharField(max_length=20, choices=DocumentStatus.choices, default=DocumentStatus.DRAFT)
     file = models.FileField(upload_to='documents/%Y/%m/')
     file_size = models.BigIntegerField(default=0)
@@ -44,8 +76,10 @@ class Document(AuditedModel):
     lease = models.ForeignKey('rentals.Lease', null=True, blank=True, on_delete=models.SET_NULL)
     employee = models.ForeignKey('hr.Employee', null=True, blank=True, on_delete=models.SET_NULL)
 
-    tags = models.JSONField(default=list, blank=True)
+    tags = models.ManyToManyField(DocumentTag, blank=True, related_name='documents')
     is_confidential = models.BooleanField(default=False)
+    is_locked = models.BooleanField(default=False)
+    thumbnail = models.ImageField(upload_to='document_thumbs/', null=True, blank=True)
 
     class Meta:
         db_table = 'documents'

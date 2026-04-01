@@ -9,7 +9,7 @@
      ============================================= */
   :root {
     --primary: #E5A645;
-    --primary-rgb: 229, 166, 69;
+    --primary-rgb: 229 166 69;
     --primary-hover: #D4922A;
     --bg-main: #222222;
     --bg-main-dark: #111111;
@@ -36,25 +36,39 @@
      ============================================= */
   html.light {
     --primary: #E6A23C;
-    --primary-rgb: 230, 162, 60;
+    --primary-rgb: 230 162 60;
     --primary-hover: #CF8C22;
-    --bg-main: #F0F0F0;
-    --bg-main-dark: #E2E2E2;
+    --bg-main: #F8F9FA;
+    --bg-main-dark: #EDF0F5;
     --bg-card: #FFFFFF;
     --bg-input: #FFFFFF;
     --text-main: #1A1A1A;
     --text-muted: #6B6B6B;
-    --border-color: #E0E0E0;
-    --border-subtle: #D8D8D8;
+    --border-color: #E2E8F0;
+    --border-subtle: #CBD5E1;
     --shadow-panel: 0 0 0 1px rgba(0,0,0,0.06), 0 12px 40px rgba(0,0,0,0.12);
-    --glass-bg: rgba(240, 240, 240, 0.85);
+    --glass-bg: rgba(248, 249, 250, 0.85);
     --grid-line: rgba(0,0,0,0.04);
-    --scrollbar-track: #E8E8E8;
-    --scrollbar-thumb: #C0C0C0;
-    --sidebar-bg: #FAFAFA;
-    --topbar-bg: rgba(250, 250, 250, 0.9);
+    --scrollbar-track: #F1F5F9;
+    --scrollbar-thumb: #94A3B8;
+    --sidebar-bg: #FFFFFF;
+    --topbar-bg: rgba(255, 255, 255, 0.95);
     --selection-bg: rgba(230, 162, 60, 0.25);
     --selection-color: #1A1A1A;
+  }
+
+  /* Specific Fix for Login UI Light Mode Contrast */
+  html.light #stohill-login-ui .btn-primary,
+  html.light #stohill-login-ui .bg-primary {
+    color: #111111 !important;
+  }
+
+  html.light #stohill-login-ui .text-white {
+    color: #1A1A1A !important;
+  }
+  
+  #stohill-login-ui .text-primary {
+    color: var(--primary) !important;
   }
 
   * { box-sizing: border-box; }
@@ -162,8 +176,8 @@ html.light .ring-dark-900 { --tw-ring-color: var(--bg-card) !important; }
 
   /* Buttons */
   .btn-primary {
-    @apply inline-flex items-center gap-2 px-4 py-2 bg-primary text-[#111]
-           rounded-lg text-sm font-semibold hover:bg-primary-400
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-primary text-dark-950
+           rounded-lg text-sm font-semibold hover:bg-primary-hover
            transition-all duration-150 shadow-gold hover:shadow-gold-lg;
   }
 

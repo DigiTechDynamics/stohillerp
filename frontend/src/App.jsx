@@ -6,6 +6,8 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore, useUIStore } from '@/stores/authStore'
 import AppLayout from '@/components/layout/AppLayout'
 import LoginPage from '@/pages/LoginPage'
+import ForgotPasswordPage from '@/pages/ForgotPasswordPage'
+import ResetPasswordPage from '@/pages/ResetPasswordPage'
 
 // Page imports
 import ExecutiveDashboard from '@/pages/dashboard/ExecutiveDashboard'
@@ -31,6 +33,7 @@ import CreateJournalEntryPage from '@/pages/finance/CreateJournalEntryPage'
 import BatchApprovalPage from '@/pages/finance/BatchApprovalPage'
 import PayrollPage from '@/pages/payroll/PayrollPage'
 import UserAccessPage from '@/pages/admin/UserAccessPage'
+import MyProfilePage from '@/pages/admin/MyProfilePage'
 
 // Auth guard wrapper
 function PrivateRoute({ children }) {
@@ -40,6 +43,12 @@ function PrivateRoute({ children }) {
 
 export default function App() {
   const theme = useUIStore((s) => s.theme)
+
+  const initializeAuth = useAuthStore((s) => s.initializeAuth)
+
+  useEffect(() => {
+    initializeAuth()
+  }, [initializeAuth])
 
   useEffect(() => {
     if (theme === 'light') {
@@ -52,6 +61,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route
         path="/"
         element={
@@ -85,6 +96,7 @@ export default function App() {
         <Route path="hr/leave-management" element={<HRPage />} />
         <Route path="payroll" element={<PayrollPage />} />
         <Route path="agents" element={<AgentsPage />} />
+        <Route path="profile" element={<MyProfilePage />} />
         <Route path="admin/access" element={<UserAccessPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

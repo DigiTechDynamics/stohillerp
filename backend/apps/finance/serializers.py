@@ -1,6 +1,7 @@
 import uuid
 from decimal import Decimal
 from rest_framework import serializers  # type: ignore
+from utils.serializers import SanitizedModelSerializer
 from django.db import transaction  # type: ignore
 from apps.core.models import Currency  # type: ignore
 from .models import (  # type: ignore
@@ -13,7 +14,7 @@ from .models import (  # type: ignore
 )
 
 
-class ChartOfAccountSerializer(serializers.ModelSerializer):
+class ChartOfAccountSerializer(SanitizedModelSerializer):
     parent_name = serializers.CharField(source='parent.name', read_only=True)
     currency_code = serializers.CharField(source='currency.code', read_only=True)
     normal_balance = serializers.ReadOnlyField()
@@ -23,13 +24,13 @@ class ChartOfAccountSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class JournalSerializer(serializers.ModelSerializer):
+class JournalSerializer(SanitizedModelSerializer):
     class Meta:
         model = Journal
         fields = '__all__'
 
 
-class JournalBatchSerializer(serializers.ModelSerializer):
+class JournalBatchSerializer(SanitizedModelSerializer):
     maker_name = serializers.SerializerMethodField()
     checker_name = serializers.SerializerMethodField()
     journal_code = serializers.CharField(source='journal.code', read_only=True)
@@ -62,7 +63,7 @@ class JournalBatchSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-class JournalLineSerializer(serializers.ModelSerializer):
+class JournalLineSerializer(SanitizedModelSerializer):
     account_code = serializers.CharField(source='account.code', read_only=True)
     account_name = serializers.CharField(source='account.name', read_only=True)
     entity_name = serializers.SerializerMethodField()
@@ -95,7 +96,7 @@ class JournalLineSerializer(serializers.ModelSerializer):
         return None
 
 
-class JournalEntrySerializer(serializers.ModelSerializer):
+class JournalEntrySerializer(SanitizedModelSerializer):
     lines = JournalLineSerializer(many=True, required=False)  # type: ignore
     journal_code = serializers.CharField(source='journal.code', read_only=True)
     journal_name = serializers.CharField(source='journal.name', read_only=True)
@@ -308,13 +309,13 @@ class JournalEntrySerializer(serializers.ModelSerializer):
         
         return instance
 
-class FiscalYearSerializer(serializers.ModelSerializer):
+class FiscalYearSerializer(SanitizedModelSerializer):
     class Meta:
         model = FiscalYear
         fields = '__all__'
 
 
-class FiscalPeriodSerializer(serializers.ModelSerializer):
+class FiscalPeriodSerializer(SanitizedModelSerializer):
     fiscal_year_name = serializers.CharField(source='fiscal_year.name', read_only=True)
     is_open = serializers.SerializerMethodField()
 
@@ -327,7 +328,7 @@ class FiscalPeriodSerializer(serializers.ModelSerializer):
 
 # ─── AP Serializers ──────────────────────────────────────────────────────────
 
-class SupplierSerializer(serializers.ModelSerializer):
+class SupplierSerializer(SanitizedModelSerializer):
     balance = serializers.SerializerMethodField()
     currency_code = serializers.CharField(source='currency.code', read_only=True)
     
@@ -338,14 +339,14 @@ class SupplierSerializer(serializers.ModelSerializer):
     def get_balance(self, obj):
         return str(obj.balance)
 
-class SupplierInvoiceLineSerializer(serializers.ModelSerializer):
+class SupplierInvoiceLineSerializer(SanitizedModelSerializer):
     expense_account_code = serializers.CharField(source='expense_account.code', read_only=True)
     
     class Meta:
         model = SupplierInvoiceLine
         fields = ['id', 'description', 'expense_account', 'expense_account_code', 'quantity', 'unit_price', 'tax_code', 'tax_amount', 'line_total']
 
-class SupplierInvoiceSerializer(serializers.ModelSerializer):
+class SupplierInvoiceSerializer(SanitizedModelSerializer):
     lines = SupplierInvoiceLineSerializer(many=True)  # type: ignore
     supplier_name = serializers.CharField(source='supplier.name', read_only=True)
     currency_code = serializers.CharField(source='currency.code', read_only=True)
@@ -417,7 +418,7 @@ class SupplierInvoiceSerializer(serializers.ModelSerializer):
             instance.save()
         return instance
 
-class SupplierPaymentSerializer(serializers.ModelSerializer):
+class SupplierPaymentSerializer(SanitizedModelSerializer):
     supplier_name = serializers.CharField(source='supplier.name', read_only=True)
     currency_code = serializers.CharField(source='currency.code', read_only=True)
     journal_entry_details = JournalEntrySerializer(source='journal_entry', read_only=True)  # type: ignore
@@ -431,7 +432,7 @@ class SupplierPaymentSerializer(serializers.ModelSerializer):
 
 # ─── AR Serializers ──────────────────────────────────────────────────────────
 
-class CustomerProfileSerializer(serializers.ModelSerializer):
+class CustomerProfileSerializer(SanitizedModelSerializer):
     display_name = serializers.SerializerMethodField()
     ar_account_code = serializers.CharField(source='ar_account.code', read_only=True)
     ar_account_name = serializers.CharField(source='ar_account.name', read_only=True)
@@ -447,14 +448,14 @@ class CustomerProfileSerializer(serializers.ModelSerializer):
     def get_balance(self, obj):
         return str(obj.balance)
 
-class CustomerInvoiceLineSerializer(serializers.ModelSerializer):
+class CustomerInvoiceLineSerializer(SanitizedModelSerializer):
     revenue_account_code = serializers.CharField(source='revenue_account.code', read_only=True)
     
     class Meta:
         model = CustomerInvoiceLine
         fields = ['id', 'description', 'revenue_account', 'revenue_account_code', 'quantity', 'unit_price', 'tax_code', 'tax_amount', 'line_total']
 
-class CustomerInvoiceSerializer(serializers.ModelSerializer):
+class CustomerInvoiceSerializer(SanitizedModelSerializer):
     lines = CustomerInvoiceLineSerializer(many=True)  # type: ignore
     customer_name = serializers.CharField(source='customer.name', read_only=True)
     currency_code = serializers.CharField(source='currency.code', read_only=True)
@@ -523,7 +524,7 @@ class CustomerInvoiceSerializer(serializers.ModelSerializer):
             instance.save()
         return instance
 
-class CustomerReceiptSerializer(serializers.ModelSerializer):
+class CustomerReceiptSerializer(SanitizedModelSerializer):
     customer_name = serializers.CharField(source='customer.name', read_only=True)
     currency_code = serializers.CharField(source='currency.code', read_only=True)
     journal_entry_details = JournalEntrySerializer(source='journal_entry', read_only=True)  # type: ignore
@@ -537,26 +538,26 @@ class CustomerReceiptSerializer(serializers.ModelSerializer):
 
 # ─── Bank Serializers ────────────────────────────────────────────────────────
 
-class BankAccountSerializer(serializers.ModelSerializer):
+class BankAccountSerializer(SanitizedModelSerializer):
     gl_account_code = serializers.CharField(source='gl_account.code', read_only=True)
     
     class Meta:
         model = BankAccount
         fields = '__all__'
 
-class BankTransactionSerializer(serializers.ModelSerializer):
+class BankTransactionSerializer(SanitizedModelSerializer):
     class Meta:
         model = BankTransaction
         fields = '__all__'
 
-class BankReconciliationSerializer(serializers.ModelSerializer):
+class BankReconciliationSerializer(SanitizedModelSerializer):
     class Meta:
         model = BankReconciliation
         fields = '__all__'
 
 # ─── Tax Serializers ─────────────────────────────────────────────────────────
 
-class TaxCodeSerializer(serializers.ModelSerializer):
+class TaxCodeSerializer(SanitizedModelSerializer):
     collected_account_code = serializers.CharField(source='collected_account.code', read_only=True)
     paid_account_code = serializers.CharField(source='paid_account.code', read_only=True)
     
@@ -564,7 +565,7 @@ class TaxCodeSerializer(serializers.ModelSerializer):
         model = TaxCode
         fields = '__all__'
 
-class TaxTransactionSerializer(serializers.ModelSerializer):
+class TaxTransactionSerializer(SanitizedModelSerializer):
     tax_code_str = serializers.CharField(source='tax_code.code', read_only=True)
     
     class Meta:
@@ -572,13 +573,13 @@ class TaxTransactionSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class CurrencySerializer(serializers.ModelSerializer):
+class CurrencySerializer(SanitizedModelSerializer):
     class Meta:
         model = Currency
         fields = '__all__'
 
 
-class ExchangeRateSerializer(serializers.ModelSerializer):
+class ExchangeRateSerializer(SanitizedModelSerializer):
     currency_code = serializers.CharField(source='currency.code', read_only=True)
 
     class Meta:
@@ -586,7 +587,7 @@ class ExchangeRateSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class PostingProfileSerializer(serializers.ModelSerializer):
+class PostingProfileSerializer(SanitizedModelSerializer):
     class Meta:
         model = PostingProfile
         fields = '__all__'

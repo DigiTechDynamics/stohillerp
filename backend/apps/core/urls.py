@@ -18,4 +18,6 @@ urlpatterns = [
     path('data/template/<str:module_name>/', TemplateDownloadView.as_view(), name='data-template'),
     path('data/export/<str:module_name>/', DataExportView.as_view(), name='data-export'),
     path('data/import/<str:module_name>/', DataImportView.as_view(), name='data-import'),
+    path('auth/forgot-password/', views.ForgotPasswordView.as_view(), name='forgot-password'),
+    path('auth/reset-password/', views.ResetPasswordView.as_view(), name='reset-password'),
 ]

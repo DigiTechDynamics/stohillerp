@@ -63,6 +63,7 @@ import SaleForm from '@/components/modules/sales/SaleForm'
 import SaleDetailPanel from '@/components/modules/sales/SaleDetailPanel'
 import FiscalYearForm from '@/components/modules/finance/FiscalYearForm'
 import PayrollRunForm from '@/components/modules/payroll/PayrollRunForm'
+import UserProfileForm from '@/components/modules/admin/UserProfileForm'
 
 function PropertyDetailPanel({ property }) {
   const queryClient = useQueryClient()
@@ -410,6 +411,7 @@ export default function SidePanelContainer() {
                     activeSidePanel === 'sale-detail' ? 'Transaction Details' :
                     activeSidePanel === 'fiscal-year-form' ? (sidePanelData?.fiscalYear ? 'Edit Fiscal Year' : 'New Fiscal Year') :
                     activeSidePanel === 'payroll-run-form' ? (sidePanelData?.id ? 'Edit Payroll Run' : 'New Payroll Run') :
+                    activeSidePanel === 'my-profile' ? 'My Profile' :
                     'Details'}
                 </h2>
               </div>
@@ -671,9 +673,13 @@ export default function SidePanelContainer() {
               {activeSidePanel === 'payroll-run-form' && (
                 <PayrollRunForm data={sidePanelData} onSuccess={sidePanelData?.onSuccess} />
               )}
+              
+              {activeSidePanel === 'my-profile' && (
+                <UserProfileForm />
+              )}
 
               {/* Fallback for other panels if not implemented yet */}
-              {!['property-detail', 'contact-detail', 'contact-form', 'account-form', 'account-detail', 'journal-entry-detail', 'employee-form', 'employee-detail', 'leave-management', 'document-upload', 'compliance-check', 'department-form', 'department-list', 'lease-form', 'lease-detail', 'rental-invoice-form', 'rental-payment-form', 'tenant-form', 'maintenance-form', 'property-form', 'new-customer', 'new-ar-invoice', 'new-ar-receipt', 'new-supplier', 'new-ap-invoice', 'new-ap-payment', 'customer-receipt-detail', 'supplier-payment-detail', 'ar-invoice-detail', 'ap-invoice-detail', 'supplier-detail', 'tax-code-form', 'posting-profile-form', 'commission-structure-form', 'commission-calculator', 'commission-detail', 'currency-form', 'exchange-rate-form', 'opportunity-form', 'crm-detail', 'activity-form', 'bank-account-form', 'bank-transaction-view', 'statement-upload-form', 'reconciliation-rules-form', 'user-form', 'role-form', 'sod-rule-form', 'sale-form', 'sale-detail', 'asset-form', 'asset-category-form', 'asset-detail', 'asset-disposal', 'run-depreciation', 'payroll-run-form', 'fiscal-year-form'].includes(activeSidePanel) && (
+              {!['property-detail', 'contact-detail', 'contact-form', 'account-form', 'account-detail', 'journal-entry-detail', 'employee-form', 'employee-detail', 'leave-management', 'document-upload', 'compliance-check', 'department-form', 'department-list', 'lease-form', 'lease-detail', 'rental-invoice-form', 'rental-payment-form', 'tenant-form', 'maintenance-form', 'property-form', 'new-customer', 'new-ar-invoice', 'new-ar-receipt', 'new-supplier', 'new-ap-invoice', 'new-ap-payment', 'customer-receipt-detail', 'supplier-payment-detail', 'ar-invoice-detail', 'ap-invoice-detail', 'supplier-detail', 'tax-code-form', 'posting-profile-form', 'commission-structure-form', 'commission-calculator', 'commission-detail', 'currency-form', 'exchange-rate-form', 'opportunity-form', 'crm-detail', 'activity-form', 'bank-account-form', 'bank-transaction-view', 'statement-upload-form', 'reconciliation-rules-form', 'user-form', 'role-form', 'sod-rule-form', 'sale-form', 'sale-detail', 'asset-form', 'asset-category-form', 'asset-detail', 'asset-disposal', 'run-depreciation', 'payroll-run-form', 'fiscal-year-form', 'my-profile'].includes(activeSidePanel) && (
                 <div className="p-20 text-center">
                   <div className="w-16 h-16 rounded-2xl bg-dark-800 flex items-center justify-center mx-auto mb-4 border border-white/5">
                     <FileText size={32} className="text-dark-600" />

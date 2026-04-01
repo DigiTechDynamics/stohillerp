@@ -35,21 +35,49 @@ export default function AccountCombobox({ value, onChange, placeholder = "Search
         const res = await financeAPI.accounts.search(search)
         const data = res.data?.results || res.data || []
         setResults(Array.isArray(data) ? data : [])
-        setSelectedIndex(-1)
+        setSelectedIndex(data.length > 0 ? 0 : -1)
       } catch (err) {
         console.error('Search failed:', err)
       } finally {
         setIsLoading(false)
       }
-    }, 300)
+    }, 150)
 
     return () => clearTimeout(timer)
   }, [search])
 
   const handleSelect = (item) => {
+    if (!item) return
     onChange(item)
     setIsOpen(false)
     setSearch('')
+  }
+
+  const handleKeyDown = (e) => {
+    if (!isOpen) {
+      if (e.key === 'Enter' || e.key === 'ArrowDown') {
+        setIsOpen(true)
+        e.preventDefault()
+      }
+      return
+    }
+
+    if (e.key === 'ArrowDown') {
+      setSelectedIndex(prev => (prev + 1) % results.length)
+      e.preventDefault()
+    } else if (e.key === 'ArrowUp') {
+      setSelectedIndex(prev => (prev - 1 + results.length) % results.length)
+      e.preventDefault()
+    } else if (e.key === 'Enter') {
+      if (selectedIndex >= 0 && results[selectedIndex]) {
+        handleSelect(results[selectedIndex])
+      } else if (results.length > 0) {
+        handleSelect(results[0])
+      }
+      e.preventDefault()
+    } else if (e.key === 'Escape') {
+      setIsOpen(false)
+    }
   }
 
   const getIcon = (type) => {
@@ -62,12 +90,13 @@ export default function AccountCombobox({ value, onChange, placeholder = "Search
   }
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative" ref={containerRef} onKeyDown={handleKeyDown}>
       <div 
-        className={`form-input w-full flex items-center justify-between gap-2 cursor-pointer transition-all ${isOpen ? 'border-primary ring-1 ring-primary/20' : 'border-transparent hover:border-white/10'}`}
+        className={`form-input w-[200px] flex items-center justify-between gap-2 cursor-pointer transition-all ${isOpen ? 'border-primary ring-1 ring-primary/20' : 'border-transparent hover:border-white/10'}`}
         onClick={() => setIsOpen(!isOpen)}
+        tabIndex={0}
       >
-        <div className="flex items-center gap-2 overflow-hidden">
+        <div className="flex items-center gap-2 overflow-hidden w-full">
           {value ? (
             <>
               {getIcon(value.type)}
@@ -77,7 +106,7 @@ export default function AccountCombobox({ value, onChange, placeholder = "Search
             <span className="text-xs text-dark-500 truncate">{placeholder}</span>
           )}
         </div>
-        <ChevronDown size={14} className={`text-dark-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown size={14} className={`text-dark-500 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </div>
 
       <AnimatePresence>
@@ -86,7 +115,7 @@ export default function AccountCombobox({ value, onChange, placeholder = "Search
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 5 }}
-            className="absolute z-50 top-full left-0 right-0 mt-2 bg-dark-900 border border-white/5 rounded-xl shadow-2xl overflow-hidden min-w-[300px]"
+            className="absolute z-50 top-full left-0 mt-2 bg-dark-900 border border-white/5 rounded-xl shadow-2xl shadow-black/50 overflow-hidden min-w-[320px]"
           >
             <div className="p-2 border-b border-white/5 bg-white/2">
               <div className="relative">
@@ -125,8 +154,9 @@ export default function AccountCombobox({ value, onChange, placeholder = "Search
                 <button
                   type="button"
                   key={item.id}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-white/5 transition-colors group ${idx === selectedIndex ? 'bg-white/5' : ''}`}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-white/5 transition-colors group ${idx === selectedIndex ? 'bg-primary/10 border-l-2 border-primary' : 'border-l-2 border-transparent'}`}
                   onClick={() => handleSelect(item)}
+                  onMouseEnter={() => setSelectedIndex(idx)}
                 >
                   <div className="w-8 h-8 rounded-lg bg-dark-800 flex items-center justify-center group-hover:bg-dark-700 transition-colors">
                     {getIcon(item.type)}

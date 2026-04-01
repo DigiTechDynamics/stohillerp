@@ -1,9 +1,10 @@
 """Stohil Properties - Rentals Serializers"""
 from rest_framework import serializers
+from utils.serializers import SanitizedModelSerializer
 from apps.rentals.models import Lease, RentalInvoice, RentalPayment, MaintenanceRequest
 
 
-class LeaseSerializer(serializers.ModelSerializer):
+class LeaseSerializer(SanitizedModelSerializer):
     tenant_name = serializers.CharField(source='tenant.full_name', read_only=True)
     property_ref = serializers.CharField(source='property.reference_number', read_only=True)
     property_name = serializers.CharField(source='property.name', read_only=True)
@@ -22,7 +23,7 @@ class LeaseSerializer(serializers.ModelSerializer):
         return obj.property.full_address if obj.property else ''
 
 
-class RentalInvoiceSerializer(serializers.ModelSerializer):
+class RentalInvoiceSerializer(SanitizedModelSerializer):
     tenant_name = serializers.CharField(source='lease.tenant.full_name', read_only=True)
     property_ref = serializers.CharField(source='lease.property.reference_number', read_only=True)
     property_name = serializers.CharField(source='lease.property.name', read_only=True)
@@ -35,7 +36,7 @@ class RentalInvoiceSerializer(serializers.ModelSerializer):
         read_only_fields = ['invoice_number']
 
 
-class RentalPaymentSerializer(serializers.ModelSerializer):
+class RentalPaymentSerializer(SanitizedModelSerializer):
     invoice_number = serializers.CharField(source='invoice.invoice_number', read_only=True)
     tenant_name = serializers.CharField(source='invoice.lease.tenant.full_name', read_only=True)
 
@@ -44,7 +45,7 @@ class RentalPaymentSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class MaintenanceRequestSerializer(serializers.ModelSerializer):
+class MaintenanceRequestSerializer(SanitizedModelSerializer):
     property_ref = serializers.SerializerMethodField()
     property_name = serializers.SerializerMethodField()
     tenant_name = serializers.CharField(source='lease.tenant.full_name', read_only=True, default=None)
