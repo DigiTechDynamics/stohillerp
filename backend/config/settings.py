@@ -72,6 +72,7 @@ STOHILL_APPS = [
     'apps.fixed_assets',
     'apps.banking',
     'apps.payroll',
+    'apps.notifications',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + STOHILL_APPS

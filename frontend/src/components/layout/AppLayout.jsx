@@ -14,6 +14,8 @@ import ExecutiveModeToggle from '@/components/common/ExecutiveModeToggle'
 import ThemeToggle from '@/components/common/ThemeToggle'
 import logo from '@/assets/logo.png'
 
+import NotificationDropdown from './NotificationDropdown'
+
 // Simple Error Boundary Fallback for robust UI
 class ErrorBoundaryFallback extends React.Component {
   constructor(props) {
@@ -213,7 +215,7 @@ export default function AppLayout() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Topbar */}
-        <header className={`h-14 flex items-center justify-between px-4 lg:px-6
+        <header className={`h-14 flex items-center justify-between px-4 lg:px-6 relative z-40
                             border-b ${theme === 'light' ? 'border-border-color bg-white/80' : 'border-white/5 bg-dark-900/80'} backdrop-blur-sm flex-shrink-0`}>
           <div className="flex items-center gap-3">
             <button
@@ -243,13 +245,10 @@ export default function AppLayout() {
             </button>
           </div>
 
-          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
             <ThemeToggle />
 
-            <button className="btn-ghost p-2 relative group">
-              <Bell size={18} className="text-dark-400 group-hover:text-white transition-colors" />
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary ring-2 ring-dark-900" />
-            </button>
+            <NotificationDropdown />
 
             <div className="h-8 w-px bg-white/5 mx-1" />
             

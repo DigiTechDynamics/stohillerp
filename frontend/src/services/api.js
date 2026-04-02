@@ -480,7 +480,6 @@ export const adminAPI = {
     delete: (id) => api.delete(`core/sod-rules/${id}/`),
   },
 }
-
 export const dataManagementAPI = {
   getTemplate: (module) => api.get(`core/data/template/${module}/`, { responseType: 'blob' }),
   exportData: (module) => api.get(`core/data/export/${module}/`, { responseType: 'blob' }),
@@ -491,6 +490,13 @@ export const dataManagementAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+}
+
+export const notificationsAPI = {
+  list: (params) => api.get('notifications/', { params }),
+  markRead: (id) => api.post(`notifications/${id}/mark_read/`),
+  markAllRead: () => api.post('notifications/mark_all_read/'),
+  unreadCount: () => api.get('notifications/unread_count/'),
 }
 
 export default api

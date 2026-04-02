@@ -9,6 +9,7 @@ from django.db.models import Count, Sum, Avg, Q
 from django.utils import timezone
 from datetime import timedelta
 import calendar
+from apps.notifications.utils import notify_user
 
 from apps.crm.models import (
     Contact, Opportunity, Pipeline, PipelineStage,

@@ -22,6 +22,7 @@ from apps.finance.serializers import (  # type: ignore
     ExchangeRateSerializer, PostingProfileSerializer, CurrencySerializer
 )
 from apps.hr.models import Employee  # type: ignore
+from apps.notifications.utils import notify_user
 
 
 class CurrencyViewSet(viewsets.ModelViewSet):
@@ -177,6 +178,20 @@ class JournalBatchViewSet(viewsets.ModelViewSet):
         # Lock entries to pending
         batch.entries.update(status='pending')
         
+        # Notify Finance Managers
+        from apps.core.models import User, Role
+        managers = User.objects.filter(roles__role_type=Role.RoleType.FINANCE_MANAGER, is_active=True)
+        for manager in managers:
+            notify_user(
+                recipient=manager,
+                actor=request.user,
+                verb='submitted for approval',
+                target=batch,
+                module='Finance',
+                link=f'/finance/batches/{batch.id}',
+                description=f"Batch {batch.batch_number} requires review."
+            )
+        
         return Response({'status': 'submitted', 'batch_number': batch.batch_number})
 
     @action(detail=True, methods=['post'])
@@ -195,6 +210,18 @@ class JournalBatchViewSet(viewsets.ModelViewSet):
         batch.save(update_fields=['status', 'checker', 'approved_at'])
         
         batch.entries.update(status='approved')
+        
+        # Notify Maker
+        notify_user(
+            recipient=batch.maker,
+            actor=request.user,
+            verb='approved',
+            target=batch,
+            module='Finance',
+            link=f'/finance/batches/{batch.id}',
+            description=f"Your batch {batch.batch_number} has been approved."
+        )
+        
         return Response({'status': 'approved'})
 
     @action(detail=True, methods=['post'])
@@ -214,6 +241,18 @@ class JournalBatchViewSet(viewsets.ModelViewSet):
             batch.posted_by = request.user
             batch.posted_at = timezone.now()
             batch.save(update_fields=['status', 'posted_by', 'posted_at'])
+            
+            # Notify Maker
+            notify_user(
+                recipient=batch.maker,
+                actor=request.user,
+                verb='posted',
+                target=batch,
+                module='Finance',
+                link=f'/finance/batches/{batch.id}',
+                description=f"Your batch {batch.batch_number} has been posted to GL."
+            )
+            
             return Response({'status': 'posted'})
         except Exception as e:
             return Response({'error': str(e)}, status=400)
