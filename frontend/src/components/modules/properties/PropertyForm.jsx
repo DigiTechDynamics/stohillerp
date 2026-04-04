@@ -24,7 +24,7 @@ const PropertyForm = forwardRef((props, ref) => {
     city: property?.city || '',
     province: property?.province || '',
     postal_code: property?.postal_code || '',
-    country: property?.country || 'South Africa',
+    country: property?.country || 'Zimbabwe',
     erf_size: property?.erf_size || '',
     floor_size: property?.floor_size || '',
     bedrooms: property?.bedrooms || '',
@@ -33,7 +33,7 @@ const PropertyForm = forwardRef((props, ref) => {
     parking_bays: property?.parking_bays || '',
     asking_price: property?.asking_price || '',
     rental_rate: property?.rental_rate || '',
-    currency: property?.currency || '',
+    currency: property?.currency || 'USD',
     description: property?.description || '',
   })
 

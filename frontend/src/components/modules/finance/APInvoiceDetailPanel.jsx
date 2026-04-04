@@ -3,11 +3,13 @@ import { Calendar, Hash, User, Clock, CheckCircle2, FileText, Send, Edit2, Trash
 import { financeAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
+import { useConfirmStore } from '@/stores/useConfirmStore'
 import { toast } from 'react-hot-toast'
 
 export default function APInvoiceDetailPanel({ invoice: initialInvoice }) {
   const queryClient = useQueryClient()
   const { closeSidePanel, openSidePanel } = useUIStore()
+  const confirm = useConfirmStore((s) => s.confirm)
 
   const { data, isLoading } = useQuery({
     queryKey: ['ap-invoice', initialInvoice.id],
@@ -57,8 +59,14 @@ export default function APInvoiceDetailPanel({ invoice: initialInvoice }) {
     openSidePanel('new-ap-invoice', { invoice })
   }
 
-  const handleDelete = () => {
-    if (window.confirm('Are you sure you want to delete this draft invoice?')) {
+  const handleDelete = async () => {
+    const ok = await confirm({
+      title: 'Delete Draft Invoice',
+      message: 'Are you sure you want to delete this draft invoice? This action cannot be undone.',
+      confirmLabel: 'Delete Draft',
+      type: 'danger'
+    })
+    if (ok) {
       deleteMutation.mutate()
     }
   }

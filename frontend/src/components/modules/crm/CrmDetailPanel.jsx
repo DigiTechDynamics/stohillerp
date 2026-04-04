@@ -9,8 +9,9 @@ import {
 } from 'lucide-react'
 import { crmAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
-import { useUIStore } from '@/stores/authStore'
+import { useUIStore, useAuthStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
+import ActionGuard from '@/components/common/ActionGuard'
 import Chatter from '@/components/common/Chatter'
 import LostReasonModal from './LostReasonModal'
 
@@ -174,16 +175,17 @@ export default function CrmDetailPanel({ id, type }) {
             const isPast = !isCurrent && currentIdx > idx
             return (
               <div key={stage.id} className="flex items-center">
-                <button
-                  onClick={() => moveStageMutation.mutate(stage.id)}
-                  disabled={isCurrent || moveStageMutation.isPending}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5
-                    ${isCurrent ? 'bg-primary text-white shadow-lg shadow-primary/20' :
-                      isPast ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-dark-500 hover:text-dark-300'}`}
-                >
-                  {isPast && <CheckCircle size={11} />}
-                  {stage.name}
-                </button>
+                  <button
+                    onClick={() => moveStageMutation.mutate(stage.id)}
+                    disabled={isCurrent || moveStageMutation.isPending || !useAuthStore.getState().canEdit()}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5
+                      ${isCurrent ? 'bg-primary text-white shadow-lg shadow-primary/20' :
+                        isPast ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-dark-500 hover:text-dark-300'}
+                      ${!useAuthStore.getState().canEdit() && !isCurrent ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {isPast && <CheckCircle size={11} />}
+                    {stage.name}
+                  </button>
                 {idx < (opp.pipeline_stages?.filter(s => !s.is_terminal).length || 0) - 1 && (
                   <ChevronRight size={14} className="text-dark-700 mx-0.5" />
                 )}
@@ -194,56 +196,55 @@ export default function CrmDetailPanel({ id, type }) {
 
         {/* Action Buttons Row */}
         <div className="flex items-center gap-2 flex-wrap">
-          {opp.is_lead && (
-            <button
-              onClick={() => convertMutation.mutate()}
-              disabled={convertMutation.isPending}
-              className="btn-primary h-7 px-3 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5"
-            >
-              {convertMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <><TrendingUp size={11} /> Convert</>}
-            </button>
-          )}
-          {!opp.is_lead && !isWon && !isLost && (
-            <>
+          <ActionGuard>
+            {opp.is_lead && (
               <button
-                onClick={() => wonMutation.mutate()}
-                disabled={wonMutation.isPending}
-                className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-500/20 transition-all"
+                onClick={() => convertMutation.mutate()}
+                disabled={convertMutation.isPending}
+                className="btn-primary h-7 px-3 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5"
               >
-                {wonMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <><Trophy size={11} /> Mark Won</>}
+                {convertMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <><TrendingUp size={11} /> Convert</>}
               </button>
-              <button
-                onClick={() => setShowLostModal(true)}
-                className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] font-bold uppercase tracking-widest hover:bg-red-500/20 transition-all"
-              >
-                <XCircle size={11} /> Mark Lost
-              </button>
-            </>
-          )}
-          {isWon && (
-            <span className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-widest">
-              <Trophy size={11} /> WON
-            </span>
-          )}
-          {isLost && (
-            <span className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] font-bold uppercase tracking-widest">
-              <XCircle size={11} /> LOST {opp.lost_reason_name ? `— ${opp.lost_reason_name}` : ''}
+            )}
+            {!opp.is_lead && !isWon && !isLost && (
+              <>
+                <button
+                  onClick={() => wonMutation.mutate()}
+                  disabled={wonMutation.isPending}
+                  className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-500/20 transition-all"
+                >
+                  {wonMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <><Trophy size={11} /> Mark Won</>}
+                </button>
+                <button
+                  onClick={() => setShowLostModal(true)}
+                  className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] font-bold uppercase tracking-widest hover:bg-red-500/20 transition-all"
+                >
+                  <XCircle size={11} /> Mark Lost
+                </button>
+              </>
+            )}
+          </ActionGuard>
+          {(isWon || isLost) && (
+            <span className={`flex items-center gap-1.5 h-7 px-3 rounded-lg text-[10px] font-bold uppercase tracking-widest ${isWon ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border border-red-500/30 text-red-400'}`}>
+              {isWon ? <><Trophy size={11} /> WON</> : <><XCircle size={11} /> LOST {opp.lost_reason_name ? `— ${opp.lost_reason_name}` : ''}</>}
             </span>
           )}
 
           {/* Schedule Activity Quick Button */}
-          <button
-            onClick={() => setShowActivityForm(!showActivityForm)}
-            className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-white/5 border border-white/10 text-dark-400 text-[10px] font-bold uppercase tracking-widest hover:text-white hover:border-primary/30 transition-all ml-auto"
-          >
-            <ActivityIcon size={11} /> Activity
-          </button>
-          <button
-            onClick={() => openPanel('opportunity-form', { opportunity: opp })}
-            className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-white/5 border border-white/10 text-dark-400 text-[10px] font-bold uppercase tracking-widest hover:text-white transition-all"
-          >
-            Edit
-          </button>
+          <ActionGuard>
+            <button
+              onClick={() => setShowActivityForm(!showActivityForm)}
+              className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-white/5 border border-white/10 text-dark-400 text-[10px] font-bold uppercase tracking-widest hover:text-white hover:border-primary/30 transition-all ml-auto"
+            >
+              <ActivityIcon size={11} /> Activity
+            </button>
+            <button
+              onClick={() => openPanel('opportunity-form', { opportunity: opp })}
+              className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-white/5 border border-white/10 text-dark-400 text-[10px] font-bold uppercase tracking-widest hover:text-white transition-all"
+            >
+              Edit
+            </button>
+          </ActionGuard>
         </div>
       </div>
 

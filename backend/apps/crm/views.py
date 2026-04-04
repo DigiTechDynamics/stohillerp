@@ -381,7 +381,14 @@ class ActivityViewSet(viewsets.ModelViewSet):
     serializer_class = ActivitySerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['activity_type', 'status', 'assigned_to', 'opportunity', 'contact']
+    filterset_fields = {
+        'activity_type': ['exact'],
+        'status': ['exact'],
+        'assigned_to': ['exact'],
+        'opportunity': ['exact'],
+        'contact': ['exact'],
+        'due_date': ['gte', 'lte'],
+    }
     search_fields = ['subject', 'description']
     ordering_fields = ['due_date', 'created_at', 'status']
 
@@ -393,6 +400,23 @@ class ActivityViewSet(viewsets.ModelViewSet):
         activity.completed_date = timezone.now()
         activity.save(update_fields=['status', 'completed_date'])
         return Response({'status': 'completed'})
+
+    @action(detail=True, methods=['post'])
+    def reschedule(self, request, pk=None):
+        """Reschedule an activity to a new date/time."""
+        activity = self.get_object()
+        new_date = request.data.get('due_date')
+        if not new_date:
+            return Response({'error': 'due_date is required'}, status=400)
+        
+        activity.due_date = new_date
+        activity.status = Activity.ActivityStatus.PLANNED
+        activity.save(update_fields=['due_date', 'status'])
+        return Response({
+            'status': 'rescheduled', 
+            'new_date': activity.due_date,
+            'id': str(activity.id)
+        })
 
 
 # ─────────────────────────────────────────────────────────────────────────────

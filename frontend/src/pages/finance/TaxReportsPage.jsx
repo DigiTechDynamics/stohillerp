@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { financeAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
+import { useConfirmStore } from '@/stores/useConfirmStore'
 import { toast } from 'react-hot-toast'
 import { formatCurrency } from '@/utils/format'
 
@@ -20,6 +21,7 @@ export default function TaxReportsPage() {
   })
   const [isPreviewing, setIsPreviewing] = useState(false)
   const openPanel = useUIStore((s) => s.openSidePanel)
+  const confirm = useConfirmStore((s) => s.confirm)
 
   const { data: taxData, isLoading: loadingCodes } = useQuery({
     queryKey: ['tax-codes', { search }],
@@ -158,8 +160,14 @@ export default function TaxReportsPage() {
                           <Edit3 size={14} />
                         </button>
                         <button 
-                          onClick={() => {
-                            if(window.confirm('Delete this tax code?')) {
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: 'Delete Tax Code',
+                              message: `Are you sure you want to delete the tax code "${tax.code}"? This action cannot be undone and may affect linked transactions.`,
+                              confirmLabel: 'Delete',
+                              type: 'danger'
+                            })
+                            if (ok) {
                               deleteMutation.mutate(tax.id)
                             }
                           }}

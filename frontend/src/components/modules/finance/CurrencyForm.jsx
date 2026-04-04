@@ -49,7 +49,7 @@ export default function CurrencyForm() {
             required
             type="text"
             className="form-input"
-            placeholder="e.g. USD, ZAR"
+            placeholder="e.g. USD, EUR"
             value={formData.code}
             onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
             maxLength={3}

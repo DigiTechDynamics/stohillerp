@@ -24,17 +24,20 @@ class DocumentWorkspaceViewSet(viewsets.ModelViewSet):
     queryset = DocumentWorkspace.objects.filter(is_active=True).order_by('name')
     serializer_class = DocumentWorkspaceSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
 class DocumentCategoryViewSet(viewsets.ModelViewSet):
     queryset = DocumentCategory.objects.all().order_by('name')
     serializer_class = DocumentCategorySerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
 class DocumentTagViewSet(viewsets.ModelViewSet):
     queryset = DocumentTag.objects.all().order_by('name')
     serializer_class = DocumentTagSerializer
     permission_classes = [IsAuthenticated]
     filterset_fields = ['workspace']
+    pagination_class = None
 
 class DocumentViewSet(viewsets.ModelViewSet):
     serializer_class = DocumentSerializer

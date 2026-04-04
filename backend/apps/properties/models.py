@@ -59,7 +59,7 @@ class Property(AuditedModel):
     city = models.CharField(max_length=100, blank=True)
     province = models.CharField(max_length=100, blank=True)
     postal_code = models.CharField(max_length=10, blank=True)
-    country = models.CharField(max_length=50, default='South Africa')
+    country = models.CharField(max_length=50, default='Zimbabwe')
     latitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     longitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
 

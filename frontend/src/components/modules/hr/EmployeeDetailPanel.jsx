@@ -3,6 +3,7 @@ import { User, Briefcase, Mail, Phone, CreditCard, Calendar, ShieldCheck, MapPin
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import EmployeeStatementModal from './EmployeeStatementModal'
+import ActionGuard from '@/components/common/ActionGuard'
 
 export default function EmployeeDetailPanel({ employee }) {
   const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
@@ -106,14 +107,16 @@ export default function EmployeeDetailPanel({ employee }) {
 
       {/* Actions */}
       <div className="pt-4 flex gap-3">
+        <ActionGuard>
+          <button 
+            className="flex-1 btn-primary py-2.5 flex items-center justify-center gap-2"
+            onClick={() => openSidePanel('employee-form', { employee })}
+          >
+            Edit Profile
+          </button>
+        </ActionGuard>
         <button 
-          className="flex-1 btn-primary py-2.5 flex items-center justify-center gap-2"
-          onClick={() => openSidePanel('employee-form', { employee })}
-        >
-          Edit Profile
-        </button>
-        <button 
-          className="btn-secondary px-4 py-2.5"
+          className="btn-secondary px-4 py-2.5 flex-1"
           onClick={() => setIsStatementModalOpen(true)}
         >
           Generate Statement

@@ -3,11 +3,13 @@ import { Building2, Mail, Phone, MapPin, Hash, ShieldCheck, ShieldAlert, Edit3, 
 import { financeAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
+import { useConfirmStore } from '@/stores/useConfirmStore'
 import { toast } from 'react-hot-toast'
 
 export default function SupplierDetailPanel({ supplier: initialSupplier }) {
   const queryClient = useQueryClient()
   const { closeSidePanel, openSidePanel } = useUIStore()
+  const confirm = useConfirmStore((s) => s.confirm)
 
   const { data, isLoading } = useQuery({
     queryKey: ['supplier-detail', initialSupplier.id],
@@ -118,8 +120,14 @@ export default function SupplierDetailPanel({ supplier: initialSupplier }) {
           {supplier.is_active ? <><ShieldAlert size={16} /> Deactivate</> : <><ShieldCheck size={16} /> Activate</>}
         </button>
         <button 
-          onClick={() => {
-            if(window.confirm('Are you sure you want to delete this supplier? This action cannot be undone.')) {
+          onClick={async () => {
+            const ok = await confirm({
+              title: 'Delete Supplier',
+              message: `Are you sure you want to delete "${supplier.name}"? This action cannot be undone and may fail if transactions are linked.`,
+              confirmLabel: 'Delete Supplier',
+              type: 'danger'
+            })
+            if (ok) {
               deleteMutation.mutate()
             }
           }}

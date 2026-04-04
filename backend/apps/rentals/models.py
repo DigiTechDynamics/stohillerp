@@ -62,6 +62,13 @@ class Lease(AuditedModel):
         on_delete=models.SET_NULL, related_name='managed_leases'
     )
 
+    # Renewal tracking
+    previous_lease = models.ForeignKey(
+        'self', null=True, blank=True, 
+        on_delete=models.SET_NULL, related_name='renewal_leases',
+        help_text="The preceding lease that this agreement replaces."
+    )
+
     notes = models.TextField(blank=True)
 
     def calculate_next_invoice_date(self, after_date=None):
@@ -89,6 +96,52 @@ class Lease(AuditedModel):
         day = min(self.invoice_day, last_day)
         
         return date(year, month, day)
+
+    def activate(self):
+        """Transition a draft lease to active status."""
+        if self.status != self.LeaseStatus.ACTIVE:
+            self.status = self.LeaseStatus.ACTIVE
+            if not self.next_invoice_date:
+                self.next_invoice_date = self.calculate_next_invoice_date()
+            self.save(update_fields=['status', 'next_invoice_date'])
+
+    def terminate(self, termination_date=None, reason=''):
+        """End a lease agreement early."""
+        from datetime import date
+        self.status = self.LeaseStatus.TERMINATED
+        self.end_date = termination_date or date.today()
+        if reason:
+            self.notes = f"{self.notes}\nTermination Reason: {reason}" if self.notes else f"Termination Reason: {reason}"
+        self.save(update_fields=['status', 'end_date', 'notes'])
+
+    def renew(self, start_date, end_date, new_rent=None):
+        """Supersede this lease with a new agreement."""
+        import transaction
+        with transaction.atomic():
+            # 1. Mark current as renewed
+            self.status = self.LeaseStatus.RENEWED
+            self.save(update_fields=['status'])
+            
+            # 2. Create new lease
+            new_lease = Lease.objects.create(
+                property=self.property,
+                unit=self.unit,
+                tenant=self.tenant,
+                currency=self.currency,
+                lease_type=self.lease_type,
+                status=self.LeaseStatus.ACTIVE,
+                start_date=start_date,
+                end_date=end_date,
+                monthly_rental=new_rent or self.monthly_rental,
+                rental_escalation_rate=self.rental_escalation_rate,
+                deposit_amount=self.deposit_amount,
+                vat_applicable=self.vat_applicable,
+                invoice_day=self.invoice_day,
+                payment_due_days=self.payment_due_days,
+                managing_agent=self.managing_agent,
+                previous_lease=self
+            )
+            return new_lease
 
     class Meta:
         db_table = 'rentals_leases'

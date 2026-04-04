@@ -15,39 +15,57 @@ export default function CrmCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const openPanel = useUIStore(s => s.openSidePanel)
 
+  // Calculate date range for current month view (including padding days)
+  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+  const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+  
+  // Padding for the 42-cell grid
+  const startDay = startOfMonth.getDay()
+  const startDate = new Date(startOfMonth)
+  startDate.setDate(startDate.getDate() - startDay)
+  
+  const endDate = new Date(startDate)
+  endDate.setDate(endDate.getDate() + 41)
+
   const { data: activitiesRes, isLoading } = useQuery({
     queryKey: ['crm-calendar-activities', currentDate.getMonth(), currentDate.getFullYear()],
     queryFn: () => crmAPI.activities.list({ 
-      page_size: 100,
-      // Ideally we should filter by the month range here
+      due_date__gte: startDate.toISOString().split('T')[0],
+      due_date__lte: endDate.toISOString().split('T')[0],
+      page_size: 200,
     })
   })
 
   const activities = activitiesRes?.data?.results || []
 
-  // Calendar logic
-  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
-  const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
-  const startDay = startOfMonth.getDay()
-  const totalDays = endOfMonth.getDate()
-
-  const daysArr = Array.from({ length: 42 }, (_, i) => {
-    const day = i - startDay + 1
-    if (day <= 0 || day > totalDays) return null
-    return new Date(currentDate.getFullYear(), currentDate.getMonth(), day)
-  })
-
   const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
   const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
 
+  const daysArr = Array.from({ length: 42 }, (_, i) => {
+    const d = new Date(startDate)
+    d.setDate(d.getDate() + i)
+    return d
+  })
+
   const getActivitiesForDay = (date) => {
-    if (!date) return []
     return activities.filter(act => {
       const actDate = new Date(act.due_date)
       return actDate.getDate() === date.getDate() &&
              actDate.getMonth() === date.getMonth() &&
              actDate.getFullYear() === date.getFullYear()
     })
+  }
+
+  const handleDayClick = (date) => {
+    const localDateStr = date.toISOString().split('T')[0]
+    openPanel('activity-form', { 
+      date: localDateStr,
+      status: 'planned'
+    })
+  }
+
+  const handleActivityClick = (act) => {
+    openPanel('activity-form', { activity: act })
   }
 
   const getActivityIcon = (type) => {
@@ -165,13 +183,20 @@ export default function CrmCalendar() {
                       `}>
                         {date.getDate()}
                       </span>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDayClick(date) }}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 transition-all"
+                        title="Schedule Activity"
+                      >
+                        <Plus size={12} />
+                      </button>
                     </div>
 
                     <div className="space-y-1.5 overflow-hidden">
                       {dayActs.map(act => (
                         <div 
                           key={act.id}
-                          onClick={() => openPanel('crm-detail', { id: act.opportunity })}
+                          onClick={(e) => { e.stopPropagation(); handleActivityClick(act) }}
                           className={`px-2 py-1 rounded-lg border text-[10px] font-medium truncate cursor-pointer transition-all hover:scale-102 active:scale-98 flex items-center gap-1.5 shadow-sm
                             ${getActivityColor(act.activity_type)}
                           `}

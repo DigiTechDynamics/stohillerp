@@ -12,6 +12,7 @@ import {
 import { crmAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
+import { useConfirmStore } from '@/stores/useConfirmStore'
 import { toast } from 'react-hot-toast'
 import Chatter from '@/components/common/Chatter'
 
@@ -62,6 +63,7 @@ function OpportunityRow({ opp, onClick }) {
 
 function DocumentList({ contactId }) {
   const queryClient = useQueryClient()
+  const confirm = useConfirmStore((s) => s.confirm)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadForm, setUploadForm] = useState({ name: '', type: 'id' })
 
@@ -200,7 +202,17 @@ function DocumentList({ contactId }) {
                 <Download size={14} />
               </a>
               <button
-                onClick={() => window.confirm('Delete document?') && deleteMutation.mutate(doc.id)}
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: 'Delete Document',
+                    message: `Are you sure you want to delete "${doc.name}"? This action cannot be undone.`,
+                    confirmLabel: 'Delete Document',
+                    type: 'danger'
+                  })
+                  if (ok) {
+                    deleteMutation.mutate(doc.id)
+                  }
+                }}
                 className="p-2 text-dark-400 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors"
               >
                 <Trash2 size={14} />

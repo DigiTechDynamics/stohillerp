@@ -17,7 +17,7 @@ import {
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { crmAPI } from '@/services/api'
 import { formatCurrency } from '@/utils/format'
-import { useUIStore } from '@/stores/authStore'
+import { useUIStore, useAuthStore } from '@/stores/authStore'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Lead Score Badge
@@ -48,9 +48,11 @@ function LeadScoreBadge({ score, rating }) {
 // Draggable Opportunity Card
 // ─────────────────────────────────────────────────────────────────────────────
 function OpportunityCard({ opp, onClick, isSelected, onToggleSelect }) {
+  const canEdit = useAuthStore((s) => s.canEdit())
   const { attributes, listeners, setNodeRef, isDragging, transform } = useDraggable({
     id: opp.id,
     data: { opp },
+    disabled: !canEdit,
   })
 
   const style = transform ? {
@@ -83,14 +85,17 @@ function OpportunityCard({ opp, onClick, isSelected, onToggleSelect }) {
                   rounded-xl p-4 cursor-pointer group relative
                   ${isSelected ? 'ring-2 ring-primary/50 bg-primary/5' : 'hover:border-primary/30 hover:bg-white/5'}
                   ${isStale ? 'bg-red-500/[0.03] border-red-500/20' : ''}
+                  ${!canEdit ? 'cursor-default' : ''}
                   shadow-sm hover:shadow-xl hover:shadow-black/20 transition-all`}
     >
       {/* Drag handle strip */}
-      <div
-        {...listeners}
-        className="absolute inset-x-0 top-0 h-5 cursor-grab active:cursor-grabbing rounded-t-xl"
-        onClick={e => e.stopPropagation()}
-      />
+      {canEdit && (
+        <div
+          {...listeners}
+          className="absolute inset-x-0 top-0 h-5 cursor-grab active:cursor-grabbing rounded-t-xl"
+          onClick={e => e.stopPropagation()}
+        />
+      )}
 
       {/* Checkbox + Header row */}
       <div className="flex items-start justify-between mb-1.5">
@@ -246,15 +251,17 @@ function KanbanColumn({ column, isLead, selectedIds, onToggleSelect, onCardClick
           </div>
         )}
 
-        <button
-          onClick={() => openPanel('opportunity-form', { opportunity: { stage: column.stage_id, is_lead: isLead } })}
-          className="w-full py-2.5 rounded-xl border border-dashed border-white/10
-                     text-xs font-bold uppercase tracking-wider text-dark-500 hover:text-primary hover:border-primary/40 hover:bg-primary/5
-                     transition-all flex items-center justify-center gap-2 mt-2 group"
-        >
-          <Plus size={14} className="group-hover:scale-110 transition-transform" />
-          Quick Add
-        </button>
+        {useAuthStore.getState().canEdit() && (
+          <button
+            onClick={() => openPanel('opportunity-form', { opportunity: { stage: column.stage_id, is_lead: isLead } })}
+            className="w-full py-2.5 rounded-xl border border-dashed border-white/10
+                       text-xs font-bold uppercase tracking-wider text-dark-500 hover:text-primary hover:border-primary/40 hover:bg-primary/5
+                       transition-all flex items-center justify-center gap-2 mt-2 group"
+          >
+            <Plus size={14} className="group-hover:scale-110 transition-transform" />
+            Quick Add
+          </button>
+        )}
       </div>
     </div>
   )

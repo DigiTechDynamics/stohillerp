@@ -110,7 +110,7 @@ class UserProfileSerializer(SanitizedModelSerializer):
     """Restricted serializer for users to update their own profile."""
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'phone', 'avatar']
+        fields = ['first_name', 'last_name', 'phone', 'avatar', 'executive_mode']
 
 class PasswordChangeSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, min_length=8, required=True)

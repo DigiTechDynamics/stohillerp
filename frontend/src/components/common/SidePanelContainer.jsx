@@ -6,7 +6,9 @@ import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
 import { propertiesAPI, crmAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
+import { useConfirmStore } from '@/stores/useConfirmStore'
 import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
+import ActionGuard from '@/components/common/ActionGuard'
 import AccountForm from '@/components/modules/finance/AccountForm'
 import AccountDetailPanel from '@/components/modules/finance/AccountDetailPanel'
 import JournalEntryDetailPanel from '@/components/modules/finance/JournalEntryDetailPanel'
@@ -23,6 +25,8 @@ import RentalInvoiceForm from '@/components/modules/rentals/RentalInvoiceForm'
 import RentalPaymentForm from '@/components/modules/rentals/RentalPaymentForm'
 import TenantForm from '@/components/modules/rentals/TenantForm'
 import MaintenanceForm from '@/components/modules/rentals/MaintenanceForm'
+import MaintenanceDetailPanel from '@/components/modules/rentals/MaintenanceDetailPanel'
+import LeaseRenewalForm from '@/components/modules/rentals/LeaseRenewalForm'
 import PropertyForm from '@/components/modules/properties/PropertyForm'
 import CustomerForm from '@/components/modules/finance/CustomerForm'
 import CustomerInvoiceForm from '@/components/modules/finance/CustomerInvoiceForm'
@@ -69,6 +73,7 @@ function PropertyDetailPanel({ property }) {
   const queryClient = useQueryClient()
   const openPanel = useUIStore(s => s.openSidePanel)
   const closePanel = useUIStore(s => s.closeSidePanel)
+  const confirm = useConfirmStore(s => s.confirm)
   
   if (!property) return null
 
@@ -84,8 +89,14 @@ function PropertyDetailPanel({ property }) {
     }
   })
 
-  const handleArchive = () => {
-    if (window.confirm('Are you sure you want to archive this property record?')) {
+  const handleArchive = async () => {
+    const ok = await confirm({
+      title: 'Archive Property',
+      message: 'Are you sure you want to archive this property record? This will move it to historical records and release all linked marketing data.',
+      confirmLabel: 'Archive Now',
+      type: 'danger'
+    })
+    if (ok) {
       deleteMutation.mutate()
     }
   }
@@ -167,22 +178,24 @@ function PropertyDetailPanel({ property }) {
       )}
 
       {/* Actions */}
-      <div className="pt-4 flex gap-3">
-        <button 
-          onClick={() => openPanel('property-form', { property })}
-          className="flex-1 btn-primary py-2.5 flex items-center justify-center gap-2"
-        >
-          <Edit2 size={16} /> Edit Record
-        </button>
-        <button 
-          onClick={handleArchive}
-          disabled={deleteMutation.isPending}
-          className="btn-secondary px-4 py-2.5 flex items-center gap-2 text-red-400 hover:text-red-300"
-        >
-          {deleteMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-          Archive
-        </button>
-      </div>
+      <ActionGuard>
+        <div className="pt-4 flex gap-3">
+          <button 
+            onClick={() => openPanel('property-form', { property })}
+            className="flex-1 btn-primary py-2.5 flex items-center justify-center gap-2"
+          >
+            <Edit2 size={16} /> Edit Record
+          </button>
+          <button 
+            onClick={handleArchive}
+            disabled={deleteMutation.isPending}
+            className="btn-secondary px-4 py-2.5 flex items-center gap-2 text-red-400 hover:text-red-300"
+          >
+            {deleteMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+            Archive
+          </button>
+        </div>
+      </ActionGuard>
     </div>
   )
 }
@@ -374,10 +387,12 @@ export default function SidePanelContainer() {
                     activeSidePanel === 'department-list' ? 'Departments' :
                     activeSidePanel === 'lease-form' ? (sidePanelData?.lease ? 'Edit Lease' : 'New Lease') :
                     activeSidePanel === 'lease-detail' ? 'Lease Overview' :
+                    activeSidePanel === 'lease-renewal-form' ? 'Renew Lease Agreement' :
                     activeSidePanel === 'rental-invoice-form' ? 'New Rental Invoice' :
                     activeSidePanel === 'rental-payment-form' ? 'Record Payment' :
                     activeSidePanel === 'tenant-form' ? 'New Tenant' :
                     activeSidePanel === 'maintenance-form' ? 'Log Maintenance' :
+                    activeSidePanel === 'maintenance-detail' ? 'Maintenance Ticket' :
                     activeSidePanel === 'property-form' ? (sidePanelData?.property ? 'Edit Property' : 'New Property Record') :
                     activeSidePanel === 'new-customer' ? 'New Customer' :
                     activeSidePanel === 'new-ar-invoice' ? 'New sales Invoice' :
@@ -516,6 +531,10 @@ export default function SidePanelContainer() {
                 <LeaseDetailPanel />
               )}
 
+              {activeSidePanel === 'lease-renewal-form' && (
+                <LeaseRenewalForm />
+              )}
+
               {activeSidePanel === 'rental-invoice-form' && (
                 <RentalInvoiceForm />
               )}
@@ -530,6 +549,10 @@ export default function SidePanelContainer() {
 
               {activeSidePanel === 'maintenance-form' && (
                 <MaintenanceForm />
+              )}
+
+              {activeSidePanel === 'maintenance-detail' && (
+                <MaintenanceDetailPanel />
               )}
 
               {activeSidePanel === 'property-form' && (
@@ -679,7 +702,7 @@ export default function SidePanelContainer() {
               )}
 
               {/* Fallback for other panels if not implemented yet */}
-              {!['property-detail', 'contact-detail', 'contact-form', 'account-form', 'account-detail', 'journal-entry-detail', 'employee-form', 'employee-detail', 'leave-management', 'document-upload', 'compliance-check', 'department-form', 'department-list', 'lease-form', 'lease-detail', 'rental-invoice-form', 'rental-payment-form', 'tenant-form', 'maintenance-form', 'property-form', 'new-customer', 'new-ar-invoice', 'new-ar-receipt', 'new-supplier', 'new-ap-invoice', 'new-ap-payment', 'customer-receipt-detail', 'supplier-payment-detail', 'ar-invoice-detail', 'ap-invoice-detail', 'supplier-detail', 'tax-code-form', 'posting-profile-form', 'commission-structure-form', 'commission-calculator', 'commission-detail', 'currency-form', 'exchange-rate-form', 'opportunity-form', 'crm-detail', 'activity-form', 'bank-account-form', 'bank-transaction-view', 'statement-upload-form', 'reconciliation-rules-form', 'user-form', 'role-form', 'sod-rule-form', 'sale-form', 'sale-detail', 'asset-form', 'asset-category-form', 'asset-detail', 'asset-disposal', 'run-depreciation', 'payroll-run-form', 'fiscal-year-form', 'my-profile'].includes(activeSidePanel) && (
+              {!['property-detail', 'contact-detail', 'contact-form', 'account-form', 'account-detail', 'journal-entry-detail', 'employee-form', 'employee-detail', 'leave-management', 'document-upload', 'compliance-check', 'department-form', 'department-list', 'lease-form', 'lease-detail', 'lease-renewal-form', 'rental-invoice-form', 'rental-payment-form', 'tenant-form', 'maintenance-form', 'maintenance-detail', 'property-form', 'new-customer', 'new-ar-invoice', 'new-ar-receipt', 'new-supplier', 'new-ap-invoice', 'new-ap-payment', 'customer-receipt-detail', 'supplier-payment-detail', 'ar-invoice-detail', 'ap-invoice-detail', 'supplier-detail', 'tax-code-form', 'posting-profile-form', 'commission-structure-form', 'commission-calculator', 'commission-detail', 'currency-form', 'exchange-rate-form', 'opportunity-form', 'crm-detail', 'activity-form', 'bank-account-form', 'bank-transaction-view', 'statement-upload-form', 'reconciliation-rules-form', 'user-form', 'role-form', 'sod-rule-form', 'sale-form', 'sale-detail', 'asset-form', 'asset-category-form', 'asset-detail', 'asset-disposal', 'run-depreciation', 'payroll-run-form', 'fiscal-year-form', 'my-profile'].includes(activeSidePanel) && (
                 <div className="p-20 text-center">
                   <div className="w-16 h-16 rounded-2xl bg-dark-800 flex items-center justify-center mx-auto mb-4 border border-white/5">
                     <FileText size={32} className="text-dark-600" />

@@ -143,6 +143,9 @@ export const salesAPI = {
   update: (id, data) => api.patch(`sales/transactions/${id}/`, data),
   postToFinance: (id) => api.post(`sales/transactions/${id}/post_to_finance/`),
   confirmDeal: (id) => api.post(`sales/transactions/${id}/confirm_deal/`),
+  kanban: (params) => api.get('sales/transactions/kanban/', { params }),
+  stats: () => api.get('/sales/transactions/stats/'),
+  updateStatus: (id, status) => api.patch(`sales/transactions/${id}/update_status/`, { status }),
 }
 
 export const rentalsAPI = {
@@ -152,6 +155,9 @@ export const rentalsAPI = {
     create: (data) => api.post('rentals/leases/', data),
     update: (id, data) => api.patch(`rentals/leases/${id}/`, data),
     adjustRental: (id, amount) => api.post(`rentals/leases/${id}/adjust_rental/`, { monthly_rental: amount }),
+    activate: (id) => api.post(`rentals/leases/${id}/activate/`),
+    renew: (id, data) => api.post(`rentals/leases/${id}/renew/`, data),
+    terminate: (id, data) => api.post(`rentals/leases/${id}/terminate/`, data),
     stats: () => api.get('rentals/leases/stats/'),
   },
   invoices: {
@@ -159,6 +165,8 @@ export const rentalsAPI = {
     detail: (id) => api.get(`rentals/invoices/${id}/`),
     create: (data) => api.post('rentals/invoices/', data),
     update: (id, data) => api.patch(`rentals/invoices/${id}/`, data),
+    runBilling: (date) => api.post('rentals/invoices/run_billing/', { date }),
+    runLateFees: (date) => api.post('rentals/invoices/run_late_fees/', { date }),
   },
   payments: {
     list: (params) => api.get('rentals/payments/', { params }),
@@ -168,6 +176,8 @@ export const rentalsAPI = {
     list: (params) => api.get('rentals/maintenance/', { params }),
     create: (data) => api.post('rentals/maintenance/', data),
     update: (id, data) => api.patch(`rentals/maintenance/${id}/`, data),
+    updateStatus: (id, data) => api.post(`rentals/maintenance/${id}/update_status/`, data),
+    publicCreate: (data) => api.post('rentals/public-maintenance/', data),
   },
 }
 

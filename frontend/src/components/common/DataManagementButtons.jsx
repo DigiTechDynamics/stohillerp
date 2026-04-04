@@ -2,6 +2,7 @@ import React, { useRef } from 'react'
 import { Download, Upload, FileSpreadsheet, ChevronDown, Loader2 } from 'lucide-react'
 import { dataManagementAPI } from '@/services/api'
 import { toast } from 'react-hot-toast'
+import { useAuthStore } from '@/stores/authStore'
 
 /**
  * Reusable component for Data Management (Import, Export, Template)
@@ -16,6 +17,7 @@ export default function DataManagementButtons({ module, filters, onImportSuccess
   const [showDropdown, setShowDropdown] = React.useState(false)
   const fileInputRef = useRef(null)
   const dropdownRef = useRef(null)
+  const canEdit = useAuthStore((s) => s.canEdit())
 
   // Close dropdown when clicking outside
   React.useEffect(() => {
@@ -121,23 +123,27 @@ export default function DataManagementButtons({ module, filters, onImportSuccess
               <Download size={16} className="text-primary" />
               <span>Export {module}</span>
             </button>
-            <button
-              onClick={handleImportClick}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-dark-200 hover:bg-white/5 hover:text-white transition-colors"
-            >
-              <Upload size={16} className="text-emerald-400" />
-              <span>Import {module}</span>
-            </button>
+            {canEdit && (
+              <button
+                onClick={handleImportClick}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-dark-200 hover:bg-white/5 hover:text-white transition-colors"
+              >
+                <Upload size={16} className="text-emerald-400" />
+                <span>Import {module}</span>
+              </button>
+            )}
           </div>
-          <div className="py-1">
-            <button
-              onClick={handleDownloadTemplate}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-dark-400 hover:bg-white/5 hover:text-dark-200 transition-colors"
-            >
-              <FileSpreadsheet size={16} />
-              <span>Download Template</span>
-            </button>
-          </div>
+          {canEdit && (
+            <div className="py-1">
+              <button
+                onClick={handleDownloadTemplate}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-dark-400 hover:bg-white/5 hover:text-dark-200 transition-colors"
+              >
+                <FileSpreadsheet size={16} />
+                <span>Download Template</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 

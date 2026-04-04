@@ -13,20 +13,24 @@ def seed_currencies():
         code='USD',
         defaults={'name': 'United States Dollar', 'symbol': '$', 'is_base': True}
     )
-    if created:
+    if not created and not usd.is_base:
+        usd.is_base = True
+        usd.save()
+        print("Updated USD to Base")
+    elif created:
         print("Created USD (Base)")
-    else:
-        print("USD already exists")
 
     # ZAR
     zar, created = Currency.objects.get_or_create(
         code='ZAR',
         defaults={'name': 'South African Rand', 'symbol': 'R', 'is_base': False}
     )
-    if created:
+    if not created and zar.is_base:
+        zar.is_base = False
+        zar.save()
+        print("Updated ZAR to be non-base")
+    elif created:
         print("Created ZAR")
-    else:
-        print("ZAR already exists")
 
 if __name__ == '__main__':
     seed_currencies()

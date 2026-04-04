@@ -5,11 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckSquare, UserCheck, Tag as TagIcon, Trash2, X, Loader2, Trophy, XCircle } from 'lucide-react'
 import { crmAPI, hrAPI } from '@/services/api'
+import { useConfirmStore } from '@/stores/useConfirmStore'
 import { toast } from 'react-hot-toast'
 import { useState } from 'react'
 
 export default function BulkActionBar({ selectedIds, onClearSelection, onRefresh }) {
   const queryClient = useQueryClient()
+  const confirm = useConfirmStore((s) => s.confirm)
   const [showReassign, setShowReassign] = useState(false)
   const [showTagger, setShowTagger] = useState(false)
   const [agentId, setAgentId] = useState('')
@@ -135,8 +137,14 @@ export default function BulkActionBar({ selectedIds, onClearSelection, onRefresh
               <Trophy size={14} /> Mark Won
             </button>
             <button
-              onClick={() => {
-                if (window.confirm(`Mark ${count} deal(s) as lost?`)) {
+              onClick={async () => {
+                const ok = await confirm({
+                  title: 'Mark as Lost',
+                  message: `Are you sure you want to mark ${count} deal(s) as lost?`,
+                  confirmLabel: 'Mark Lost',
+                  type: 'danger'
+                })
+                if (ok) {
                   bulkMutation.mutate({ ids: selectedIds, action: 'mark_lost' })
                 }
               }}
@@ -146,8 +154,14 @@ export default function BulkActionBar({ selectedIds, onClearSelection, onRefresh
               <XCircle size={14} /> Mark Lost
             </button>
             <button
-              onClick={() => {
-                if (window.confirm(`Delete ${count} record(s)? This cannot be undone.`)) {
+              onClick={async () => {
+                const ok = await confirm({
+                  title: 'Delete Records',
+                  message: `Are you sure you want to delete ${count} record(s)? This action cannot be undone.`,
+                  confirmLabel: 'Delete All',
+                  type: 'danger'
+                })
+                if (ok) {
                   bulkMutation.mutate({ ids: selectedIds, action: 'delete' })
                 }
               }}

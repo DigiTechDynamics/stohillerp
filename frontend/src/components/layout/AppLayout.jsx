@@ -12,6 +12,8 @@ import CommandPalette from '@/components/common/CommandPalette'
 import SidePanelContainer from '@/components/common/SidePanelContainer'
 import ExecutiveModeToggle from '@/components/common/ExecutiveModeToggle'
 import ThemeToggle from '@/components/common/ThemeToggle'
+import ReadOnlyBanner from '@/components/common/ReadOnlyBanner'
+import ConfirmDialog from '@/components/common/ConfirmDialog'
 import logo from '@/assets/logo.png'
 
 import NotificationDropdown from './NotificationDropdown'
@@ -214,6 +216,7 @@ export default function AppLayout() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <ReadOnlyBanner />
         {/* Topbar */}
         <header className={`h-14 flex items-center justify-between px-4 lg:px-6 relative z-40
                             border-b ${theme === 'light' ? 'border-border-color bg-white/80' : 'border-white/5 bg-dark-900/80'} backdrop-blur-sm flex-shrink-0`}>
@@ -295,6 +298,7 @@ export default function AppLayout() {
       {/* Global Modals/Panels */}
       <CommandPalette />
       <SidePanelContainer />
+      <ConfirmDialog />
     </div>
   )
 }

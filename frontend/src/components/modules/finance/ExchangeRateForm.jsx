@@ -91,7 +91,7 @@ export default function ExchangeRateForm() {
             </div>
           </div>
           <p className="text-[10px] text-dark-500 mt-1">
-            Example: If 1 USD = 19.50 ZAR and USD is Base, enter 19.50.
+            Example: If 1 GBP = 1.25 USD and USD is Base, enter 1.25.
           </p>
         </div>
 

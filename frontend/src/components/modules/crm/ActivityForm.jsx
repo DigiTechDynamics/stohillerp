@@ -7,18 +7,32 @@ import { useUIStore } from '@/stores/authStore'
 export default function ActivityForm() {
   const queryClient = useQueryClient()
   const { closeSidePanel, sidePanelData } = useUIStore()
-  const initialContact = sidePanelData?.contact
-  const initialOpportunity = sidePanelData?.opportunity
+  const existingActivity = sidePanelData?.activity
+  const initialContact = sidePanelData?.contact || existingActivity?.contact_details
+  const initialOpportunity = sidePanelData?.opportunity || existingActivity?.opportunity
   
   const [error, setError] = useState(null)
+  
+  // Format initial date for datetime-local (YYYY-MM-DDTHH:MM)
+  const getInitialDateTime = () => {
+    if (existingActivity?.due_date) {
+      return new Date(existingActivity.due_date).toISOString().slice(0, 16)
+    }
+    if (sidePanelData?.date) {
+      return `${sidePanelData.date}T09:00` // Default to 9 AM
+    }
+    const now = new Date()
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+  }
+
   const [formData, setFormData] = useState({
-    subject: '',
-    activity_type: 'call',
-    status: 'completed',
-    description: '',
-    due_date: new Date().toISOString().split('T')[0],
-    contact: initialContact?.id || '',
-    opportunity: initialOpportunity?.id || '',
+    subject: existingActivity?.subject || '',
+    activity_type: existingActivity?.activity_type || 'call',
+    status: existingActivity?.status || sidePanelData?.status || 'completed',
+    description: existingActivity?.description || '',
+    due_date: getInitialDateTime(),
+    contact: existingActivity?.contact || initialContact?.id || '',
+    opportunity: initialOpportunity || '',
   })
 
   // Fetch Contacts for selection if not provided
@@ -30,9 +44,15 @@ export default function ActivityForm() {
   const contacts = contactsData?.data?.results || []
 
   const mutation = useMutation({
-    mutationFn: (data) => crmAPI.activities.create(data),
+    mutationFn: (data) => {
+      if (existingActivity?.id) {
+        return crmAPI.activities.update(existingActivity.id, data)
+      }
+      return crmAPI.activities.create(data)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['crm-activities'] })
+      queryClient.invalidateQueries({ queryKey: ['crm-calendar-activities'] })
       queryClient.invalidateQueries({ queryKey: ['kanban'] })
       closeSidePanel()
     },
@@ -62,8 +82,8 @@ export default function ActivityForm() {
               <Clock size={24} />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Log Activity</h3>
-              <p className="text-xs text-dark-500">Record an interaction with a client or prospect.</p>
+              <h3 className="text-lg font-semibold text-white">{existingActivity?.id ? 'Edit Activity' : 'Log Activity'}</h3>
+              <p className="text-xs text-dark-500">{existingActivity?.id ? 'Modify the details of this interaction.' : 'Record an interaction with a client or prospect.'}</p>
             </div>
           </div>
 
@@ -111,9 +131,9 @@ export default function ActivityForm() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Date</label>
+              <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Date & Time</label>
               <input
-                type="date"
+                type="datetime-local"
                 name="due_date"
                 value={formData.due_date}
                 onChange={handleChange}
@@ -158,7 +178,12 @@ export default function ActivityForm() {
           disabled={mutation.isPending}
           className="flex-1 btn-primary py-3 flex items-center justify-center gap-2"
         >
-          {mutation.isPending ? 'Logging...' : <><CheckCircle size={18} /> Log Activity</>}
+          {mutation.isPending ? 'Saving...' : (
+            <>
+              <CheckCircle size={18} /> 
+              {existingActivity?.id ? 'Update Activity' : (formData.status === 'planned' ? 'Schedule Activity' : 'Log Activity')}
+            </>
+          )}
         </button>
         <button type="button" onClick={closeSidePanel} className="btn-secondary px-8 py-3">
           Cancel

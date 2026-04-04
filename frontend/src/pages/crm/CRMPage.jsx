@@ -10,7 +10,9 @@ import {
 import { crmAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
+import { useConfirmStore } from '@/stores/useConfirmStore'
 import { toast } from 'react-hot-toast'
+import ActionGuard from '@/components/common/ActionGuard'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
 import Pagination from '@/components/common/Pagination'
 import OpportunityTable from '@/components/modules/crm/OpportunityTable'
@@ -40,6 +42,7 @@ export default function CRMPage() {
 
   const queryClient = useQueryClient()
   const openPanel = useUIStore((s) => s.openSidePanel)
+  const confirm = useConfirmStore((s) => s.confirm)
 
   // ── Data Queries ──────────────────────────────────────────────────
   const { data: pipelinesRes } = useQuery({
@@ -65,7 +68,13 @@ export default function CRMPage() {
 
   // ── Handlers ──────────────────────────────────────────────────────
   const handleDeleteContact = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this contact?')) return
+    const ok = await confirm({
+      title: 'Delete Contact',
+      message: 'Are you sure you want to delete this contact? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      type: 'danger'
+    })
+    if (!ok) return
     try {
       await crmAPI.contacts.delete(id)
       refetchContacts()
@@ -129,7 +138,7 @@ export default function CRMPage() {
             onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['crm-contacts'] })}
           />
           {activeTab !== 'reporting' && (
-            <>
+            <ActionGuard>
               <button
                 className="btn-secondary flex items-center gap-2 h-10 px-4 text-xs font-bold uppercase tracking-wider"
                 onClick={() => openPanel('opportunity-form', { is_lead: activeTab === 'leads' })}
@@ -142,7 +151,7 @@ export default function CRMPage() {
               >
                 <Plus size={16} /> Add Contact
               </button>
-            </>
+            </ActionGuard>
           )}
         </div>
       </div>
@@ -316,14 +325,16 @@ export default function CRMPage() {
                           </span>
                         </td>
                         <td className="px-4 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2 text-dark-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button className="p-1.5 hover:text-primary transition-colors hover:bg-white/5 rounded-lg" onClick={(e) => { e.stopPropagation(); openPanel('contact-form', { contact }) }}>
-                              <Edit2 size={14} />
-                            </button>
-                            <button className="p-1.5 hover:text-red-400 transition-colors hover:bg-white/5 rounded-lg" onClick={(e) => { e.stopPropagation(); handleDeleteContact(contact.id) }}>
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
+                          <ActionGuard>
+                            <div className="flex items-center justify-end gap-2 text-dark-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button className="p-1.5 hover:text-primary transition-colors hover:bg-white/5 rounded-lg" onClick={(e) => { e.stopPropagation(); openPanel('contact-form', { contact }) }}>
+                                <Edit2 size={14} />
+                              </button>
+                              <button className="p-1.5 hover:text-red-400 transition-colors hover:bg-white/5 rounded-lg" onClick={(e) => { e.stopPropagation(); handleDeleteContact(contact.id) }}>
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </ActionGuard>
                         </td>
                       </motion.tr>
                     ))}
@@ -379,11 +390,13 @@ export default function CRMPage() {
       />
 
       {/* Bulk Action Bar */}
-      <BulkActionBar
-        selectedIds={selectedIds}
-        onClearSelection={clearSelection}
-        onRefresh={() => queryClient.invalidateQueries({ queryKey: ['kanban'] })}
-      />
+      <ActionGuard>
+        <BulkActionBar
+          selectedIds={selectedIds}
+          onClearSelection={clearSelection}
+          onRefresh={() => queryClient.invalidateQueries({ queryKey: ['kanban'] })}
+        />
+      </ActionGuard>
     </div>
   )
 }

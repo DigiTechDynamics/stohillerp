@@ -8,11 +8,13 @@ import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { salesAPI } from '@/services/api'
+import { useConfirmStore } from '@/stores/useConfirmStore'
 import { toast } from 'react-hot-toast'
 
 export default function SaleDetailPanel({ sale }) {
   const { openSidePanel } = useUIStore()
   const queryClient = useQueryClient()
+  const confirm = useConfirmStore((s) => s.confirm)
 
   if (!sale) return null
 
@@ -258,7 +260,17 @@ export default function SaleDetailPanel({ sale }) {
         <div className="flex flex-col gap-3">
           {sale.status !== 'registered' && (
             <button 
-              onClick={() => confirmMutation.mutate()}
+              onClick={async () => {
+                const ok = await confirm({
+                  title: 'Confirm Deal Completion',
+                  message: 'Are you sure this deal is ready to be marked as Registered? This will potentially trigger commission calculations.',
+                  confirmLabel: 'Confirm Completion',
+                  type: 'primary'
+                })
+                if (ok) {
+                  confirmMutation.mutate()
+                }
+              }}
               disabled={confirmMutation.isPending}
               className="w-full btn-primary py-3 flex items-center justify-center gap-2"
             >
@@ -277,7 +289,17 @@ export default function SaleDetailPanel({ sale }) {
             
             {sale.status === 'registered' && !sale.is_posted_to_finance && (
               <button 
-                onClick={() => postMutation.mutate()}
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: 'Post to Finance',
+                    message: 'Post this sale to the General Ledger? This will generate the revenue invoice and update financial records.',
+                    confirmLabel: 'Post Now',
+                    type: 'primary'
+                  })
+                  if (ok) {
+                    postMutation.mutate()
+                  }
+                }}
                 disabled={postMutation.isPending}
                 className="flex-1 btn-primary py-3 flex items-center justify-center gap-2"
               >

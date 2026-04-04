@@ -8,6 +8,7 @@ import {
 import { rentalsAPI } from '@/services/api'
 import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
+import { useConfirmStore } from '@/stores/useConfirmStore'
 
 function InfoRow({ label, value, accent }) {
   return (
@@ -21,6 +22,7 @@ function InfoRow({ label, value, accent }) {
 export default function LeaseDetailPanel() {
   const { sidePanelData, openSidePanel, closeSidePanel } = useUIStore()
   const queryClient = useQueryClient()
+  const confirm = useConfirmStore((s) => s.confirm)
   const lease = sidePanelData?.lease
   const [adjusting, setAdjusting] = useState(false)
   const [newRental, setNewRental] = useState(lease?.monthly_rental || '')
@@ -43,11 +45,43 @@ export default function LeaseDetailPanel() {
     },
   })
 
+  // Lifecycle Mutations
+  const activateMutation = useMutation({
+    mutationFn: () => rentalsAPI.leases.activate(lease.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rental-leases'] })
+      queryClient.invalidateQueries({ queryKey: ['rental-stats'] })
+      closeSidePanel()
+    },
+  })
+
+  const terminateMutation = useMutation({
+    mutationFn: (data) => rentalsAPI.leases.terminate(lease.id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rental-leases'] })
+      queryClient.invalidateQueries({ queryKey: ['rental-stats'] })
+      closeSidePanel()
+    },
+  })
+
   if (!lease) return null
 
   const escalatedAmount = parseFloat(lease.monthly_rental) * (1 + parseFloat(lease.rental_escalation_rate || 0) / 100)
   const commissionRate = 7.5 // Default management commission rate
   const commissionAmount = parseFloat(lease.monthly_rental) * (commissionRate / 100)
+
+  const handleTerminate = async () => {
+    const reason = window.prompt('Enter reason for early termination (optional):')
+    const ok = await confirm({
+      title: 'Terminate Lease',
+      message: 'Are you sure you want to terminate this lease immediately? This will stop all future automated billing for this property.',
+      confirmLabel: 'Terminate Now',
+      type: 'danger'
+    })
+    if (ok) {
+      terminateMutation.mutate({ reason })
+    }
+  }
 
   return (
     <div className="flex flex-col h-full bg-dark-900 overflow-y-auto scrollbar-hide">
@@ -58,11 +92,18 @@ export default function LeaseDetailPanel() {
             <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary">
               <Key size={24} />
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-white">{lease.lease_number}</h3>
-              <span className={`badge text-[10px] uppercase font-bold ${getStatusColor(lease.status)}`}>
-                {lease.status?.replace(/_/g, ' ')}
-              </span>
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">{lease.lease_number}</h3>
+                <span className={`badge text-[10px] uppercase font-bold ${getStatusColor(lease.status)}`}>
+                  {lease.status?.replace(/_/g, ' ')}
+                </span>
+              </div>
+              {lease.previous_lease && (
+                <p className="text-[9px] text-primary/60 uppercase font-bold tracking-tighter mt-1">
+                  Agreement Renewal (Continuation)
+                </p>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -76,6 +117,38 @@ export default function LeaseDetailPanel() {
               <p className="text-sm text-white font-medium">{lease.tenant_name}</p>
             </div>
           </div>
+        </div>
+
+        {/* Lifecycle Quick Actions (Contextual) */}
+        {(lease.status === 'draft' || lease.status === 'pending_signature') && (
+          <button 
+            onClick={() => activateMutation.mutate()}
+            disabled={activateMutation.isPending}
+            className="w-full btn-primary py-3 flex items-center justify-center gap-2 shadow-gold"
+          >
+            <CheckCircle2 size={16} /> 
+            {activateMutation.isPending ? 'Activating...' : 'Fully Activate Lease'}
+          </button>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          {(lease.status === 'active' || lease.status === 'expired') && (
+            <button 
+              onClick={() => openSidePanel('lease-renewal-form', { lease })}
+              className="btn-secondary py-2.5 text-xs font-bold flex items-center justify-center gap-2 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/5"
+            >
+              <TrendingUp size={14} /> Renew Lease
+            </button>
+          )}
+          {lease.status === 'active' && (
+            <button 
+              onClick={handleTerminate}
+              disabled={terminateMutation.isPending}
+              className="btn-secondary py-2.5 text-xs font-bold flex items-center justify-center gap-2 border-red-500/20 text-red-400 hover:bg-red-500/5"
+            >
+              <AlertTriangle size={14} /> Terminate
+            </button>
+          )}
         </div>
 
         {/* Financial Summary */}
@@ -190,13 +263,13 @@ export default function LeaseDetailPanel() {
           onClick={() => openSidePanel('lease-form', { lease })}
           className="flex-1 btn-primary py-3 flex items-center justify-center gap-2"
         >
-          <Edit3 size={16} /> Edit Lease
+          <Edit3 size={16} /> Edit Details
         </button>
         <button
           onClick={() => openSidePanel('rental-invoice-form', { lease })}
           className="flex-1 btn-secondary py-3 flex items-center justify-center gap-2"
         >
-          <FileText size={16} /> Generate Invoice
+          <FileText size={16} /> New Charge
         </button>
       </div>
     </div>

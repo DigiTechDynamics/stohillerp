@@ -6,6 +6,7 @@ router = DefaultRouter()
 router.register('leases', views.LeaseViewSet, basename='leases')
 router.register('invoices', views.RentalInvoiceViewSet, basename='rental-invoices')
 router.register('payments', views.RentalPaymentViewSet, basename='rental-payments')
+router.register('public-maintenance', views.PublicMaintenanceViewSet, basename='public-maintenance')
 router.register('maintenance', views.MaintenanceViewSet, basename='maintenance')
 
 urlpatterns = [path('', include(router.urls))]

@@ -90,6 +90,61 @@ class LeaseBillingService:
 
     @staticmethod
     @transaction.atomic
+    def apply_late_fees(target_date=None):
+        """
+        Scans overdue invoices and applies late payment penalties.
+        A 5-day grace period is applied.
+        """
+        if target_date is None:
+            target_date = date.today()
+            
+        grace_period = 5
+        # Invoices due before this date are eligible for penalties
+        late_threshold = target_date - timedelta(days=grace_period)
+        
+        # 1. Find SENT or PARTIAL invoices that are past due date + grace
+        # We only apply late fees once (where late_payment_fee is 0.00)
+        overdue_invoices = RentalInvoice.objects.filter(
+            status__in=[RentalInvoice.InvoiceStatus.SENT, RentalInvoice.InvoiceStatus.PARTIAL],
+            due_date__lt=late_threshold,
+            late_payment_fee=Decimal('0.00')
+        )
+        
+        results = {
+            'applied': 0,
+            'total_penalties': Decimal('0.00'),
+            'errors': []
+        }
+        
+        for inv in overdue_invoices:
+            try:
+                # Default late fee: $100 or 100 Local Currency
+                # Future enhancement: Make this configurable per lease
+                fee_amount = Decimal('100.00')
+                
+                inv.late_payment_fee = fee_amount
+                inv.total_amount += fee_amount
+                inv.balance_due += fee_amount
+                inv.status = RentalInvoice.InvoiceStatus.OVERDUE
+                inv.save(update_fields=['late_payment_fee', 'total_amount', 'balance_due', 'status'])
+                
+                # 2. Re-sync to Finance AR to reflect new balance
+                from apps.rentals.services.finance_sync import RentalFinanceSyncService
+                RentalFinanceSyncService.sync_rental_invoice_to_ar(inv)
+                
+                results['applied'] += 1
+                results['total_penalties'] += fee_amount
+                logger.info(f"Applied late fee to invoice {inv.invoice_number}")
+                
+            except Exception as e:
+                error_msg = f"Failed to apply late fee to {inv.invoice_number}: {str(e)}"
+                results['errors'].append(error_msg)
+                logger.error(error_msg)
+                
+        return results
+
+    @staticmethod
+    @transaction.atomic
     def process_escalations(target_date=None):
         """
         Scans all active leases and applies the contractual rent escalation 

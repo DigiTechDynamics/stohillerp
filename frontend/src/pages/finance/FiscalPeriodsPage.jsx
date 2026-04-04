@@ -9,10 +9,12 @@ import {
 } from 'lucide-react'
 import { financeAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
+import { useConfirmStore } from '@/stores/useConfirmStore'
 import { formatDate } from '@/utils/format'
 
 export default function FiscalPeriodsPage() {
   const queryClient = useQueryClient()
+  const confirm = useConfirmStore((s) => s.confirm)
   const [selectedYearId, setSelectedYearId] = useState(null)
   
   // ── Queries ────────────────────────────────────────────────────────
@@ -104,21 +106,41 @@ export default function FiscalPeriodsPage() {
     openPanel('fiscal-year-form', { fiscalYear: year })
   }
 
-  const handleGeneratePeriods = () => {
+  const handleGeneratePeriods = async () => {
     if (!selectedYearId) return
-    if (periods.length > 0 && !window.confirm('Periods already exist. Re-generating will not delete existing but may cause duplicates. Proceed?')) return
+    if (periods.length > 0) {
+      const ok = await confirm({
+        title: 'Re-generate Periods',
+        message: 'Periods already exist. Re-generating will not delete existing but may cause duplicates. Proceed?',
+        confirmLabel: 'Proceed',
+        type: 'danger'
+      })
+      if (!ok) return
+    }
     generatePeriodsMutation.mutate(selectedYearId)
   }
 
-  const handleCloseYear = () => {
+  const handleCloseYear = async () => {
     if (!selectedYearId || !selectedYear) return
-    if (!window.confirm(`Are you sure you want to close the fiscal year ${selectedYear.year}? This will also close all its periods.`)) return
+    const ok = await confirm({
+      title: 'Close Fiscal Year',
+      message: `Are you sure you want to close the fiscal year ${selectedYear.year}? This will also close all its periods and lock the year.`,
+      confirmLabel: 'Close Year',
+      type: 'danger'
+    })
+    if (!ok) return
     closeYearMutation.mutate(selectedYearId)
   }
 
-  const handleReopenYear = () => {
+  const handleReopenYear = async () => {
     if (!selectedYearId || !selectedYear) return
-    if (!window.confirm(`Are you sure you want to reopen the fiscal year ${selectedYear.year}?`)) return
+    const ok = await confirm({
+      title: 'Reopen Fiscal Year',
+      message: `Are you sure you want to reopen the fiscal year ${selectedYear.year}?`,
+      confirmLabel: 'Reopen',
+      type: 'confirm'
+    })
+    if (!ok) return
     reopenYearMutation.mutate(selectedYearId)
   }
 

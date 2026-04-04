@@ -73,6 +73,7 @@ STOHILL_APPS = [
     'apps.banking',
     'apps.payroll',
     'apps.notifications',
+    'apps.integrations',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + STOHILL_APPS
@@ -136,6 +137,7 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
+        'utils.permissions.ExecutiveModePermission',
     ],
     'DEFAULT_PAGINATION_CLASS': 'utils.pagination.StandardResultsPagination',
     'PAGE_SIZE': 20,
@@ -194,7 +196,7 @@ CORS_ALLOW_HEADERS = [
 
 # ─── Internationalization ─────────────────────────────────────────────────────
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'Africa/Johannesburg'  # South Africa timezone for Stohill
+TIME_ZONE = 'Africa/Harare'  # Zimbabwe timezone
 USE_I18N = True
 USE_TZ = True
 
@@ -209,11 +211,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ─── Company Configuration ────────────────────────────────────────────────────
 COMPANY_CONFIG = {
     'name': 'Stohill Properties',
-    'currency': 'ZAR',
-    'currency_symbol': 'R',
-    'fiscal_year_start_month': 3,  # March (South Africa tax year)
-    'vat_rate': 0.15,  # 15% South African VAT
-    'country': 'ZA',
+    'currency': 'USD',
+    'currency_symbol': '$',
+    'fiscal_year_start_month': 1,  # January (Zimbabwe tax year)
+    'vat_rate': 0.15,  # 15% Zimbabwe VAT
+    'country': 'ZW',
 }
 
 # ─── Logging ──────────────────────────────────────────────────────────────────
@@ -255,3 +257,9 @@ os.makedirs(BASE_DIR / 'logs', exist_ok=True)
 
 # ─── Email ────────────────────────────────────────────────────────────────────
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# ─── Supabase / Lovable CMS Integration ───────────────────────────────────────
+SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY', '')
+SUPABASE_PROPERTIES_TABLE = os.environ.get('SUPABASE_PROPERTIES_TABLE', 'properties')
+

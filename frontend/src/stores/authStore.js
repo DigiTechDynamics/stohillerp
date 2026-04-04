@@ -59,6 +59,11 @@ export const useAuthStore = create()(
         if (user.roles?.some((r) => r.role_type === 'super_admin')) return true
         return user.roles?.some((r) => r[permission] === true)
       },
+
+      canEdit: () => {
+        const { executiveMode, isAuthenticated } = get()
+        return !!(isAuthenticated && executiveMode)
+      },
     }),
     {
       name: 'stohill-auth',

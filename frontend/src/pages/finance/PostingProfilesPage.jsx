@@ -7,11 +7,13 @@ import {
 import { Link } from 'react-router-dom'
 import { financeAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
+import { useConfirmStore } from '@/stores/useConfirmStore'
 
 export default function PostingProfilesPage() {
   const [search, setSearch] = useState('')
   const queryClient = useQueryClient()
   const openPanel = useUIStore((s) => s.openSidePanel)
+  const confirm = useConfirmStore((s) => s.confirm)
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['posting-profiles', { search }],
@@ -25,8 +27,14 @@ export default function PostingProfilesPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['posting-profiles'] }),
   })
 
-  const handleDelete = (id) => {
-    if (window.confirm('Are you sure you want to delete this posting profile?')) {
+  const handleDelete = async (id) => {
+    const ok = await confirm({
+      title: 'Delete Posting Profile',
+      message: 'Are you sure you want to delete this posting profile? Automated postings will revert to system hardcoded defaults.',
+      confirmLabel: 'Delete Profile',
+      type: 'danger'
+    })
+    if (ok) {
       deleteMutation.mutate(id)
     }
   }
