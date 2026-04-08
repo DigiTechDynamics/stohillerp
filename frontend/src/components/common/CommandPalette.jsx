@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Search, Building2, Users, TrendingUp, Home,
   DollarSign, Award, FileText, UserCog, LayoutDashboard,
-  ArrowRight, BookOpen, FileBarChart, X, Landmark
+  ArrowRight, BookOpen, FileBarChart, X, Landmark, Box, ShoppingBag
 } from 'lucide-react'
 import { useUIStore } from '@/stores/authStore'
 
@@ -18,6 +18,7 @@ export default function CommandPalette() {
 
   const commands = [
     { id: 'dashboard', label: 'Executive Dashboard', description: 'Command Center', icon: <LayoutDashboard size={16} />, action: () => navigate('/dashboard'), category: 'Navigation', keywords: ['dashboard', 'home', 'kpi'] },
+    { id: 'analytics', label: 'Business Intelligence', description: 'Analytics & Strategy', icon: <TrendingUp size={16} />, action: () => navigate('/analytics'), category: 'Navigation', keywords: ['analytics', 'bi', 'intelligence', 'yield', 'strategy'] },
     { id: 'properties', label: 'Properties', description: 'Property portfolio', icon: <Building2 size={16} />, action: () => navigate('/properties'), category: 'Navigation', keywords: ['property', 'listing', 'real estate'] },
     { id: 'crm', label: 'CRM Pipeline', description: 'Contacts & leads', icon: <Users size={16} />, action: () => navigate('/crm'), category: 'Navigation', keywords: ['crm', 'contacts', 'leads', 'pipeline'] },
     { id: 'kanban', label: 'Kanban Board', description: 'Deal pipeline view', icon: <Users size={16} />, action: () => navigate('/crm/kanban'), category: 'Navigation', keywords: ['kanban', 'deals', 'opportunities'] },
@@ -29,6 +30,8 @@ export default function CommandPalette() {
     { id: 'commissions', label: 'Commissions', description: 'Agent commission tracking', icon: <Award size={16} />, action: () => navigate('/commissions'), category: 'Navigation', keywords: ['commission', 'agent', 'payout'] },
     { id: 'documents', label: 'Documents', description: 'Files & compliance', icon: <FileText size={16} />, action: () => navigate('/documents'), category: 'Navigation', keywords: ['document', 'file', 'compliance', 'fica'] },
     { id: 'hr', label: 'HR & Agents', description: 'Employee management', icon: <UserCog size={16} />, action: () => navigate('/hr'), category: 'Navigation', keywords: ['hr', 'employee', 'agent', 'leave', 'payroll'] },
+    { id: 'inventory', label: 'Inventory', description: 'Stock & Warehouse', icon: <Box size={16} />, action: () => navigate('/inventory'), category: 'Supply Chain', keywords: ['inventory', 'stock', 'warehouse', 'product'] },
+    { id: 'procurement', label: 'Procurement', description: 'Purchase Orders', icon: <ShoppingBag size={16} />, action: () => navigate('/procurement'), category: 'Supply Chain', keywords: ['procurement', 'po', 'purchase', 'buy', 'vendor'] },
   ]
 
   const filtered = query

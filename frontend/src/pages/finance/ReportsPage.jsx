@@ -39,6 +39,7 @@ export default function ReportsPage() {
         { id: 'trial-balance', name: 'Trial Balance', description: 'Listing of all GL account balances', icon: Landmark },
         { id: 'balance-sheet', name: 'Balance Sheet', description: 'Snapshot of assets, liabilities and equity', icon: Building2 },
         { id: 'income-statement', name: 'Income Statement (P&L)', description: 'Revenue and expenses over time', icon: TrendingUp },
+        { id: 'vat-return', name: 'VAT Return', description: 'Input vs Output VAT for a tax period', icon: PieChart },
       ]
     },
     {
@@ -145,6 +146,8 @@ function ReportViewer({ report, params, setParams, periods, properties, onBack }
       if (report.id === 'trial-balance') return financeAPI.reports.trialBalance(params.period_id, params.property_id)
       if (report.id === 'income-statement') return financeAPI.reports.incomeStatement(params.from_date, params.to_date, params.property_id)
       if (report.id === 'balance-sheet') return financeAPI.reports.balanceSheet(params.as_at_date)
+      if (report.id === 'vat-return') return financeAPI.reports.vatReturn(params.from_date, params.to_date)
+      if (report.id === 'accounts-receivable') return financeAPI.reports.arAging()
       return Promise.reject('Report not implemented')
     },
     enabled: isPreviewing
@@ -237,6 +240,36 @@ function ReportViewer({ report, params, setParams, periods, properties, onBack }
               </div>
             )}
 
+            {report.id === 'vat-return' && (
+              <>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-dark-400 uppercase">From Date</label>
+                  <input 
+                    type="date"
+                    className="form-input text-xs"
+                    value={params.from_date}
+                    onChange={e => setParams({...params, from_date: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-dark-400 uppercase">To Date</label>
+                  <input 
+                    type="date"
+                    className="form-input text-xs"
+                    value={params.to_date}
+                    onChange={e => setParams({...params, to_date: e.target.value})}
+                  />
+                </div>
+              </>
+            )}
+
+            {report.id === 'accounts-receivable' && (
+              <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl">
+                 <p className="text-[10px] text-primary font-bold uppercase mb-1">Report Logic</p>
+                 <p className="text-xs text-dark-400 leading-tight">This report generates a real-time aging summary for all active customer accounts based on posted ledger transactions.</p>
+              </div>
+            )}
+
             <button 
               className="btn-primary w-full h-10 mt-4"
               onClick={() => setIsPreviewing(true)}
@@ -302,6 +335,8 @@ function ReportViewer({ report, params, setParams, periods, properties, onBack }
               {report.id === 'trial-balance' && <TrialBalanceResult data={results} />}
               {report.id === 'income-statement' && <IncomeStatementResult data={results} />}
               {report.id === 'balance-sheet' && <BalanceSheetResult data={results} />}
+              {report.id === 'vat-return' && <VATReturnResult data={results} />}
+              {report.id === 'accounts-receivable' && <ARAgingResult data={results} />}
               
               {!results && (
                  <div className="card p-12 text-center text-dark-500 italic">
@@ -486,6 +521,132 @@ function BalanceSheetResult({ data }) {
            </div>
          </div>
        </div>
+    </div>
+  )
+}
+
+function VATReturnResult({ data }) {
+  if (!data) return null
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="card p-4 bg-emerald-500/5">
+          <p className="text-[10px] text-emerald-400 font-bold uppercase mb-1">Output VAT (Collected)</p>
+          <p className="text-xl font-bold text-white font-mono">{formatCurrency(data.output_tax)}</p>
+        </div>
+        <div className="card p-4 bg-amber-500/5">
+          <p className="text-[10px] text-amber-400 font-bold uppercase mb-1">Input VAT (Claimable)</p>
+          <p className="text-xl font-bold text-white font-mono">{formatCurrency(data.input_tax)}</p>
+        </div>
+        <div className="card p-4 bg-primary/10 border-primary/30 shadow-[0_0_20px_rgba(212,175,55,0.1)]">
+          <p className="text-[10px] text-primary font-bold uppercase mb-1">Net VAT {parseFloat(data.vat_liability) >= 0 ? 'Payable' : 'Refundable'}</p>
+          <p className="text-xl font-bold text-white font-mono">{formatCurrency(Math.abs(data.vat_liability))}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card overflow-hidden">
+          <div className="p-3 bg-dark-900 border-b border-white/5 font-bold text-[10px] text-white uppercase tracking-widest flex justify-between">
+             <span>Sales & Output Tax</span>
+             <span className="text-emerald-400">Net: {formatCurrency(data.total_sales_net)}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr className="bg-white/[0.02] text-[10px] uppercase font-bold text-dark-500">
+                  <th className="px-4 py-2">Tax Code</th>
+                  <th className="px-4 py-2 text-right">Gross</th>
+                  <th className="px-4 py-2 text-right">Tax</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.output_details?.map((item, idx) => (
+                  <tr key={idx} className="hover:bg-white/5">
+                    <td className="px-4 py-3 text-xs text-white">{item.tax_code__code} ({item.tax_code__rate}%)</td>
+                    <td className="px-4 py-3 text-right text-xs text-white font-mono">{formatCurrency(item.total_gross)}</td>
+                    <td className="px-4 py-3 text-right text-xs text-emerald-400 font-mono">{formatCurrency(item.total_tax)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="card overflow-hidden">
+          <div className="p-3 bg-dark-900 border-b border-white/5 font-bold text-[10px] text-white uppercase tracking-widest flex justify-between">
+             <span>Purchases & Input Tax</span>
+             <span className="text-amber-400">Net: {formatCurrency(data.total_purchases_net)}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr className="bg-white/[0.02] text-[10px] uppercase font-bold text-dark-500">
+                  <th className="px-4 py-2">Tax Code</th>
+                  <th className="px-4 py-2 text-right">Gross</th>
+                  <th className="px-4 py-2 text-right">Tax</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.input_details?.map((item, idx) => (
+                  <tr key={idx} className="hover:bg-white/5">
+                    <td className="px-4 py-3 text-xs text-white">{item.tax_code__code} ({item.tax_code__rate}%)</td>
+                    <td className="px-4 py-3 text-right text-xs text-white font-mono">{formatCurrency(item.total_gross)}</td>
+                    <td className="px-4 py-3 text-right text-xs text-amber-400 font-mono">{formatCurrency(item.total_tax)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ARAgingResult({ data }) {
+  if (!data) return null
+  return (
+    <div className="card overflow-hidden border-primary/20">
+      <div className="p-4 bg-dark-900 border-b border-white/5 flex items-center justify-between">
+        <h3 className="text-sm font-bold text-white uppercase tracking-widest">Accounts Receivable Aging Summary</h3>
+        <div className="text-[10px] text-dark-400 uppercase font-bold">Consolidated View</div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="data-table">
+          <thead>
+            <tr className="bg-white/[0.02]">
+              <th className="px-6 py-4">Customer</th>
+              <th className="px-6 py-4 text-right">Current</th>
+              <th className="px-6 py-4 text-right">30 Days</th>
+              <th className="px-6 py-4 text-right">60 Days</th>
+              <th className="px-6 py-4 text-right">90+ Days</th>
+              <th className="px-6 py-4 text-right bg-primary/5 text-primary">Total Balance</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            {data.map(row => (
+              <tr key={row.customer_id} className="hover:bg-white/[0.01]">
+                <td className="px-6 py-4 font-bold text-white text-xs">{row.name}</td>
+                <td className="px-6 py-4 text-right text-xs font-mono text-dark-300">{formatCurrency(row.current)}</td>
+                <td className="px-6 py-4 text-right text-xs font-mono text-dark-300">{formatCurrency(row.days_30)}</td>
+                <td className="px-6 py-4 text-right text-xs font-mono text-dark-300">{formatCurrency(row.days_60)}</td>
+                <td className="px-6 py-4 text-right text-xs font-mono text-rose-500/80">{formatCurrency(row.days_90_plus)}</td>
+                <td className="px-6 py-4 text-right text-xs font-bold font-mono text-white bg-primary/[0.02]">{formatCurrency(row.total)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="bg-dark-900/50">
+            <tr className="font-bold border-t-2 border-primary/20">
+               <td className="px-6 py-4 text-white uppercase text-[10px]">Grand Totals</td>
+               <td className="px-6 py-4 text-right text-white font-mono text-xs">{formatCurrency(data.reduce((acc, r) => acc + parseFloat(r.current), 0))}</td>
+               <td className="px-6 py-4 text-right text-white font-mono text-xs">{formatCurrency(data.reduce((acc, r) => acc + parseFloat(r.days_30), 0))}</td>
+               <td className="px-6 py-4 text-right text-white font-mono text-xs">{formatCurrency(data.reduce((acc, r) => acc + parseFloat(r.days_60), 0))}</td>
+               <td className="px-6 py-4 text-right text-rose-500 font-mono text-xs">{formatCurrency(data.reduce((acc, r) => acc + parseFloat(r.days_90_plus), 0))}</td>
+               <td className="px-6 py-4 text-right text-primary font-mono text-sm bg-primary/5">{formatCurrency(data.reduce((acc, r) => acc + parseFloat(r.total), 0))}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
   )
 }

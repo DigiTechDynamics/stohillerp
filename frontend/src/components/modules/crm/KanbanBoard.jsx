@@ -300,29 +300,6 @@ export default function KanbanBoard({ pipelineId, isLead = false, selectedIds = 
     }
   })
 
-  const initMutation = useMutation({
-    mutationFn: async () => {
-      const pipelineRes = await crmAPI.pipelines.create({
-        name: isLead ? 'Global Lead Pipeline' : 'Standard Sales Pipeline',
-        pipeline_type: 'sale',
-        is_default: !isLead
-      })
-      const newPipelineId = pipelineRes.data.id
-      const stages = [
-        { name: 'Initial Contact', stage_type: 'initial', position: 0, color: '#6366F1', probability: 10 },
-        { name: 'Qualification', stage_type: 'qualified', position: 1, color: '#8B5CF6', probability: 30 },
-        { name: 'Analysis', stage_type: 'qualified', position: 2, color: '#A855F7', probability: 50 },
-        { name: 'Proposal', stage_type: 'offer', position: 3, color: '#EC4899', probability: 70 },
-        { name: 'Negotiation', stage_type: 'negotiation', position: 4, color: '#F59E0B', probability: 90 },
-        { name: 'Closed Won', stage_type: 'won', position: 5, color: '#10B981', is_terminal: true, is_won: true, probability: 100 },
-        { name: 'Closed Lost', stage_type: 'lost', position: 6, color: '#EF4444', is_terminal: true, probability: 0 }
-      ]
-      for (const stage of stages) {
-        await crmAPI.pipelines.stages.create({ ...stage, pipeline: newPipelineId })
-      }
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['kanban'] })
-  })
 
   const handleDragStart = useCallback((event) => {
     const opp = event.active.data.current?.opp
@@ -364,19 +341,15 @@ export default function KanbanBoard({ pipelineId, isLead = false, selectedIds = 
     return (
       <div className="flex-1 flex flex-col items-center justify-center h-full max-w-xl mx-auto text-center px-6">
         <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-          <TrendingUp size={40} className="text-primary animate-pulse" />
+          <TrendingUp size={40} className="text-primary opacity-50" />
         </div>
-        <h3 className="text-xl font-bold text-white mb-2 tracking-tight">Pipeline Not Configured</h3>
-        <p className="text-dark-400 text-sm mb-8 leading-relaxed">
-          Initialize your stages to start tracking {isLead ? 'leads' : 'opportunities'} and potential revenue.
+        <h3 className="text-xl font-bold text-white mb-2 tracking-tight">Active Pipeline Not Found</h3>
+        <p className="text-dark-400 text-sm mb-4 leading-relaxed">
+          No pipeline stages were found for this configuration. Please verify that the system is properly initialized.
         </p>
-        <button
-          onClick={() => initMutation.mutate()}
-          disabled={initMutation.isPending}
-          className="btn-primary px-10 h-12 flex items-center gap-3 font-bold uppercase tracking-wider text-xs"
-        >
-          {initMutation.isPending ? 'Building Stages...' : <><Plus size={18} /> Initialize {isLead ? 'Lead' : 'Sales'} Pipeline</>}
-        </button>
+        <div className="p-3 rounded-lg bg-dark-800 border border-white/5 text-[10px] text-dark-500 uppercase font-mono">
+          System Admin: Run <span className="text-primary">python manage.py seed_crm_pipeline</span> to restore default stages.
+        </div>
       </div>
     )
   }

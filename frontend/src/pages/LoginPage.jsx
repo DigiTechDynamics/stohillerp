@@ -187,6 +187,7 @@ export default function LoginPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-transparent border-b border-white/10 pl-8 pr-4 py-3 text-sm text-white placeholder:text-dark-600 focus:placeholder:text-dark-500 transition-all duration-300 outline-none"
                     placeholder="E-mail Address"
+                    autoComplete="email"
                     required
                   />
                   {/* Expanding Underline */}
@@ -210,6 +211,7 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-transparent border-b border-white/10 pl-8 pr-12 py-3 text-sm text-white placeholder:text-dark-600 focus:placeholder:text-dark-500 transition-all duration-300 outline-none"
                     placeholder="Access Code"
+                    autoComplete="current-password"
                     required
                   />
                   <button

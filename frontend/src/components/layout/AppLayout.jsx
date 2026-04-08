@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Building2, Users, TrendingUp, Home, DollarSign,
   Award, FileText, UserCog, ChevronLeft, ChevronRight, Search,
-  Bell, LogOut, Settings, Zap, Menu, X, Landmark, Briefcase, FileSearch, Box
+  Bell, LogOut, Settings, Zap, Menu, X, Landmark, Briefcase, FileSearch, Box,
+  ShoppingBag, ChevronDown
 } from 'lucide-react'
 import CommandPalette from '@/components/common/CommandPalette'
 import SidePanelContainer from '@/components/common/SidePanelContainer'
@@ -56,18 +57,22 @@ class ErrorBoundaryFallback extends React.Component {
 
 const navItems = [
   // Overview
-  { path: '/dashboard', label: 'Command Center', icon: LayoutDashboard, group: 'Overview', module: 'dashboard' },
+  { path: '/dashboard', label: 'Executive Intelligence', icon: LayoutDashboard, group: 'Overview', module: 'dashboard' },
   // Operations
   { path: '/crm', label: 'CRM Pipeline', icon: Users, group: 'Operations', module: 'crm' },
   { path: '/properties', label: 'Properties', icon: Building2, group: 'Operations', module: 'properties' },
   { path: '/rentals', label: 'Rental Management', icon: Home, group: 'Operations', module: 'rentals' },
   { path: '/sales', label: 'Sales & Deals', icon: TrendingUp, group: 'Operations', module: 'sales' },
+  // Supply Chain
+  { path: '/inventory', label: 'Inventory', icon: Box, group: 'Supply Chain', module: 'inventory' },
+  { path: '/procurement', label: 'Procurement', icon: ShoppingBag, group: 'Supply Chain', module: 'procurement' },
   // Finance
   { path: '/finance/ap', label: 'Accounts Payable', icon: Briefcase, group: 'Finance', module: 'finance_ap' },
   { path: '/finance/ar', label: 'Accounts Receivable', icon: FileSearch, group: 'Finance', module: 'finance_ar' },
   { path: '/finance/bank', label: 'Bank & Cash', icon: Landmark, group: 'Finance', module: 'banking' },
   { path: '/commissions', label: 'Commissions', icon: Award, group: 'Finance', module: 'commissions' },
   { path: '/finance', label: 'GL & Financial Control', icon: Landmark, group: 'Finance', module: 'finance_gl' },
+  { path: '/finance/reports', label: 'Financial Reports', icon: FileText, group: 'Finance', module: 'finance_gl' },
   { path: '/finance/assets', label: 'Fixed Assets', icon: Box, group: 'Finance', module: 'fixed_assets' },
   { path: '/finance/tax', label: 'Tax & VAT', icon: Zap, group: 'Finance', module: 'tax' },
   { path: '/payroll', label: 'Payroll', icon: Landmark, group: 'Finance', module: 'payroll' },
@@ -82,9 +87,16 @@ export default function AppLayout() {
   const { user, logout } = useAuthStore()
   const { sidebarCollapsed, toggleSidebar, openCommandPalette, theme } = useUIStore()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [expandedGroups, setExpandedGroups] = useState(['Overview', 'Operations', 'Finance'])
   const navigate = useNavigate()
 
-  const groups = ['Overview', 'Operations', 'Finance', 'Admin']
+  const toggleGroup = (group) => {
+    setExpandedGroups(prev => 
+      prev.includes(group) ? prev.filter(g => g !== group) : [...prev, group]
+    )
+  }
+
+  const groups = ['Overview', 'Operations', 'Supply Chain', 'Finance', 'Admin']
 
   return (
     <div className={`flex h-screen overflow-hidden ${theme === 'light' ? 'bg-surface-main text-content-main' : 'bg-dark-950 text-dark-100'} font-body`}>
@@ -151,38 +163,61 @@ export default function AppLayout() {
             if (items.length === 0) return null
 
             return (
-              <div key={group} className="mb-4">
+              <div key={group} className="mb-2">
                 {!sidebarCollapsed && (
-                  <p className="px-3 py-1.5 text-[10px] font-bold text-dark-500 uppercase tracking-widest">
-                    {group}
-                  </p>
-                )}
-                {items.map(({ path, label, icon: Icon }) => (
-                  <NavLink
-                    key={path}
-                    to={path}
-                    end
-                    onClick={() => setMobileOpen(false)}
-                    className={({ isActive }) =>
-                      `sidebar-item ${isActive ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`
-                    }
-                    title={sidebarCollapsed ? label : ''}
+                  <button 
+                    onClick={() => toggleGroup(group)}
+                    className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold text-dark-500 uppercase tracking-widest hover:text-dark-300 transition-colors group/header"
                   >
-                    <Icon size={18} className="sidebar-icon flex-shrink-0" />
-                    <AnimatePresence>
-                      {!sidebarCollapsed && (
-                        <motion.span
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="text-sm truncate"
+                    <span>{group}</span>
+                    <motion.div
+                      animate={{ rotate: expandedGroups.includes(group) ? 0 : -90 }}
+                      transition={{ duration: 0.2 }}
+                      className="opacity-0 group-hover/header:opacity-100 transition-opacity"
+                    >
+                      <ChevronDown size={10} />
+                    </motion.div>
+                  </button>
+                )}
+                
+                <AnimatePresence initial={false}>
+                  {(expandedGroups.includes(group) || sidebarCollapsed) && (
+                    <motion.div
+                      initial={sidebarCollapsed ? { opacity: 1, height: 'auto' } : { opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                      className="overflow-hidden"
+                    >
+                      {items.map(({ path, label, icon: Icon }) => (
+                        <NavLink
+                          key={path}
+                          to={path}
+                          end
+                          onClick={() => setMobileOpen(false)}
+                          className={({ isActive }) =>
+                            `sidebar-item ${isActive ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`
+                          }
+                          title={sidebarCollapsed ? label : ''}
                         >
-                          {label}
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                  </NavLink>
-                ))}
+                          <Icon size={18} className="sidebar-icon flex-shrink-0" />
+                          <AnimatePresence>
+                            {!sidebarCollapsed && (
+                              <motion.span
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="text-sm truncate"
+                              >
+                                {label}
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
+                        </NavLink>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             )
           })}

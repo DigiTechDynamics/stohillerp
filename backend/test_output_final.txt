@@ -1,0 +1,178 @@
+STDOUT:
+Found 10 test(s).
+Operations to perform:
+  Synchronize unmigrated apps: analytics, corsheaders, csp, django_filters, integrations, messages, rest_framework, rest_framework_simplejwt, staticfiles
+  Apply all migrations: admin, auth, banking, commissions, contenttypes, core, crm, documents, finance, fixed_assets, hr, inventory, notifications, payroll, procurement, properties, rentals, sales, sessions
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0001_initial... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying core.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying hr.0001_initial... OK
+  Applying properties.0001_initial... OK
+  Applying properties.0002_alter_property_city_alter_property_postal_code_and_more... OK
+  Applying crm.0001_initial... OK
+  Applying finance.0001_initial... OK
+  Applying finance.0002_bankaccount_banktransaction_bankreconciliation_and_more... OK
+  Applying core.0002_numbersequence... OK
+  Applying core.0003_currency... OK
+  Applying finance.0003_journalentry_currency_journalentry_exchange_rate_and_more... OK
+  Applying finance.0004_alter_chartofaccount_currency... OK
+  Applying finance.0005_alter_chartofaccount_currency... OK
+  Applying finance.0006_alter_bankaccount_currency_and_more... OK
+  Applying finance.0007_journalline_employee_ref_journalline_supplier_ref_and_more... OK
+  Applying finance.0008_chartofaccount_allow_manual_entry_and_more... OK
+  Applying finance.0009_postingprofile... OK
+  Applying finance.0010_alter_exchangerate_options_and_more... OK
+  Applying finance.0011_remove_supplier_default_currency_and_more... OK
+  Applying sales.0001_initial... OK
+  Applying rentals.0001_initial... OK
+  Applying documents.0001_initial... OK
+  Applying banking.0001_initial... OK
+  Applying banking.0002_reconciliationrule... OK
+  Applying commissions.0001_initial... OK
+  Applying commissions.0002_initial... OK
+  Applying commissions.0003_remove_commissionstructure_agent_split_and_more... OK
+  Applying commissions.0004_commissionrecord_agent_role... OK
+  Applying core.0004_module_remove_role_can_approve_commissions_and_more... OK
+  Applying hr.0002_employee_bonus_employee_other_deductions... OK
+  Applying crm.0002_contact_currency_opportunity_currency... OK
+  Applying crm.0003_contact_guarantor_email_contact_guarantor_name_and_more... OK
+  Applying crm.0004_crmtag_alter_activity_options_and_more... OK
+  Applying crm.0005_activity_contact_crmnote_contact_and_more... OK
+  Applying crm.0006_add_lost_reason_email_template_enrichment... OK
+  Applying crm.0007_contact_last_activity_at_and_more... OK
+  Applying crm.0008_contact_bank_account_number_and_more... OK
+  Applying documents.0002_documentworkspace_document_is_locked_and_more... OK
+  Applying finance.0012_alter_exchangerate_options_and_more... OK
+  Applying finance.0013_alter_supplierinvoice_status... OK
+  Applying finance.0014_postingprofile_commission_expense_and_more... OK
+  Applying finance.0015_journalbatch_journalentry_batch... OK
+  Applying finance.0016_alter_journalentry_batch... OK
+  Applying fixed_assets.0001_initial... OK
+  Applying fixed_assets.0002_assetbook_consumed_units_and_more... OK
+  Applying fixed_assets.0003_fixedasset_currency... OK
+  Applying hr.0003_attendance_jobposition_employeecontract_and_more... OK
+  Applying hr.0004_remove_employee_basic_salary_remove_employee_bonus_and_more... OK
+  Applying inventory.0001_initial... OK
+  Applying inventory.0002_product_expense_account_product_income_account_and_more... OK
+  Applying notifications.0001_initial... OK
+  Applying payroll.0001_initial... OK
+  Applying payroll.0002_payrollrun_currency... OK
+  Applying payroll.0003_rename_deductions_payrollitem_other_deductions_and_more... OK
+  Applying payroll.0004_payrollsetting_taxbracket... OK
+  Applying payroll.0005_payrollrun_supplier_invoice... OK
+  Applying payroll.0006_payslip_salaryrule_payslipline_salarystructure_and_more... OK
+  Applying payroll.0007_delete_payrollitem... OK
+  Applying payroll.0008_payslip_bank_account_snapshot... OK
+  Applying payroll.0009_add_rule_accounts... OK
+  Applying payroll.0010_alter_salaryrule_category... OK
+  Applying procurement.0001_initial... OK
+  Applying procurement.0002_purchaseorder_finance_approved_at_and_more... OK
+  Applying properties.0003_property_currency... OK
+  Applying properties.0004_alter_property_asking_price_and_more... OK
+  Applying properties.0005_property_boreholes_property_built_in_cupboards_and_more... OK
+  Applying properties.0006_property_insurance_monthly_property_owner... OK
+  Applying rentals.0002_maintenancerequest_property_and_more... OK
+  Applying rentals.0003_alter_lease_tenant... OK
+  Applying rentals.0004_lease_currency_rentalinvoice_currency... OK
+  Applying rentals.0005_maintenancerequest_currency... OK
+  Applying rentals.0006_rentalpayment_amount_from_balance_and_more... OK
+  Applying rentals.0007_lease_last_escalation_date... OK
+  Applying rentals.0008_lease_previous_lease... OK
+  Applying rentals.0009_rentalinvoice_electricity_charges_and_more... OK
+  Applying rentals.0010_lease_management_fee_rate_ownersettlement... OK
+  Applying sales.0002_saletransaction_currency... OK
+  Applying sales.0003_saletransaction_cgt_amount_and_more... OK
+  Applying sessions.0001_initial... OK
+System check identified no issues (0 silenced).
+
+STDERR:
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+test_annual_rent_escalation (apps.rentals.tests.test_billing_service.BillingServiceTests.test_annual_rent_escalation)
+Verify that rent increases by 10% exactly 12 months after start_date. ... [2026-04-08 14:23:55,783] INFO stohill.rentals.billing Applied 10.00% escalation to Lease LSE-Suite 101-2504. New rent: 1100.00
+ok
+test_late_fee_application_after_grace (apps.rentals.tests.test_billing_service.BillingServiceTests.test_late_fee_application_after_grace)
+Verify that $100 penalty is only applied after the 5-day grace period. ... [2026-04-08 14:23:55,915] INFO stohill.finance Posting journal entry: Customer Invoice - Terry Tenant - AR-RINV-00001 dated 2026-03-01 via SJ
+[2026-04-08 14:23:55,918] ERROR stohill.rentals.sync Failed to post rental invoice RINV-00001 to AR: No fiscal period found for date 2026-03-01. Please ensure fiscal periods are configured.
+[2026-04-08 14:23:55,918] ERROR stohill.rentals.models Finance AR sync failed for invoice RINV-00001: No fiscal period found for date 2026-03-01. Please ensure fiscal periods are configured.
+[2026-04-08 14:23:55,948] INFO stohill.finance Posting journal entry: Customer Invoice - Terry Tenant - AR-RINV-00001 dated 2026-03-01 via SJ
+[2026-04-08 14:23:55,951] ERROR stohill.rentals.sync Failed to post rental invoice RINV-00001 to AR: No fiscal period found for date 2026-03-01. Please ensure fiscal periods are configured.
+[2026-04-08 14:23:55,951] ERROR stohill.rentals.models Finance AR sync failed for invoice RINV-00001: No fiscal period found for date 2026-03-01. Please ensure fiscal periods are configured.
+[2026-04-08 14:23:55,969] INFO stohill.finance Posting journal entry: Customer Invoice - Terry Tenant - AR-RINV-00001 dated 2026-03-01 via SJ
+[2026-04-08 14:23:55,971] ERROR stohill.rentals.sync Failed to post rental invoice RINV-00001 to AR: No fiscal period found for date 2026-03-01. Please ensure fiscal periods are configured.
+[2026-04-08 14:23:55,972] ERROR stohill.rentals.billing Failed to apply late fee to RINV-00001: No fiscal period found for date 2026-03-01. Please ensure fiscal periods are configured.
+ok
+test_monthly_invoice_generation_accuracy (apps.rentals.tests.test_billing_service.BillingServiceTests.test_monthly_invoice_generation_accuracy)
+Verify that generate_monthly_invoices creates correct RentalInvoice records. ... [2026-04-08 14:23:56,121] INFO stohill.finance Posting journal entry: Customer Invoice - Terry Tenant - AR-RINV-00001 dated 2026-04-01 via SJ
+[2026-04-08 14:23:56,133] ERROR stohill.integrations Supabase upsert failed for property PROP-SP01: 400 {"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'address' column of 'properties' in the schema cache"}
+[2026-04-08 14:23:56,151] INFO stohill.finance Successfully posted entry SJ-000001 | DR: 1150.00
+[2026-04-08 14:23:56,159] INFO stohill.rentals.billing Generated and synced invoice RINV-00001 for Lease LSE-Suite 101-2603
+ok
+test_calculate_next_invoice_date (apps.rentals.tests.test_lease_lifecycle.LeaseLifecycleTests.test_calculate_next_invoice_date)
+Verify that Lease correctly calculates the subsequent billing date. ... [2026-04-08 14:23:56,202] ERROR stohill.integrations Supabase upsert failed for property PROP-SP01: 400 {"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'address' column of 'properties' in the schema cache"}
+[2026-04-08 14:23:56,393] ERROR stohill.integrations Supabase upsert failed for property PROP-SP01: 400 {"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'address' column of 'properties' in the schema cache"}
+ok
+test_lease_activation_updates_unit (apps.rentals.tests.test_lease_lifecycle.LeaseLifecycleTests.test_lease_activation_updates_unit)
+Verify that activating a lease changes the unit status to OCCUPIED. ... ok
+test_overlapping_active_leases_prevented (apps.rentals.tests.test_lease_lifecycle.LeaseLifecycleTests.test_overlapping_active_leases_prevented)
+Verify that two ACTIVE leases cannot exist for the same unit simultaneously. ... ok
+[2026-04-08 14:23:56,778] ERROR stohill.integrations Supabase upsert failed for property PROP-SP01: 400 {"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'address' column of 'properties' in the schema cache"}
+test_rental_invoice_to_ar_sync (apps.rentals.tests.test_rentals_finance_sync.RentalsFinanceSyncTests.test_rental_invoice_to_ar_sync)
+Verify that a RentalInvoice correctly creates/updates a CustomerInvoice and JournalEntry. ... [2026-04-08 14:23:56,905] ERROR stohill.integrations Supabase upsert failed for property PROP-SP01: 400 {"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'address' column of 'properties' in the schema cache"}
+[2026-04-08 14:23:56,920] INFO stohill.finance Posting journal entry: Customer Invoice - Terry Tenant - AR-RINV-00001 dated 2026-04-01 via SJ
+[2026-04-08 14:23:56,938] INFO stohill.finance Successfully posted entry SJ-000001 | DR: 1150.00
+FAIL
+test_settlement_calculation_accuracy (apps.rentals.tests.test_settlement_logic.SettlementLogicTests.test_settlement_calculation_accuracy)
+Verify the 'Cash Basis' formula: Net Payout = Collected - (Fee+VAT) - Expenses. ... [2026-04-08 14:23:57,059] ERROR stohill.integrations Supabase upsert failed for property PROP-SP01: 400 {"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'address' column of 'properties' in the schema cache"}
+[2026-04-08 14:23:57,160] INFO stohill.finance Posting journal entry: Customer Invoice - Terry Tenant - AR-RINV-00001 dated 2026-04-01 via SJ
+[2026-04-08 14:23:57,180] INFO stohill.finance Successfully posted entry SJ-000001 | DR: 1150.00
+[2026-04-08 14:23:57,197] ERROR stohill.integrations Supabase upsert failed for property PROP-SP01: 400 {"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'address' column of 'properties' in the schema cache"}
+[2026-04-08 14:23:57,197] ERROR stohill.rentals.models Finance AR sync failed for payment PAY-1: No active Bank Account found for posting payment.
+c:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\fields\__init__.py:1611: RuntimeWarning: DateTimeField MaintenanceRequest.completed_date received a naive datetime (2026-04-20 00:00:00) while time zone support is active.
+  warnings.warn(
+[2026-04-08 14:23:57,239] INFO stohill.rentals.settlement Created draft settlement for Stohill Plaza: 735.00
+ok
+test_settlement_gl_ledger_post (apps.rentals.tests.test_settlement_logic.SettlementLogicTests.test_settlement_gl_ledger_post)
+Verify that processing a settlement triggers accurate multi-account GL postings. ... [2026-04-08 14:23:57,385] INFO stohill.finance Posting journal entry: Owner Settlement: Stohill Plaza (Apr 2026) dated 2026-04-08 via GJ
+[2026-04-08 14:23:57,409] INFO stohill.finance Successfully posted entry GJ-000001 | DR: 1000.00
+[2026-04-08 14:23:57,419] ERROR stohill.integrations Supabase upsert failed for property PROP-SP01: 400 {"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'address' column of 'properties' in the schema cache"}
+ok
+test_math (apps.rentals.tests.test_simple.SimpleRentalsTest.test_math) ... ok
+
+======================================================================
+FAIL: test_rental_invoice_to_ar_sync (apps.rentals.tests.test_rentals_finance_sync.RentalsFinanceSyncTests.test_rental_invoice_to_ar_sync)
+Verify that a RentalInvoice correctly creates/updates a CustomerInvoice and JournalEntry.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "c:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\rentals\tests\test_rentals_finance_sync.py", line 38, in test_rental_invoice_to_ar_sync
+    self.assertIsNotNone(cust_inv)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+AssertionError: unexpectedly None
+
+----------------------------------------------------------------------
+Ran 10 tests in 1.765s
+
+FAILED (failures=1)
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+
+EXIT CODE: 1

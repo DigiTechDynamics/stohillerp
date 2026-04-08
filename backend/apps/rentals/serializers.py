@@ -1,7 +1,7 @@
 """Stohil Properties - Rentals Serializers"""
 from rest_framework import serializers
 from utils.serializers import SanitizedModelSerializer
-from apps.rentals.models import Lease, RentalInvoice, RentalPayment, MaintenanceRequest
+from apps.rentals.models import Lease, RentalInvoice, RentalPayment, MaintenanceRequest, OwnerSettlement
 
 
 class LeaseSerializer(SanitizedModelSerializer):
@@ -69,3 +69,15 @@ class MaintenanceRequestSerializer(SanitizedModelSerializer):
         if obj.lease and obj.lease.property:
             return obj.lease.property.name
         return None
+
+
+class OwnerSettlementSerializer(SanitizedModelSerializer):
+    owner_name = serializers.CharField(source='owner.full_name', read_only=True)
+    property_name = serializers.CharField(source='property.name', read_only=True)
+    property_ref = serializers.CharField(source='property.reference_number', read_only=True)
+    currency_code = serializers.CharField(source='currency.code', read_only=True, default='USD')
+
+    class Meta:
+        model = OwnerSettlement
+        fields = '__all__'
+        read_only_fields = ['status', 'total_rent_collected', 'management_fee_amount', 'expenses_deducted', 'net_payout_amount']

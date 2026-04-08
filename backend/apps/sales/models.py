@@ -56,6 +56,13 @@ class SaleTransaction(AuditedModel):
     occupation_date = models.DateField(null=True, blank=True)
     transfer_date = models.DateField(null=True, blank=True)
 
+    # Zimbabwe Compliance
+    cgt_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), help_text='Capital Gains Tax')
+    cgt_certificate_received = models.BooleanField(default=False)
+    rates_clearance_date = models.DateField(null=True, blank=True)
+    rates_clearance_received = models.BooleanField(default=False)
+    occupational_rent_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+
     # Attorney
     transferring_attorney = models.CharField(max_length=200, blank=True)
     bond_attorney = models.CharField(max_length=200, blank=True)

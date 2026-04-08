@@ -150,6 +150,16 @@ class Contact(AuditedModel):
     affordability = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     annual_income = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
 
+    # Banking (New for Owner Settlements)
+    bank_name = models.CharField(max_length=100, blank=True, help_text='Bank name for payouts')
+    bank_account_number = models.CharField(max_length=50, blank=True)
+    bank_branch_code = models.CharField(max_length=20, blank=True)
+    bank_account_type = models.CharField(max_length=20, choices=[
+        ('current', 'Current / Cheque'),
+        ('savings', 'Savings'),
+        ('corporate', 'Corporate'),
+    ], default='current')
+
     # Preferences
     preferred_areas = models.JSONField(default=list, blank=True)
     property_preferences = models.JSONField(default=dict, blank=True)

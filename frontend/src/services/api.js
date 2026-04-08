@@ -179,6 +179,13 @@ export const rentalsAPI = {
     updateStatus: (id, data) => api.post(`rentals/maintenance/${id}/update_status/`, data),
     publicCreate: (data) => api.post('rentals/public-maintenance/', data),
   },
+  settlements: {
+    list: (params) => api.get('rentals/settlements/', { params }),
+    detail: (id) => api.get(`rentals/settlements/${id}/`),
+    generate: (month, year) => api.post('rentals/settlements/generate_monthly/', { month, year }),
+    approve: (id) => api.post(`rentals/settlements/${id}/approve_and_post/`),
+    exportEft: (ids) => api.post('finance/disbursements/generate_eft/', { ids, source_type: 'owner_settlement' }, { responseType: 'blob' }),
+  },
 }
 
 export const financeAPI = {
@@ -463,6 +470,10 @@ export const payrollAPI = {
 export const dashboardAPI = {
   executive: () => api.get('dashboard/executive/'),
   agent: () => api.get('dashboard/agent/'),
+  finance: () => api.get('dashboard/finance/'),
+  rental: () => api.get('dashboard/rental/'),
+  supplyChain: () => api.get('dashboard/supply-chain/'),
+  hr: () => api.get('dashboard/hr/'),
 }
 
 export const adminAPI = {
@@ -507,6 +518,44 @@ export const notificationsAPI = {
   markRead: (id) => api.post(`notifications/${id}/mark_read/`),
   markAllRead: () => api.post('notifications/mark_all_read/'),
   unreadCount: () => api.get('notifications/unread_count/'),
+}
+
+export const analyticsAPI = {
+  portfolio: () => api.get('analytics/portfolio/'),
+  salesFunnel: () => api.get('analytics/sales-funnel/'),
+  forecast: () => api.get('analytics/forecast/'),
+}
+
+export const inventoryAPI = {
+  products: {
+    list: (params) => api.get('inventory/products/', { params }),
+    get: (id) => api.get(`inventory/products/${id}/`),
+    create: (data) => api.post('inventory/products/', data),
+    update: (id, data) => api.patch(`inventory/products/${id}/`, data),
+    stockLevels: (id) => api.get(`inventory/products/${id}/stock_levels/`),
+  },
+  warehouses: {
+    list: (params) => api.get('inventory/warehouses/', { params }),
+    create: (data) => api.post('inventory/warehouses/', data),
+  },
+  moves: {
+    list: (params) => api.get('inventory/moves/', { params }),
+    adjustment: (data) => api.post('inventory/moves/adjustment/', data),
+  },
+}
+
+export const procurementAPI = {
+  purchaseOrders: {
+    list: (params) => api.get('procurement/purchase-orders/', { params }),
+    get: (id) => api.get(`procurement/purchase-orders/${id}/`),
+    create: (data) => api.post('procurement/purchase-orders/', data),
+    update: (id, data) => api.patch(`procurement/purchase-orders/${id}/`, data),
+    confirm: (id) => api.post(`procurement/purchase-orders/${id}/confirm_po/`),
+    approveMD: (id) => api.post(`procurement/purchase-orders/${id}/approve_md/`),
+    approveFinance: (id) => api.post(`procurement/purchase-orders/${id}/approve_finance/`),
+    receive: (id, data) => api.post(`procurement/purchase-orders/${id}/receive_products/`, data),
+    createBill: (id) => api.post(`procurement/purchase-orders/${id}/create_bill/`),
+  },
 }
 
 export default api

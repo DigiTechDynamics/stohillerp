@@ -55,6 +55,13 @@ class CommissionRecord(AuditedModel):
     sale_transaction = models.ForeignKey('sales.SaleTransaction', null=True, blank=True, on_delete=models.SET_NULL)
     lease = models.ForeignKey('rentals.Lease', null=True, blank=True, on_delete=models.SET_NULL)
     property = models.ForeignKey('properties.Property', on_delete=models.PROTECT)
+    
+    agent_role = models.CharField(
+        max_length=20, 
+        choices=[('listing', 'Listing'), ('selling', 'Selling'), ('single', 'Single Agent')],
+        default='single',
+        help_text="Role played by the agent in this specific transaction."
+    )
 
     # Calculation
     transaction_amount = models.DecimalField(max_digits=15, decimal_places=2)

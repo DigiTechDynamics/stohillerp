@@ -3,7 +3,6 @@ from decimal import Decimal
 from datetime import date, timedelta
 from django.db import transaction
 from django.conf import settings
-from apps.rentals.models import Lease, RentalInvoice
 
 logger = logging.getLogger('stohill.rentals.billing')
 
@@ -14,6 +13,9 @@ class LeaseBillingService:
         """
         Scans all active leases due for invoicing and generates RentalInvoice records.
         """
+        from django.apps import apps
+        Lease = apps.get_model('rentals', 'Lease')
+        RentalInvoice = apps.get_model('rentals', 'RentalInvoice')
         if target_date is None:
             target_date = date.today()
             
@@ -29,7 +31,7 @@ class LeaseBillingService:
             'errors': []
         }
         
-        # Standard South Africa VAT from settings
+        # Standard Corporate VAT from settings
         vat_rate = Decimal(str(settings.COMPANY_CONFIG.get('vat_rate', '0.15')))
         
         for lease in due_leases:
@@ -95,6 +97,8 @@ class LeaseBillingService:
         Scans overdue invoices and applies late payment penalties.
         A 5-day grace period is applied.
         """
+        from django.apps import apps
+        RentalInvoice = apps.get_model('rentals', 'RentalInvoice')
         if target_date is None:
             target_date = date.today()
             
@@ -150,6 +154,9 @@ class LeaseBillingService:
         Scans all active leases and applies the contractual rent escalation 
         if the current month matches the lease anniversary.
         """
+        from django.apps import apps
+        Lease = apps.get_model('rentals', 'Lease')
+        AuditLog = apps.get_model('core', 'AuditLog')
         if target_date is None:
             target_date = date.today()
             
@@ -191,19 +198,19 @@ class LeaseBillingService:
                 
                 # 4. Audit Log
                 from apps.core.models import AuditLog
+                from apps.core.models import AuditLog
                 AuditLog.objects.create(
                     action=AuditLog.ActionType.UPDATE,
                     model_name='Lease',
                     object_id=str(lease.id),
-                    object_repr=str(lease),
+                    object_repr=f"{str(lease)} | Escalation: {lease.rental_escalation_rate}%",
                     changes={
                         'monthly_rental': {
                             'old': str(old_rental),
                             'new': str(new_rental)
                         },
                         'escalation_rate': str(lease.rental_escalation_rate)
-                    },
-                    description=f"Annual rent escalation applied. Increased by {lease.rental_escalation_rate}%."
+                    }
                 )
                 
                 results['escalations_applied'] += 1

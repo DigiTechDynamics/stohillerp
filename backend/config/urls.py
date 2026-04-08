@@ -37,6 +37,9 @@ api_v1_patterns = [
     path('payroll/', include('apps.payroll.urls')),
     path('dashboard/', include('apps.dashboard.urls')),
     path('notifications/', include('apps.notifications.urls')),
+    path('analytics/', include('apps.analytics.urls')),
+    path('inventory/', include('apps.inventory.urls')),
+    path('procurement/', include('apps.procurement.urls')),
 ]
 
 urlpatterns = [

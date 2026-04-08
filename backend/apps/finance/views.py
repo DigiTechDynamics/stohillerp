@@ -15,6 +15,7 @@ from apps.finance.models import (  # type: ignore
     FiscalPeriod, FiscalYear, TrialBalance, ExchangeRate,
     CustomerProfile, Supplier, PostingProfile
 )
+from apps.core.permissions import IsFinanceAdminOrAccountant
 from apps.core.models import Currency
 from apps.finance.serializers import (  # type: ignore
     ChartOfAccountSerializer, JournalSerializer, JournalEntrySerializer,
@@ -915,7 +916,7 @@ class BankAccountViewSet(viewsets.ModelViewSet):
 
 class TaxCodeViewSet(viewsets.ModelViewSet):
     queryset = TaxCode.objects.all().order_by('code')
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsFinanceAdminOrAccountant]
     
     def get_serializer_class(self):
         from apps.finance.serializers import TaxCodeSerializer  # type: ignore
@@ -951,6 +952,70 @@ class VATReturnView(APIView):
             return Response(data)
         except Exception as e:
             return Response({'error': str(e)}, status=400)
+
+
+class AccountsReceivableAgingView(APIView):
+    """
+    Generate AR Aging report (0, 30, 60, 90+ days breakdown).
+    Calculates balance per customer from posted GL transactions.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.finance.models import JournalLine, JournalEntry, CustomerProfile
+        from django.db.models import Sum, Q, F
+        from django.utils import timezone
+        
+        today = timezone.now().date()
+        
+        # Get all posted AR transactions
+        qs = JournalLine.objects.filter(
+            entry__status=JournalEntry.EntryStatus.POSTED,
+            account__account_sub_type='receivable'
+        ).select_related('contact_ref', 'entry')
+        
+        customers_data = {}
+        for line in qs:
+            customer_id = line.contact_ref_id
+            if not customer_id: continue
+            
+            if customer_id not in customers_data:
+                customers_data[customer_id] = {
+                    'name': line.contact_ref.full_name,
+                    'total': Decimal('0'),
+                    'current': Decimal('0'),
+                    'days_30': Decimal('0'),
+                    'days_60': Decimal('0'),
+                    'days_90_plus': Decimal('0'),
+                }
+            
+            amount = line.amount if line.side == 'debit' else -line.amount
+            days_old = (today - line.entry.entry_date).days
+            
+            customers_data[customer_id]['total'] += amount
+            if days_old <= 30:
+                customers_data[customer_id]['current'] += amount
+            elif days_old <= 60:
+                customers_data[customer_id]['days_30'] += amount
+            elif days_old <= 90:
+                customers_data[customer_id]['days_60'] += amount
+            else:
+                customers_data[customer_id]['days_90_plus'] += amount
+                
+        results = []
+        for cid, data in customers_data.items():
+            if data['total'] != 0:
+                results.append({
+                    'customer_id': cid,
+                    'name': data['name'],
+                    'total': str(data['total']),
+                    'current': str(data['current']),
+                    'days_30': str(data['days_30']),
+                    'days_60': str(data['days_60']),
+                    'days_90_plus': str(data['days_90_plus']),
+                })
+                
+        return Response(results)
 
 
 class FinanceSummaryView(APIView):
@@ -996,3 +1061,28 @@ class FinanceSummaryView(APIView):
             'operating_margin': operating_margin,
             'operating_target': 35.0,
         })
+
+class DisbursementEFTView(APIView):
+    """
+    API endpoint to generate and download bank EFT files for payouts.
+    Supports owner settlements and payslips.
+    """
+    permission_classes = [IsAuthenticated, IsFinanceAdminOrAccountant]
+
+    def post(self, request):
+        from apps.finance.services.disbursement_service import DisbursementService
+        ids = request.data.get('ids', [])
+        source_type = request.data.get('source_type')
+
+        if not ids or not source_type:
+            return Response({"error": "Missing IDs or source type"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            csv_content = DisbursementService.generate_eft_file(ids, source_type)
+            response = HttpResponse(csv_content, content_type='text/csv')
+            response['Content-Disposition'] = f'attachment; filename="EFT_Export_{source_type}.csv"'
+            return response
+        except ValidationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": "Failed to generate EFT file"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -40,6 +40,22 @@ class EmailTemplateSerializer(SanitizedModelSerializer):
         non_sanitized_fields = ['body']
 
 
+from django.core.validators import RegexValidator
+
+# Zim National ID: 29-123456X78
+ZIM_ID_REGEX = r'^\d{2}-\d{6,7}[A-Z]\d{2}$'
+zim_id_validator = RegexValidator(
+    regex=ZIM_ID_REGEX,
+    message="ID Number must be in Zimbabwean format: 29-123456X78"
+)
+
+# Zim Mobile: +263 followed by 71/73/77/78 and 7 digits
+ZIM_PHONE_REGEX = r'^\+263(71|73|77|78)\d{7}$'
+zim_phone_validator = RegexValidator(
+    regex=ZIM_PHONE_REGEX,
+    message="Phone number must be in Zimbabwean format: +263771234567"
+)
+
 class ContactSerializer(SanitizedModelSerializer):
     full_name = serializers.ReadOnlyField()
     currency_code = serializers.ReadOnlyField(source='currency.code')
@@ -48,6 +64,9 @@ class ContactSerializer(SanitizedModelSerializer):
     sales_team_name = serializers.ReadOnlyField(source='sales_team.name')
     opportunity_count = serializers.SerializerMethodField()
     document_count = serializers.SerializerMethodField()
+    
+    id_number = serializers.CharField(validators=[zim_id_validator], required=False)
+    phone_mobile = serializers.CharField(validators=[zim_phone_validator], required=False)
 
     class Meta:
         model = Contact

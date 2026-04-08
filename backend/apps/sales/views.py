@@ -208,11 +208,12 @@ class SaleTransactionViewSet(viewsets.ModelViewSet):
             transfer_date__gte=month_start
         ).count()
 
+        from django.conf import settings
         return Response({
             'ytd_revenue': float(ytd_revenue),
             'mtd_revenue': float(mtd_revenue),
             'active_count': active_count,
             'pipeline_value': float(pipeline_value),
             'mtd_completed': mtd_completed,
-            'currency': 'ZAR', # Default set to ZAR for now
+            'currency': settings.COMPANY_CONFIG.get('currency', 'USD'),
         })

@@ -1,6 +1,6 @@
 """
 Stohil Properties - Document & Compliance Module
-Document management, compliance tracking, FICA, EAAB requirements.
+Document management, compliance tracking, AML, EACZ requirements.
 """
 from django.db import models
 from apps.core.models import AuditedModel, TimeStampedModel
@@ -87,7 +87,7 @@ class Document(AuditedModel):
 
 
 class ComplianceRequirement(TimeStampedModel):
-    """FICA, EAAB, and other regulatory compliance tracking."""
+    """AML, EACZ, and other regulatory compliance tracking."""
     name = models.CharField(max_length=200)
     regulation = models.CharField(max_length=100)
     applies_to = models.CharField(max_length=20, choices=[

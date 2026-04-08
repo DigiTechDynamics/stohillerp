@@ -51,9 +51,12 @@ def _property_to_payload(prop) -> dict:
 
     return {
         'erp_id': str(prop.id),
+        'external_id': str(prop.external_id) if prop.external_id else None,
         'reference_number': prop.reference_number,
         'name': prop.name,
         'status': prop.status,
+        'website_category': prop.website_category,
+        'slug': prop.slug,
         'property_type': prop.property_type.name if prop.property_type_id else None,
         'address': prop.full_address,
         'city': prop.city,
@@ -74,6 +77,26 @@ def _property_to_payload(prop) -> dict:
         'features': prop.features,
         'primary_image_url': primary_image_url,
         'year_built': prop.year_built,
+        # Amenities and Flags
+        'lounges': prop.lounges,
+        'boreholes': prop.boreholes,
+        'pool': prop.pool,
+        'parking_spaces': prop.parking_spaces,
+        'storeys': prop.storeys,
+        'dining_rooms': prop.dining_rooms,
+        'carports': prop.carports,
+        'entertainment_area': prop.entertainment_area,
+        'cottage': prop.cottage,
+        'fitted_kitchen': prop.fitted_kitchen,
+        'tiled': prop.tiled,
+        'built_in_cupboards': prop.built_in_cupboards,
+        'mes': prop.mes,
+        'walled_fenced': prop.walled_fenced,
+        'landscaped_garden': prop.landscaped_garden,
+        'cottage_beds': prop.cottage_beds,
+        'cottage_bathrooms': prop.cottage_bathrooms,
+        'cottage_dining': prop.cottage_dining,
+        'cottage_parking': prop.cottage_parking,
     }
 
 

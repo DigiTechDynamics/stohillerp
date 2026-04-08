@@ -132,6 +132,9 @@ class AccountingService:
         'COST_OF_SALES': '5000',
         'PROPERTY_INVENTORY': '1510',
         'COMMISSION_EXPENSE': '5100',
+        'IMTT_PAYABLE': '2120',
+        'GRNI_ACCRUAL': '2130',
+        'BANK_CHARGES': '5810',
     }
 
     def __init__(self, user=None):
@@ -583,12 +586,10 @@ class AccountingService:
     def post_rental_invoice(self, lease, amount: Decimal, invoice_ref: str) -> JournalEntry:
         """
         Post monthly rental income entries.
-
-        Debit: Accounts Receivable (tenant owes rent)
-        Credit: Rental Income
-        Credit: VAT Payable (if applicable)
+        Uses Zimbabwe standard 15% VAT.
         """
-        vat_amount = amount * Decimal('0.15') if lease.vat_applicable else Decimal('0.00')
+        vat_rate = Decimal('0.15')
+        vat_amount = (amount * vat_rate).quantize(Decimal('0.01')) if lease.vat_applicable else Decimal('0.00')
         net_amount = amount - vat_amount
 
         posting = PostingData(
@@ -770,6 +771,20 @@ class AccountingService:
             f'Payment {payment.payment_reference}',
         )
 
+        # Apply Zimbabwe IMTT (1% for USD)
+        imtt_amount = (payment.amount * Decimal('0.01')).quantize(Decimal('0.01'))
+        if imtt_amount > 0:
+            posting.add_debit(
+                self.ACCOUNTS['BANK_CHARGES'],
+                imtt_amount,
+                f'IMTT (1%) on payment {payment.payment_reference}'
+            )
+            posting.add_credit(
+                payment.bank_account.gl_account.code,
+                imtt_amount,
+                f'IMTT deduction'
+            )
+
         return self.post_entry(posting, journal_code='GJ')
 
     @transaction.atomic
@@ -855,6 +870,10 @@ class AccountingService:
             receipt.amount,
             f'Receipt {receipt.receipt_reference}',
         )
+
+        # Apply Zimbabwe IMTT (1% for USD on the received amount if bank charges it on receipt, 
+        # but usually IMTT is on payments. However, some Zim banks charge on all transfers.
+        # We will apply it to payments for now as it is the most common requirement.)
 
         posting.add_credit(
             self.ACCOUNTS['ACCOUNTS_RECEIVABLE'],

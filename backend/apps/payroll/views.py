@@ -13,6 +13,8 @@ from .services.zimbabwe import ZimbabweTaxService
 from apps.finance.models.ap import Supplier, SupplierInvoice, SupplierInvoiceLine
 from apps.finance.models.core import ChartOfAccount, Journal, JournalEntry, JournalLine, FiscalPeriod
 from apps.core.services.number_sequence import NumberSequenceService
+from apps.core.permissions import IsFinanceAdminOrAccountant
+from rest_framework.permissions import IsAuthenticated
 
 class PayrollRunViewSet(viewsets.ModelViewSet):
     queryset = PayrollRun.objects.all()
@@ -88,10 +90,14 @@ class PayrollRunViewSet(viewsets.ModelViewSet):
                             amount = ZimbabweTaxService.calculate_aids_levy(rule_totals.get('PAYE', Decimal('0.00')))
                         elif rule.code == 'NSSA':
                             amount = ZimbabweTaxService.calculate_nssa(contract.wage, currency_code)
+                        elif rule.code == 'SDL':
+                            amount = ZimbabweTaxService.calculate_sdl(emp_gross or contract.wage)
+                        elif rule.code == 'ZIMDEF':
+                            amount = ZimbabweTaxService.calculate_zimdef(emp_gross or contract.wage)
                         elif rule.amount_type == 'fixed':
                             amount = rule.fixed_amount
                         elif rule.amount_type == 'percentage':
-                            amount = contract.wage * (rule.percentage / Decimal('100.00'))
+                            amount = (emp_gross or contract.wage) * (rule.percentage / Decimal('100.00'))
 
                         if rule.category == 'net':
                             amount = emp_net  # calculate net before applying rule
@@ -126,6 +132,9 @@ class PayrollRunViewSet(viewsets.ModelViewSet):
                         elif rule.category == 'deduction':
                             emp_deduc += amount
                             emp_net -= amount
+                        elif rule.category == 'contribution':
+                            # Employer contributions do not affect employee net pay
+                            pass
 
                 payslip.net_amount = emp_net
                 payslip.bank_account_snapshot = f"{emp.bank_name} / {emp.bank_account_number}"  # Note: not in Payslip model; maybe we should just use contract?
@@ -280,11 +289,13 @@ from rest_framework import serializers as drf_serializers
 class TaxBracketViewSet(viewsets.ModelViewSet):
     queryset = TaxBracket.objects.all()
     serializer_class = TaxBracketSerializer
+    permission_classes = [IsAuthenticated, IsFinanceAdminOrAccountant]
     filterset_fields = ['currency']
 
 class PayrollSettingViewSet(viewsets.ModelViewSet):
     queryset = PayrollSetting.objects.all()
     serializer_class = PayrollSettingSerializer
+    permission_classes = [IsAuthenticated, IsFinanceAdminOrAccountant]
 
 class SalaryRuleSerializer(drf_serializers.ModelSerializer):
     class Meta:

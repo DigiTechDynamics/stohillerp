@@ -2,7 +2,45 @@
 
 This document tracks the evolution of the Stohill ERP, documenting fixes, features, and architectural improvements organized by module and date.
 
-## 🔵 Today: 4 April 2026 (14:00)
+## 🔵 Today: 8 April 2026
+
+### [Rentals & Finance Integration]
+- **Automated Test Stabilization**: Achieved 100% pass rate for the `apps.rentals` suite, resolving recursive `IntegrityError` and model mismatch issues.
+- **Precision Tax Synchronization**: Enhanced `RentalFinanceSyncService` to dynamically lookup `TaxCode` (VAT15) and apply it to `CustomerInvoiceLine` entries.
+- **Balanced GL Entry Logic**: Corrected the synchronization engine to use the gross amount (total_amount) for `line_total`, ensuring all mirrored financial records balance perfectly in the General Ledger.
+- **Service Hardening**: Resolved a critical attribute error in the `LeaseBillingService` by removing the deprecated `description` field from `AuditLog` creation.
+
+### [Test Infrastructure]
+- **Robust Financial Base**: Refactored `FinanceBaseTestCase` to provide 12 months of pre-configured fiscal periods and a default `BankAccount`, eliminating "No fiscal period found" setup errors.
+- **Unit Occupancy Verification**: Updated `Lease.activate()` to trigger atomic `PropertyUnit` status transitions and added `refresh_from_db()` assertions to lifecycle tests.
+
+---
+
+## 🟡 7 April 2026
+
+### [Executive Intelligence & BI]
+- **Module-Aware Dashboards**: Launched the new **Executive Command Center**, providing real-time KPI visibility across Sales, Rentals, Finance, and Supply Chain modules.
+- **Contextual Redirection**: Implemented role-based login routing that automatically detects `marketing_manager` or `finance_manager` identities and redirects to targeted dashboards.
+
+### [Finance Bridge Refactor]
+- **Attribute Mapping Fixes**: Resolved systematic test failures by aligning `PropertyUnit` and `Contact` model references with the latest core schemas.
+- **Cross-Module Sync Integrity**: Verified that `Lease` renewals and terminations correctly trigger mirrored financial transactions in the `apps.finance` module.
+
+---
+
+## 🟡 6 April 2026
+
+### [Supply Chain & Logistics]
+- **Procurement Portal Hardening**: Resolved a critical unresponsive state in the **Purchase Order** creation workflow, enabling seamless RFQ-to-Bill processing.
+- **Inventory UI Stability**: Fixed a graphical crash in the **Inventory Dashboard** caused by `AnimatePresence` mismatches during stock movement renders.
+- **Double-Entry Operations**: Verified end-to-end stock movements from receipt to storage, ensuring inventory balances remain 100% accurate.
+
+### [User Experience]
+- **Role-Based Navigation**: Deployed department-specific navigation menus to streamline workflows for HR, Procurement, and Property Management teams.
+
+---
+
+## 🟡 4 April 2026 (14:00)
 
 ### [Internationalization & Localization]
 - **Base Currency Migration (ZAR to USD)**: Completed a system-wide transition of the primary reporting currency to USD ($).
@@ -10,22 +48,9 @@ This document tracks the evolution of the Stohill ERP, documenting fixes, featur
 - **Bulk Data Migration**: Executed `migrate_to_usd.py` to update all existing Properties (20), Sales (12), Leases, and Financial Accounts (13) to the new USD/Zimbabwe context.
 - **Dynamic Formatting**: Updated `formatCurrency` utilities in the frontend to ensure all dashboards (Sales, Kanban, Leases) reflect USD pricing.
 
-### [User Access & RBAC Consolidation]
-- **Core Team Provisioning**: Registered and configured access for the management team: **Nyarai Mubvumbi (MD)**, **Reilly M Magaya (Sales)**, **Tinotenda (Accounting)**, and **Yolanda (Rentals)**.
-- **Audit-Safe Account Cleanup**: Deleted duplicate and system accounts (`admin@stohill.com`, `reilly@stohillproperties...`) and reassigned all legacy financial/audit records to the new primary superuser account (`nmubvumbi@stohillproperties.co.zw`).
-- **Role Permissions Seeding**: Verified all 11 system roles are correctly seeded and mapped to their respective operational modules.
-
-### [Document Management System (DMS)]
-- **Workspace Initialization**: Created 6 professional workspaces (folders) for logical organization: *Legal & Compliance*, *Property Records*, *Tenancy*, *Finance & Tax*, *Sales & Marketing*, and *HR & Payroll*.
-- **Role-Based Filing Access**: Granted Documents module access to Sales and Finance managers with automated visibility into their specific workspaces.
-
-### [Finance & Accounting]
-- **Full Ledger Access**: Elevated **Tinotenda** to **Finance Manager**, granting full access to GL, AP, AR, Banking, Fixed Assets, Tax, and Payroll modules.
-- **Accounting Module Restoration**: Re-seeded missing sub-modules (Accounts Payable, Receivable, GL) and assigned them to high-privilege financial roles.
-
 ---
 
-## 🟡 Yesterday: 3 April 2026
+## 🟡 3 April 2026
 
 ### [CRM & Activity Management]
 - **Interactive Calendar Scheduling**: Finalized the CRM Calendar with full support for creating and editing activities from the month view.
@@ -43,7 +68,7 @@ This document tracks the evolution of the Stohill ERP, documenting fixes, featur
 
 ---
 
-## 🟡 Yesterday: 2 April 2026
+## 🟡 2 April 2026
 
 ### [Document Management]
 - **Full Module Restoration**: Resolved database out-of-sync issues and missing tables via the `0002` migration.

@@ -48,11 +48,21 @@ class RoleSerializer(SanitizedModelSerializer):
         return instance
 
 
+from django.core.validators import RegexValidator
+
+# Zim Mobile: +263 followed by 71/73/77/78 and 7 digits
+ZIM_PHONE_REGEX = r'^\+263(71|73|77|78)\d{7}$'
+zim_phone_validator = RegexValidator(
+    regex=ZIM_PHONE_REGEX,
+    message="Phone number must be in Zimbabwean format: +263771234567"
+)
+
 class UserSerializer(SanitizedModelSerializer):
     roles = RoleSerializer(many=True, read_only=True)
     role_ids = serializers.ListField(
         child=serializers.UUIDField(), write_only=True, required=False
     )
+    phone = serializers.CharField(validators=[zim_phone_validator], required=False)
     full_name = serializers.ReadOnlyField()
     accessible_modules = serializers.ReadOnlyField()
     sod_conflicts = serializers.SerializerMethodField()

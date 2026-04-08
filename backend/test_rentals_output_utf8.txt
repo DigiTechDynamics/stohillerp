@@ -1,0 +1,1229 @@
+﻿.\venv\Scripts\python : 
+Creating test database 
+for alias 'default'...
+At line:1 char:1
++ .\venv\Scripts\python 
+manage.py test 
+apps.rentals --noinput > 
+test_re ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (C  
+  reating test d...as '   
+ default'...:String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+
+[2026-04-08 11:19:40,528] 
+ERROR 
+stohill.rentals.billing 
+Failed to escalate Lease 
+LSE-Suite 101-2504: 
+AuditLog() got unexpected 
+keyword arguments: 
+'description'
+FE[2026-04-08 
+11:19:40,795] INFO 
+stohill.finance Posting 
+journal entry: Customer 
+Invoice - Terry Tenant - 
+AR-RINV-00001 dated 
+2026-04-01 via SJ
+[2026-04-08 11:19:40,796] 
+ERROR 
+stohill.rentals.sync 
+Failed to post rental 
+invoice RINV-00001 to AR: 
+Journal entry is not 
+balanced. Debits: 
+1150.00, Credits: 
+1000.00. Difference: 
+150.00
+[2026-04-08 11:19:40,796] 
+ERROR 
+stohill.rentals.models 
+Finance AR sync failed 
+for invoice RINV-00001: 
+Journal entry is not 
+balanced. Debits: 
+1150.00, Credits: 
+1000.00. Difference: 
+150.00
+[2026-04-08 11:19:40,796] 
+INFO 
+stohill.rentals.billing 
+Generated and synced 
+invoice RINV-00001 for 
+Lease LSE-Suite 101-2603
+..F.[2026-04-08 
+11:19:41,151] ERROR 
+stohill.integrations 
+Supabase upsert failed 
+for property PROP-SP01: 
+400 {"code":"PGRST204","de
+tails":null,"hint":null,"m
+essage":"Could not find 
+the 'address' column of 
+'properties' in the 
+schema cache"}
+[2026-04-08 11:19:41,155] 
+ERROR 
+stohill.integrations 
+Supabase upsert failed 
+for property PROP-SP01: 
+400 {"code":"PGRST204","de
+tails":null,"hint":null,"m
+essage":"Could not find 
+the 'address' column of 
+'properties' in the 
+schema cache"}
+[2026-04-08 11:19:41,155] 
+ERROR 
+stohill.integrations 
+Supabase upsert failed 
+for property PROP-SP01: 
+400 {"code":"PGRST204","de
+tails":null,"hint":null,"m
+essage":"Could not find 
+the 'address' column of 
+'properties' in the 
+schema cache"}
+E[2026-04-08 
+11:19:41,216] ERROR 
+stohill.integrations 
+Supabase upsert failed 
+for property PROP-SP01: 
+400 {"code":"PGRST204","de
+tails":null,"hint":null,"m
+essage":"Could not find 
+the 'address' column of 
+'properties' in the 
+schema cache"}
+E[2026-04-08 
+11:19:41,345] ERROR 
+stohill.integrations 
+Supabase upsert failed 
+for property PROP-SP01: 
+400 {"code":"PGRST204","de
+tails":null,"hint":null,"m
+essage":"Could not find 
+the 'address' column of 
+'properties' in the 
+schema cache"}
+[2026-04-08 11:19:41,386] 
+INFO stohill.finance 
+Posting journal entry: 
+Owner Settlement: Stohill 
+Plaza (Apr 2026) dated 
+2026-04-08 via GJ
+[2026-04-08 11:19:41,398] 
+ERROR stohill.rentals.sett
+lement Accounting post 
+failed for settlement 4164
+9c0d-2da6-43d7-9fd0-48c186
+df9af2: GL Account with 
+code "5400" not found or 
+inactive. Please verify 
+the Chart of Accounts.
+[2026-04-08 11:19:41,406] 
+ERROR 
+stohill.integrations 
+Supabase upsert failed 
+for property PROP-SP01: 
+400 {"code":"PGRST204","de
+tails":null,"hint":null,"m
+essage":"Could not find 
+the 'address' column of 
+'properties' in the 
+schema cache"}
+E.
+==========================
+==========================
+==================
+ERROR: test_late_fee_appli
+cation_after_grace (apps.r
+entals.tests.test_billing_
+service.BillingServiceTest
+s.test_late_fee_applicatio
+n_after_grace)
+Verify that $100 penalty 
+is only applied after the 
+5-day grace period.
+--------------------------
+--------------------------
+------------------
+Traceback (most recent 
+call last):
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\util
+s.py", line 105, in 
+_execute
+    return 
+self.cursor.execute(sql, 
+params)
+           ~~~~~~~~~~~~~~~
+~~~~^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\sqli
+te3\base.py", line 359, 
+in execute
+    return 
+super().execute(query, 
+params)
+           ~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^
+sqlite3.IntegrityError: 
+NOT NULL constraint 
+failed: rentals_invoices.p
+eriod_start
+
+The above exception was 
+the direct cause of the 
+following exception:
+
+Traceback (most recent 
+call last):
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\apps\rentals\tests\t
+est_billing_service.py", 
+line 43, in test_late_fee_
+application_after_grace
+    inv = RentalInvoice.ob
+jects.create(
+        lease=lease,
+    ...<4 lines>...
+        status=RentalInvoi
+ce.InvoiceStatus.SENT
+    )
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\manage
+r.py", line 87, in 
+manager_method
+    return getattr(self.ge
+t_queryset(), 
+name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~^^^^^^^
+^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\query.
+py", line 669, in create
+    obj.save(force_insert=
+True, using=self.db)
+    ~~~~~~~~^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\apps\rentals\models.
+py", line 239, in save
+    super().save(*args, 
+**kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^
+^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\base.p
+y", line 874, in save
+    self.save_base(
+    ~~~~~~~~~~~~~~^
+        using=using,
+        ^^^^^^^^^^^^
+    ...<2 lines>...
+        update_fields=upda
+te_fields,
+        ^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\base.p
+y", line 966, in save_base
+    updated = 
+self._save_table(
+        raw,
+    ...<4 lines>...
+        update_fields,
+    )
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\base.p
+y", line 1169, in 
+_save_table
+    results = 
+self._do_insert(
+        
+cls._base_manager, using, 
+insert_fields, 
+returning_fields, raw
+    )
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\base.p
+y", line 1220, in 
+_do_insert
+    return 
+manager._insert(
+           
+~~~~~~~~~~~~~~~^
+        [self],
+        ^^^^^^^
+    ...<3 lines>...
+        raw=raw,
+        ^^^^^^^^
+    )
+    ^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\manage
+r.py", line 87, in 
+manager_method
+    return getattr(self.ge
+t_queryset(), 
+name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~^^^^^^^
+^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\query.
+py", line 1918, in _insert
+    return query.get_compi
+ler(using=using).execute_s
+ql(returning_fields)
+           ~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\sql\co
+mpiler.py", line 1925, in 
+execute_sql
+    cursor.execute(sql, 
+params)
+    ~~~~~~~~~~~~~~^^^^^^^^
+^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\util
+s.py", line 79, in execute
+    return self._execute_w
+ith_wrappers(
+           ~~~~~~~~~~~~~~~
+~~~~~~~~~~~~^
+        sql, params, 
+many=False, 
+executor=self._execute
+        ^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^
+    )
+    ^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\util
+s.py", line 92, in 
+_execute_with_wrappers
+    return executor(sql, 
+params, many, context)
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\util
+s.py", line 100, in 
+_execute
+    with self.db.wrap_data
+base_errors:
+         ^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\utils.py", 
+line 94, in __exit__
+    raise dj_exc_value.wit
+h_traceback(traceback) 
+from exc_value
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\util
+s.py", line 105, in 
+_execute
+    return 
+self.cursor.execute(sql, 
+params)
+           ~~~~~~~~~~~~~~~
+~~~~^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\sqli
+te3\base.py", line 359, 
+in execute
+    return 
+super().execute(query, 
+params)
+           ~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^
+django.db.utils.IntegrityE
+rror: NOT NULL constraint 
+failed: rentals_invoices.p
+eriod_start
+
+==========================
+==========================
+==================
+ERROR: test_rental_invoice
+_to_ar_sync (apps.rentals.
+tests.test_rentals_finance
+_sync.RentalsFinanceSyncTe
+sts.test_rental_invoice_to
+_ar_sync)
+Verify that a 
+RentalInvoice correctly 
+creates/updates a 
+CustomerInvoice and 
+JournalEntry.
+--------------------------
+--------------------------
+------------------
+Traceback (most recent 
+call last):
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\util
+s.py", line 105, in 
+_execute
+    return 
+self.cursor.execute(sql, 
+params)
+           ~~~~~~~~~~~~~~~
+~~~~^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\sqli
+te3\base.py", line 359, 
+in execute
+    return 
+super().execute(query, 
+params)
+           ~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^
+sqlite3.IntegrityError: 
+NOT NULL constraint 
+failed: rentals_invoices.p
+eriod_start
+
+The above exception was 
+the direct cause of the 
+following exception:
+
+Traceback (most recent 
+call last):
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\apps\rentals\tests\t
+est_rentals_finance_sync.p
+y", line 21, in test_renta
+l_invoice_to_ar_sync
+    rent_inv = RentalInvoi
+ce.objects.create(
+        lease=lease,
+    ...<5 lines>...
+        status=RentalInvoi
+ce.InvoiceStatus.SENT
+    )
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\manage
+r.py", line 87, in 
+manager_method
+    return getattr(self.ge
+t_queryset(), 
+name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~^^^^^^^
+^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\query.
+py", line 669, in create
+    obj.save(force_insert=
+True, using=self.db)
+    ~~~~~~~~^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\apps\rentals\models.
+py", line 239, in save
+    super().save(*args, 
+**kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^
+^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\base.p
+y", line 874, in save
+    self.save_base(
+    ~~~~~~~~~~~~~~^
+        using=using,
+        ^^^^^^^^^^^^
+    ...<2 lines>...
+        update_fields=upda
+te_fields,
+        ^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\base.p
+y", line 966, in save_base
+    updated = 
+self._save_table(
+        raw,
+    ...<4 lines>...
+        update_fields,
+    )
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\base.p
+y", line 1169, in 
+_save_table
+    results = 
+self._do_insert(
+        
+cls._base_manager, using, 
+insert_fields, 
+returning_fields, raw
+    )
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\base.p
+y", line 1220, in 
+_do_insert
+    return 
+manager._insert(
+           
+~~~~~~~~~~~~~~~^
+        [self],
+        ^^^^^^^
+    ...<3 lines>...
+        raw=raw,
+        ^^^^^^^^
+    )
+    ^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\manage
+r.py", line 87, in 
+manager_method
+    return getattr(self.ge
+t_queryset(), 
+name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~^^^^^^^
+^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\query.
+py", line 1918, in _insert
+    return query.get_compi
+ler(using=using).execute_s
+ql(returning_fields)
+           ~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\sql\co
+mpiler.py", line 1925, in 
+execute_sql
+    cursor.execute(sql, 
+params)
+    ~~~~~~~~~~~~~~^^^^^^^^
+^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\util
+s.py", line 79, in execute
+    return self._execute_w
+ith_wrappers(
+           ~~~~~~~~~~~~~~~
+~~~~~~~~~~~~^
+        sql, params, 
+many=False, 
+executor=self._execute
+        ^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^
+    )
+    ^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\util
+s.py", line 92, in 
+_execute_with_wrappers
+    return executor(sql, 
+params, many, context)
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\util
+s.py", line 100, in 
+_execute
+    with self.db.wrap_data
+base_errors:
+         ^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\utils.py", 
+line 94, in __exit__
+    raise dj_exc_value.wit
+h_traceback(traceback) 
+from exc_value
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\util
+s.py", line 105, in 
+_execute
+    return 
+self.cursor.execute(sql, 
+params)
+           ~~~~~~~~~~~~~~~
+~~~~^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\sqli
+te3\base.py", line 359, 
+in execute
+    return 
+super().execute(query, 
+params)
+           ~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^
+django.db.utils.IntegrityE
+rror: NOT NULL constraint 
+failed: rentals_invoices.p
+eriod_start
+
+==========================
+==========================
+==================
+ERROR: test_settlement_cal
+culation_accuracy (apps.re
+ntals.tests.test_settlemen
+t_logic.SettlementLogicTes
+ts.test_settlement_calcula
+tion_accuracy)
+Verify the 'Cash Basis' 
+formula: Net Payout = 
+Collected - (Fee+VAT) - 
+Expenses.
+--------------------------
+--------------------------
+------------------
+Traceback (most recent 
+call last):
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\util
+s.py", line 105, in 
+_execute
+    return 
+self.cursor.execute(sql, 
+params)
+           ~~~~~~~~~~~~~~~
+~~~~^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\sqli
+te3\base.py", line 359, 
+in execute
+    return 
+super().execute(query, 
+params)
+           ~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^
+sqlite3.IntegrityError: 
+NOT NULL constraint 
+failed: rentals_invoices.p
+eriod_start
+
+The above exception was 
+the direct cause of the 
+following exception:
+
+Traceback (most recent 
+call last):
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\apps\rentals\tests\t
+est_settlement_logic.py", 
+line 21, in test_settlemen
+t_calculation_accuracy
+    inv = RentalInvoice.ob
+jects.create(
+        lease=lease,
+    ...<5 lines>...
+        status=RentalInvoi
+ce.InvoiceStatus.SENT
+    )
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\manage
+r.py", line 87, in 
+manager_method
+    return getattr(self.ge
+t_queryset(), 
+name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~^^^^^^^
+^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\query.
+py", line 669, in create
+    obj.save(force_insert=
+True, using=self.db)
+    ~~~~~~~~^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\apps\rentals\models.
+py", line 239, in save
+    super().save(*args, 
+**kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^
+^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\base.p
+y", line 874, in save
+    self.save_base(
+    ~~~~~~~~~~~~~~^
+        using=using,
+        ^^^^^^^^^^^^
+    ...<2 lines>...
+        update_fields=upda
+te_fields,
+        ^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\base.p
+y", line 966, in save_base
+    updated = 
+self._save_table(
+        raw,
+    ...<4 lines>...
+        update_fields,
+    )
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\base.p
+y", line 1169, in 
+_save_table
+    results = 
+self._do_insert(
+        
+cls._base_manager, using, 
+insert_fields, 
+returning_fields, raw
+    )
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\base.p
+y", line 1220, in 
+_do_insert
+    return 
+manager._insert(
+           
+~~~~~~~~~~~~~~~^
+        [self],
+        ^^^^^^^
+    ...<3 lines>...
+        raw=raw,
+        ^^^^^^^^
+    )
+    ^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\manage
+r.py", line 87, in 
+manager_method
+    return getattr(self.ge
+t_queryset(), 
+name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~^^^^^^^
+^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\query.
+py", line 1918, in _insert
+    return query.get_compi
+ler(using=using).execute_s
+ql(returning_fields)
+           ~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\sql\co
+mpiler.py", line 1925, in 
+execute_sql
+    cursor.execute(sql, 
+params)
+    ~~~~~~~~~~~~~~^^^^^^^^
+^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\util
+s.py", line 79, in execute
+    return self._execute_w
+ith_wrappers(
+           ~~~~~~~~~~~~~~~
+~~~~~~~~~~~~^
+        sql, params, 
+many=False, 
+executor=self._execute
+Found 10 test(s).
+System check identified no issues (0 silenced).
+        ^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^
+    )
+    ^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\util
+s.py", line 92, in 
+_execute_with_wrappers
+    return executor(sql, 
+params, many, context)
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\util
+s.py", line 100, in 
+_execute
+    with self.db.wrap_data
+base_errors:
+         ^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\utils.py", 
+line 94, in __exit__
+    raise dj_exc_value.wit
+h_traceback(traceback) 
+from exc_value
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\util
+s.py", line 105, in 
+_execute
+    return 
+self.cursor.execute(sql, 
+params)
+           ~~~~~~~~~~~~~~~
+~~~~^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\backends\sqli
+te3\base.py", line 359, 
+in execute
+    return 
+super().execute(query, 
+params)
+           ~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^
+django.db.utils.IntegrityE
+rror: NOT NULL constraint 
+failed: rentals_invoices.p
+eriod_start
+
+==========================
+==========================
+==================
+ERROR: test_settlement_gl_
+ledger_post (apps.rentals.
+tests.test_settlement_logi
+c.SettlementLogicTests.tes
+t_settlement_gl_ledger_pos
+t)
+Verify that processing a 
+settlement triggers 
+accurate multi-account GL 
+postings.
+--------------------------
+--------------------------
+------------------
+Traceback (most recent 
+call last):
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\apps\finance\service
+s\accounting.py", line 
+218, in _get_account
+    return ChartOfAccount.
+objects.get(code=code, 
+is_active=True)
+           ~~~~~~~~~~~~~~~
+~~~~~~~~~~~^^^^^^^^^^^^^^^
+^^^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\manage
+r.py", line 87, in 
+manager_method
+    return getattr(self.ge
+t_queryset(), 
+name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~^^^^^^^
+^^^^^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\venv\Lib\site-packag
+es\django\db\models\query.
+py", line 639, in get
+    raise 
+self.model.DoesNotExist(
+        "%s matching 
+query does not exist." % s
+elf.model._meta.object_nam
+e
+    )
+apps.finance.models.core.C
+hartOfAccount.DoesNotExist
+: ChartOfAccount matching 
+query does not exist.
+
+During handling of the 
+above exception, another 
+exception occurred:
+
+Traceback (most recent 
+call last):
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\apps\rentals\tests\t
+est_settlement_logic.py", 
+line 90, in test_settlemen
+t_gl_ledger_post
+    entry = self.settlemen
+t_service.process_and_post
+_settlement(settlement)
+  File "C:\Users\mkavh\App
+Data\Local\Programs\Python
+\Python314\Lib\contextlib.
+py", line 85, in inner
+    return func(*args, 
+**kwds)
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\apps\rentals\service
+s\settlement_service.py", 
+line 195, in process_and_p
+ost_settlement
+    je = accounting.post_e
+ntry(posting, 
+journal_code='GJ')
+  File "C:\Users\mkavh\App
+Data\Local\Programs\Python
+\Python314\Lib\contextlib.
+py", line 85, in inner
+    return func(*args, 
+**kwds)
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\apps\finance\service
+s\accounting.py", line 
+282, in post_entry
+    account_map[code] = 
+self._get_account(code)
+                        
+~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\apps\finance\service
+s\accounting.py", line 
+220, in _get_account
+    raise AccountingError(
+    ...<2 lines>...
+    )
+apps.finance.services.acco
+unting.AccountingError: 
+GL Account with code 
+"5400" not found or 
+inactive. Please verify 
+the Chart of Accounts.
+
+==========================
+==========================
+==================
+FAIL: test_annual_rent_esc
+alation (apps.rentals.test
+s.test_billing_service.Bil
+lingServiceTests.test_annu
+al_rent_escalation)
+Verify that rent 
+increases by 10% exactly 
+12 months after 
+start_date.
+--------------------------
+--------------------------
+------------------
+Traceback (most recent 
+call last):
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\apps\rentals\tests\t
+est_billing_service.py", 
+line 75, in test_annual_re
+nt_escalation
+    self.assertEqual(resul
+ts['escalations_applied'],
+ 1)
+    ~~~~~~~~~~~~~~~~^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^
+AssertionError: 0 != 1
+
+==========================
+==========================
+==================
+FAIL: test_lease_activatio
+n_updates_unit (apps.renta
+ls.tests.test_lease_lifecy
+cle.LeaseLifecycleTests.te
+st_lease_activation_update
+s_unit)
+Verify that activating a 
+lease changes the unit 
+status to OCCUPIED.
+--------------------------
+--------------------------
+------------------
+Traceback (most recent 
+call last):
+  File "C:\Users\mkavh\Des
+ktop\Digital Tech Dynamics
+\Clients\2026\Stohil\erp-m
+aster\stohillerp-master\ba
+ckend\apps\rentals\tests\t
+est_lease_lifecycle.py", 
+line 23, in test_lease_act
+ivation_updates_unit
+    self.assertEqual(self.
+unit.status, PropertyUnit.
+UnitStatus.OCCUPIED)
+    ~~~~~~~~~~~~~~~~^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
+AssertionError: 
+'available' != PropertyUni
+t.UnitStatus.OCCUPIED
+
+--------------------------
+--------------------------
+------------------
+Ran 10 tests in 1.095s
+
+FAILED (failures=2, 
+errors=4)
+Destroying test database 
+for alias 'default'...
+

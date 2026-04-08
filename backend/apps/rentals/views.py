@@ -1,12 +1,13 @@
 """Stohil Properties - Rentals Views"""
 from decimal import Decimal
-from rest_framework import viewsets, filters, status  # type: ignore
-from rest_framework.decorators import action  # type: ignore
-from rest_framework.response import Response  # type: ignore
-from rest_framework.permissions import IsAuthenticated, AllowAny  # type: ignore
-from django_filters.rest_framework import DjangoFilterBackend  # type: ignore
-from django.db.models import Sum, Count, Q  # type: ignore
-from apps.rentals.models import Lease, RentalInvoice, RentalPayment, MaintenanceRequest  # type: ignore
+from rest_framework import viewsets, filters, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+# type: ignore
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Sum, Count, Q
+from apps.rentals.models import Lease, RentalInvoice, RentalPayment, MaintenanceRequest, OwnerSettlement
 
 
 class LeaseViewSet(viewsets.ModelViewSet):
@@ -20,13 +21,13 @@ class LeaseViewSet(viewsets.ModelViewSet):
     ordering_fields = ['start_date', 'monthly_rental', 'created_at', 'lease_number']
 
     def get_serializer_class(self):
-        from apps.rentals.serializers import LeaseSerializer  # type: ignore
+        from apps.rentals.serializers import LeaseSerializer
         return LeaseSerializer
 
     @action(detail=False, methods=['get'])
     def stats(self, request):
         """Dashboard-style stats for the rentals module."""
-        from apps.properties.models import Property  # type: ignore
+        from apps.properties.models import Property
 
         active = Lease.objects.filter(status='active')
         active_count = active.count()
@@ -87,13 +88,35 @@ class LeaseViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def activate(self, request, pk=None):
-        """Transition a draft lease to active status."""
+        """Transition a draft lease to active status and optionally post security deposit."""
         lease = self.get_object()
         lease.activate()
+        
+        post_deposit = request.data.get('post_deposit', False)
+        deposit_posted = False
+        journal_ref = None
+        
+        if post_deposit and lease.deposit_amount > 0:
+            try:
+                from apps.finance.services.accounting import AccountingService
+                service = AccountingService(user=request.user)
+                entry = service.post_deposit_received(lease, lease.deposit_amount)
+                lease.deposit_paid = True
+                from django.utils import timezone
+                lease.deposit_paid_date = timezone.now().date()
+                lease.save(update_fields=['deposit_paid', 'deposit_paid_date'])
+                deposit_posted = True
+                journal_ref = entry.reference
+            except Exception as e:
+                import logging
+                logging.getLogger('stohill.rentals').error(f"Failed to post security deposit for lease {lease.lease_number}: {e}")
+
         return Response({
             'status': 'activated', 
             'lease_number': lease.lease_number,
-            'next_invoice_date': str(lease.next_invoice_date)
+            'next_invoice_date': str(lease.next_invoice_date),
+            'deposit_posted': deposit_posted,
+            'journal_reference': journal_ref
         })
 
     @action(detail=True, methods=['post'])
@@ -150,14 +173,14 @@ class RentalInvoiceViewSet(viewsets.ModelViewSet):
     ordering_fields = ['period_start', 'due_date', 'total_amount', 'invoice_number']
 
     def get_serializer_class(self):
-        from apps.rentals.serializers import RentalInvoiceSerializer  # type: ignore
+        from apps.rentals.serializers import RentalInvoiceSerializer
         return RentalInvoiceSerializer
 
     @action(detail=True, methods=['get'])
     def download_pdf(self, request, pk=None):
         """Generate and download a printable PDF invoice."""
-        from django.http import HttpResponse  # type: ignore
-        from apps.finance.models.ar import CustomerInvoice  # type: ignore
+        from django.http import HttpResponse
+        from apps.finance.models.ar import CustomerInvoice
         
         rental_invoice = self.get_object()
         
@@ -175,7 +198,7 @@ class RentalInvoiceViewSet(viewsets.ModelViewSet):
             )
             
         try:
-            from apps.finance.services.pdf_service import PDFService  # type: ignore
+            from apps.finance.services.pdf_service import PDFService
             pdf_bytes = PDFService.generate_invoice_pdf(ar_invoice)
             
             response = HttpResponse(pdf_bytes, content_type='application/pdf')
@@ -219,7 +242,7 @@ class RentalPaymentViewSet(viewsets.ModelViewSet):
     ordering_fields = ['payment_date', 'amount']
 
     def get_serializer_class(self):
-        from apps.rentals.serializers import RentalPaymentSerializer  # type: ignore
+        from apps.rentals.serializers import RentalPaymentSerializer
         return RentalPaymentSerializer
 
 
@@ -234,7 +257,7 @@ class MaintenanceViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'reference', 'category', 'status']
 
     def get_serializer_class(self):
-        from apps.rentals.serializers import MaintenanceRequestSerializer  # type: ignore
+        from apps.rentals.serializers import MaintenanceRequestSerializer
         return MaintenanceRequestSerializer
 
     @action(detail=True, methods=['post'])
@@ -250,7 +273,6 @@ class MaintenanceViewSet(viewsets.ModelViewSet):
             from django.utils import timezone
             ticket.completed_date = timezone.now()
         
-        # Capture resolution notes if provided
         if 'resolution_notes' in request.data:
             ticket.resolution_notes = request.data['resolution_notes']
         
@@ -259,6 +281,53 @@ class MaintenanceViewSet(viewsets.ModelViewSet):
             
         ticket.save()
         return Response({'status': 'updated', 'new_status': ticket.status})
+
+
+class OwnerSettlementViewSet(viewsets.ModelViewSet):
+    queryset = OwnerSettlement.objects.select_related('owner', 'property', 'currency')
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'owner', 'property']
+    search_fields = ['property__name', 'owner__last_name', 'payment_reference']
+    ordering_fields = ['period_start', 'net_payout_amount', 'status']
+
+    def get_serializer_class(self):
+        from apps.rentals.serializers import OwnerSettlementSerializer
+        return OwnerSettlementSerializer
+
+    @action(detail=False, methods=['post'])
+    def generate_monthly(self, request):
+        """Trigger the automated settlement calculation for a given month/year."""
+        month = request.data.get('month')
+        year = request.data.get('year')
+        
+        if not all([month, year]):
+            from django.utils import timezone
+            today = timezone.now().date()
+            month = month or today.month
+            year = year or today.year
+            
+        from apps.rentals.services.settlement_service import OwnerSettlementService
+        try:
+            results = OwnerSettlementService.generate_monthly_settlements(int(month), int(year))
+            return Response(results)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def approve_and_post(self, request, pk=None):
+        """Approve a draft settlement and post it to GL."""
+        settlement = self.get_object()
+        from apps.rentals.services.settlement_service import OwnerSettlementService
+        try:
+            je = OwnerSettlementService.process_and_post_settlement(settlement, user=request.user)
+            return Response({
+                'status': 'paid',
+                'journal_reference': je.reference,
+                'net_payout': str(settlement.net_payout_amount)
+            })
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class PublicMaintenanceViewSet(viewsets.ViewSet):
@@ -282,14 +351,12 @@ class PublicMaintenanceViewSet(viewsets.ViewSet):
             )
 
         try:
-            # Verify lease and tenant
             lease = Lease.objects.select_related('property', 'tenant').get(
                 lease_number__iexact=lease_number,
                 tenant__email__iexact=email,
                 status='active'
             )
 
-            # Create ticket
             ticket = MaintenanceRequest.objects.create(
                 lease=lease,
                 property=lease.property,
@@ -300,7 +367,6 @@ class PublicMaintenanceViewSet(viewsets.ViewSet):
                 status='logged'
             )
 
-            # Optional: Trigger notification for managing agent
             if lease.managing_agent and lease.managing_agent.user:
                 try:
                     from apps.notifications.utils import create_notification

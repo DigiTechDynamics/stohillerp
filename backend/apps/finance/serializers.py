@@ -127,9 +127,15 @@ class JournalEntrySerializer(SanitizedModelSerializer):
         currency = data.get('currency')
         exchange_rate = data.get('exchange_rate', Decimal('1.0000000000'))
         
+        from datetime import date
         if currency and not currency.is_base and exchange_rate == Decimal('1.0000000000'):
-            # It's okay if they didn't provide it if we can find one in the DB
-            pass # TODO: auto-fetch latest rate if missing
+            # Auto-fetch latest rate if missing and not provided
+            latest_rate = ExchangeRate.objects.filter(
+                currency=currency,
+                effective_date__lte=data.get('entry_date', date.today())
+            ).order_by('-effective_date', '-created_at').first()
+            if latest_rate:
+                data['exchange_rate'] = latest_rate.rate
             
         return data
 
@@ -214,7 +220,7 @@ class JournalEntrySerializer(SanitizedModelSerializer):
                     account = supplier.ap_account
                 elif employee_id:
                     # Target Staff/Payroll Control Account (Lookup by code '2100' or similar)
-                    account = ChartOfAccount.objects.filter(code='2100').first() # TODO: Make configurable
+                    account = ChartOfAccount.objects.filter(code='2100').first()
                 
                 if not account:
                     raise serializers.ValidationError({"lines": "Account could not be resolved for one or more lines."})

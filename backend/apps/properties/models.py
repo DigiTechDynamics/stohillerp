@@ -5,7 +5,9 @@ Properties are the central entity linking all other modules.
 """
 
 import uuid
+from decimal import Decimal
 from django.db import models  # type: ignore
+from django.core.validators import MinValueValidator
 from apps.core.models import AuditedModel, TimeStampedModel  # type: ignore
 
 
@@ -48,6 +50,15 @@ class Property(AuditedModel):
     reference_number = models.CharField(max_length=50, unique=True, blank=True)
     name = models.CharField(max_length=200)
     property_type = models.ForeignKey(PropertyType, on_delete=models.PROTECT, related_name='properties')
+    # Ownership
+    owner = models.ForeignKey(
+        'crm.Contact', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='owned_properties',
+        help_text="The third-party owner of the property (for managed units)."
+    )
     ownership_type = models.CharField(max_length=20, choices=OwnershipType.choices, default=OwnershipType.OWNED)
     status = models.CharField(max_length=30, choices=PropertyStatus.choices, default=PropertyStatus.AVAILABLE)
     currency = models.ForeignKey('core.Currency', on_delete=models.PROTECT, related_name='properties', null=True)
@@ -72,20 +83,62 @@ class Property(AuditedModel):
     parking_bays = models.PositiveSmallIntegerField(default=0)
     year_built = models.PositiveSmallIntegerField(null=True, blank=True)
 
+    # Added attributes for Website Integration
+    lounges = models.PositiveSmallIntegerField(default=0)
+    boreholes = models.PositiveSmallIntegerField(default=0)
+    pool = models.PositiveSmallIntegerField(default=0)
+    parking_spaces = models.PositiveSmallIntegerField(default=0)
+    storeys = models.PositiveSmallIntegerField(default=1)
+    dining_rooms = models.PositiveSmallIntegerField(default=0)
+    carports = models.PositiveSmallIntegerField(default=0)
+
+    # Feature Flags
+    entertainment_area = models.BooleanField(default=False)
+    cottage = models.BooleanField(default=False)
+    fitted_kitchen = models.BooleanField(default=False)
+    tiled = models.BooleanField(default=False)
+    built_in_cupboards = models.BooleanField(default=False)
+    mes = models.BooleanField(default=False)
+    walled_fenced = models.BooleanField(default=False)
+    landscaped_garden = models.BooleanField(default=False)
+
+    # Cottage Details
+    cottage_beds = models.PositiveSmallIntegerField(default=0)
+    cottage_bathrooms = models.PositiveSmallIntegerField(default=0)
+    cottage_dining = models.PositiveSmallIntegerField(default=0)
+    cottage_parking = models.PositiveSmallIntegerField(default=0)
+
+    # SEO and External Sync
+    slug = models.SlugField(max_length=255, unique=True, null=True, blank=True)
+    external_id = models.UUIDField(null=True, blank=True, unique=True, help_text='Original ID from website/Supabase')
+
+    class WebsiteCategory(models.TextChoices):
+        FOR_SALE = 'for-sale', 'For Sale'
+        FOR_RENT = 'for-rent', 'For Rent'
+        AUCTIONS = 'auctions', 'Auctions'
+
+    website_category = models.CharField(
+        max_length=20,
+        choices=WebsiteCategory.choices,
+        null=True,
+        blank=True
+    )
+
     # Valuation
-    purchase_price = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    purchase_price = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
     purchase_date = models.DateField(null=True, blank=True)
-    current_valuation = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    current_valuation = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
     last_valuation_date = models.DateField(null=True, blank=True)
-    asking_price = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
-    rental_rate = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text='Monthly rental rate')
+    asking_price = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
+    rental_rate = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text='Monthly rental rate', validators=[MinValueValidator(0)])
 
     # Utilities and Rates
-    rates_monthly = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    levies_monthly = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    bond_amount = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    rates_monthly = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+    levies_monthly = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+    insurance_monthly = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+    bond_amount = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
     bond_institution = models.CharField(max_length=100, blank=True)
-    bond_monthly_payment = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    bond_monthly_payment = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
 
     # Finance linkage (GL account for this property's income/expenses)
     gl_account_code = models.CharField(max_length=20, blank=True, help_text='Chart of accounts reference')
@@ -110,6 +163,7 @@ class Property(AuditedModel):
             models.Index(fields=['status']),
             models.Index(fields=['city', 'suburb']),
             models.Index(fields=['property_type']),
+            models.Index(fields=['slug']),
         ]
 
     def __str__(self):

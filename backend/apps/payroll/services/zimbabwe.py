@@ -64,3 +64,31 @@ class ZimbabweTaxService:
             
         pensionable_earnings = min(salary, ceiling)
         return (pensionable_earnings * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+    @staticmethod
+    def calculate_sdl(gross_salary):
+        """
+        Standards Development Levy (SDL).
+        0.5% of Gross Salary (Employer Contribution).
+        """
+        try:
+            rate_setting = PayrollSetting.objects.get(key='sdl_rate')
+            rate = rate_setting.value
+        except PayrollSetting.DoesNotExist:
+            rate = Decimal('0.005') # 0.5%
+            
+        return (Decimal(str(gross_salary)) * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+    @staticmethod
+    def calculate_zimdef(gross_salary):
+        """
+        Zimbabwe Development Fund (ZIMDEF).
+        1.0% of Gross Salary (Employer Contribution).
+        """
+        try:
+            rate_setting = PayrollSetting.objects.get(key='zimdef_rate')
+            rate = rate_setting.value
+        except PayrollSetting.DoesNotExist:
+            rate = Decimal('0.01') # 1.0%
+            
+        return (Decimal(str(gross_salary)) * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)

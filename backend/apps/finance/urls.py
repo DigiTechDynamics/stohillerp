@@ -33,7 +33,9 @@ urlpatterns = [
     path('reports/income-statement/', views.IncomeStatementView.as_view(), name='income-statement'),
     path('reports/balance-sheet/', views.BalanceSheetView.as_view(), name='balance-sheet'),
     path('reports/vat-return/', views.VATReturnView.as_view(), name='vat-return'),
+    path('reports/ar-aging/', views.AccountsReceivableAgingView.as_view(), name='ar-aging'),
     path('reports/export/<str:report_id>/', views.ReportExportView.as_view(), name='report-export'),
     path('account-search/', views.UnifiedAccountSearchView.as_view(), name='account-search'),
     path('summary/', views.FinanceSummaryView.as_view(), name='finance-summary'),
+    path('disbursements/generate_eft/', views.DisbursementEFTView.as_view(), name='generate-eft'),
 ]

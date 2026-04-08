@@ -1,0 +1,678 @@
+Found 25 test(s).
+Operations to perform:
+  Synchronize unmigrated apps: analytics, corsheaders, csp, django_filters, integrations, messages, rest_framework, rest_framework_simplejwt, staticfiles
+  Apply all migrations: admin, auth, banking, commissions, contenttypes, core, crm, documents, finance, fixed_assets, hr, inventory, notifications, payroll, procurement, properties, rentals, sales, sessions
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0001_initial... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying core.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying hr.0001_initial... OK
+  Applying properties.0001_initial... OK
+  Applying properties.0002_alter_property_city_alter_property_postal_code_and_more... OK
+  Applying crm.0001_initial... OK
+  Applying finance.0001_initial... OK
+  Applying finance.0002_bankaccount_banktransaction_bankreconciliation_and_more... OK
+  Applying core.0002_numbersequence... OK
+  Applying core.0003_currency... OK
+  Applying finance.0003_journalentry_currency_journalentry_exchange_rate_and_more... OK
+  Applying finance.0004_alter_chartofaccount_currency... OK
+  Applying finance.0005_alter_chartofaccount_currency... OK
+  Applying finance.0006_alter_bankaccount_currency_and_more... OK
+  Applying finance.0007_journalline_employee_ref_journalline_supplier_ref_and_more... OK
+  Applying finance.0008_chartofaccount_allow_manual_entry_and_more... OK
+  Applying finance.0009_postingprofile... OK
+  Applying finance.0010_alter_exchangerate_options_and_more... OK
+  Applying finance.0011_remove_supplier_default_currency_and_more... OK
+  Applying sales.0001_initial... OK
+  Applying rentals.0001_initial... OK
+  Applying documents.0001_initial... OK
+  Applying banking.0001_initial... OK
+  Applying banking.0002_reconciliationrule... OK
+  Applying commissions.0001_initial... OK
+  Applying commissions.0002_initial... OK
+  Applying commissions.0003_remove_commissionstructure_agent_split_and_more... OK
+  Applying commissions.0004_commissionrecord_agent_role... OK
+  Applying core.0004_module_remove_role_can_approve_commissions_and_more... OK
+  Applying hr.0002_employee_bonus_employee_other_deductions... OK
+  Applying crm.0002_contact_currency_opportunity_currency... OK
+  Applying crm.0003_contact_guarantor_email_contact_guarantor_name_and_more... OK
+  Applying crm.0004_crmtag_alter_activity_options_and_more... OK
+  Applying crm.0005_activity_contact_crmnote_contact_and_more... OK
+  Applying crm.0006_add_lost_reason_email_template_enrichment... OK
+  Applying crm.0007_contact_last_activity_at_and_more... OK
+  Applying documents.0002_documentworkspace_document_is_locked_and_more... OK
+  Applying finance.0012_alter_exchangerate_options_and_more... OK
+  Applying finance.0013_alter_supplierinvoice_status... OK
+  Applying finance.0014_postingprofile_commission_expense_and_more... OK
+  Applying finance.0015_journalbatch_journalentry_batch... OK
+  Applying finance.0016_alter_journalentry_batch... OK
+  Applying fixed_assets.0001_initial... OK
+  Applying fixed_assets.0002_assetbook_consumed_units_and_more... OK
+  Applying fixed_assets.0003_fixedasset_currency... OK
+  Applying hr.0003_attendance_jobposition_employeecontract_and_more... OK
+  Applying hr.0004_remove_employee_basic_salary_remove_employee_bonus_and_more... OK
+  Applying inventory.0001_initial... OK
+  Applying notifications.0001_initial... OK
+  Applying payroll.0001_initial... OK
+  Applying payroll.0002_payrollrun_currency... OK
+  Applying payroll.0003_rename_deductions_payrollitem_other_deductions_and_more... OK
+  Applying payroll.0004_payrollsetting_taxbracket... OK
+  Applying payroll.0005_payrollrun_supplier_invoice... OK
+  Applying payroll.0006_payslip_salaryrule_payslipline_salarystructure_and_more... OK
+  Applying payroll.0007_delete_payrollitem... OK
+  Applying payroll.0008_payslip_bank_account_snapshot... OK
+  Applying payroll.0009_add_rule_accounts... OK
+  Applying procurement.0001_initial... OK
+  Applying procurement.0002_purchaseorder_finance_approved_at_and_more... OK
+  Applying properties.0003_property_currency... OK
+  Applying properties.0004_alter_property_asking_price_and_more... OK
+  Applying properties.0005_property_boreholes_property_built_in_cupboards_and_more... OK
+  Applying properties.0006_property_insurance_monthly_property_owner... OK
+  Applying rentals.0002_maintenancerequest_property_and_more... OK
+  Applying rentals.0003_alter_lease_tenant... OK
+  Applying rentals.0004_lease_currency_rentalinvoice_currency... OK
+  Applying rentals.0005_maintenancerequest_currency... OK
+  Applying rentals.0006_rentalpayment_amount_from_balance_and_more... OK
+  Applying rentals.0007_lease_last_escalation_date... OK
+  Applying rentals.0008_lease_previous_lease... OK
+  Applying rentals.0009_rentalinvoice_electricity_charges_and_more... OK
+  Applying rentals.0010_lease_management_fee_rate_ownersettlement... OK
+  Applying sales.0002_saletransaction_currency... OK
+  Applying sales.0003_saletransaction_cgt_amount_and_more... OK
+  Applying sessions.0001_initial... OK
+System check identified no issues (0 silenced).
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+test_get_account_resolution (apps.finance.tests.test_accounting_core.AccountingCoreTests.test_get_account_resolution)
+Verify that system account keys resolve correctly via PostingProfile or Defaults. ... ok
+test_invalid_account_fails (apps.finance.tests.test_accounting_core.AccountingCoreTests.test_invalid_account_fails)
+Verify that posting to non-existent account fails. ... [2026-04-07 22:36:47,056] INFO stohill.finance Posting journal entry: Bad Account dated 2026-04-07 via GJ
+ok
+test_period_lock_enforcement (apps.finance.tests.test_accounting_core.AccountingCoreTests.test_period_lock_enforcement)
+Verify that posting to a CLOSED or NON-EXISTENT period fails. ... [2026-04-07 22:36:47,141] INFO stohill.finance Posting journal entry: Locked Period Post dated 2026-04-07 via GJ
+FAIL
+test_post_balanced_entry_success (apps.finance.tests.test_accounting_core.AccountingCoreTests.test_post_balanced_entry_success)
+Verify that a balanced journal entry posts successfully and updates balances. ... [2026-04-07 22:36:47,209] INFO stohill.finance Posting journal entry: Test Balanced Post dated 2026-04-07 via GJ
+[2026-04-07 22:36:47,226] INFO stohill.finance Successfully posted entry GJ-000001 | DR: 500.00
+ok
+test_post_unbalanced_entry_fails (apps.finance.tests.test_accounting_core.AccountingCoreTests.test_post_unbalanced_entry_fails)
+Verify that unbalanced entries are rejected with AccountingError. ... [2026-04-07 22:36:47,292] INFO stohill.finance Posting journal entry: Unbalanced dated 2026-04-07 via GJ
+ok
+test_reversal_logic (apps.finance.tests.test_accounting_core.AccountingCoreTests.test_reversal_logic)
+Verify that create_reversal() correctly swaps debits/credits and links entries. ... [2026-04-07 22:36:47,374] INFO stohill.finance Posting journal entry: Original Sale dated 2026-04-07 via GJ
+[2026-04-07 22:36:47,388] INFO stohill.finance Successfully posted entry GJ-000001 | DR: 1000.00
+[2026-04-07 22:36:47,396] INFO stohill.finance Posting journal entry: REVERSAL: Original Sale dated 2026-04-07 via GJ
+[2026-04-07 22:36:47,411] INFO stohill.finance Successfully posted entry GJ-000002 | DR: 1000.00
+ok
+test_direct_supplier_invoice_post (apps.finance.tests.test_ap.AccountsPayableTests.test_direct_supplier_invoice_post)
+Verify that a standalone supplier invoice posts accurately to AP and Expenses. ... ERROR
+test_grni_accrual_clearing (apps.finance.tests.test_ap.AccountsPayableTests.test_grni_accrual_clearing)
+Verify that a supplier invoice correctly clears GRNI accrual from Inventory receipt. ... ERROR
+test_supplier_payment_with_imtt (apps.finance.tests.test_ap.AccountsPayableTests.test_supplier_payment_with_imtt)
+Verify that paying a supplier clears AP and automatically calculates 1% IMTT. ... ERROR
+test_customer_invoice_post (apps.finance.tests.test_ar.AccountsReceivableTests.test_customer_invoice_post)
+Verify that a customer invoice posts accurately to AR and Revenue. ... [2026-04-07 22:36:47,761] INFO stohill.finance Posting journal entry: Customer Invoice - Alice Wonder - CUST-INV-01 dated 2026-04-07 via SJ
+ERROR
+test_customer_receipt_allocation_fifo (apps.finance.tests.test_ar.AccountsReceivableTests.test_customer_receipt_allocation_fifo)
+Verify that a customer receipt clears AR and correctly allocates to invoices FIFO. ... ERROR
+test_bank_balance_tracking (apps.finance.tests.test_banking.BankingTests.test_bank_balance_tracking)
+Verify that bank account balances accurately reflect multiple postings. ... [2026-04-07 22:36:47,892] INFO stohill.finance Posting journal entry: Deposit 1 dated 2026-04-07 via GJ
+[2026-04-07 22:36:47,904] INFO stohill.finance Successfully posted entry GJ-000001 | DR: 1500.00
+[2026-04-07 22:36:47,905] INFO stohill.finance Posting journal entry: Withdrawal 1 dated 2026-04-07 via GJ
+[2026-04-07 22:36:47,915] INFO stohill.finance Successfully posted entry GJ-000002 | DR: 400.00
+ok
+test_imtt_on_payments_automated (apps.finance.tests.test_banking.BankingTests.test_imtt_on_payments_automated)
+Verify that the IMTT 1% is applied correctly in automated payment methods. ... [2026-04-07 22:36:47,972] INFO stohill.finance Posting journal entry: Supplier Payment - Zim Energy dated 2026-04-07 via GJ
+ERROR
+test_trust_vs_main_bank_separation (apps.finance.tests.test_banking.BankingTests.test_trust_vs_main_bank_separation)
+Verify that Trust and Main bank accounts are tracked independently. ... [2026-04-07 22:36:48,036] INFO stohill.finance Posting journal entry: Tenant Deposit dated 2026-04-07 via GJ
+[2026-04-07 22:36:48,044] INFO stohill.finance Successfully posted entry GJ-000001 | DR: 2000.00
+ok
+test_commission_accrual_ledger_integrity (apps.finance.tests.test_commissions.CommissionsTests.test_commission_accrual_ledger_integrity)
+Verify that a commission accrues as a liability and expense. ... [2026-04-07 22:36:48,089] INFO stohill.finance Posting journal entry: Commission Accrual - Agent Smith dated 2026-04-07 via CJ
+[2026-04-07 22:36:48,099] INFO stohill.finance Successfully posted entry CJ-000001 | DR: 450.00
+ok
+test_commission_payment_automated (apps.finance.tests.test_commissions.CommissionsTests.test_commission_payment_automated)
+Verify that paying a commission clears the liability and creates a bank credit. ... [2026-04-07 22:36:48,176] INFO stohill.finance Posting journal entry: Commission Payment - Agent Smith dated 2026-04-07 via CJ
+[2026-04-07 22:36:48,186] INFO stohill.finance Successfully posted entry CJ-000001 | DR: 1000.00
+ok
+test_asset_acquisition_gl_impact (apps.finance.tests.test_fixed_assets.FixedAssetsTests.test_asset_acquisition_gl_impact)
+Verify that acquiring a fixed asset increases the asset balance and records AP. ... ERROR
+test_depreciation_posting_integrity (apps.finance.tests.test_fixed_assets.FixedAssetsTests.test_depreciation_posting_integrity)
+Verify that depreciation correctly debits expense and credits accumulated (contra-asset). ... ERROR
+test_payroll_disbursement_clearing (apps.finance.tests.test_payroll_finance.PayrollFinanceTests.test_payroll_disbursement_clearing)
+Verify that paying employees clears the Net Pay liability and credits the Bank. ... [2026-04-07 22:36:48,370] INFO stohill.finance Posting journal entry: Salary Disbursement dated 2026-04-07 via GJ
+[2026-04-07 22:36:48,382] INFO stohill.finance Successfully posted entry GJ-000001 | DR: 10100.00
+ok
+test_payroll_journal_gl_impact (apps.finance.tests.test_payroll_finance.PayrollFinanceTests.test_payroll_journal_gl_impact)
+Verify that a salary journal records gross pay and splits net pay from statutory taxes. ... [2026-04-07 22:36:48,434] INFO stohill.finance Posting journal entry: Payroll Journal - April 2026 dated 2026-04-07 via GJ
+[2026-04-07 22:36:48,443] INFO stohill.finance Successfully posted entry GJ-000001 | DR: 3000.00
+ok
+test_trial_balance_data_accuracy (apps.finance.tests.test_reports.ReportsTests.test_trial_balance_data_accuracy)
+Verify that the generated Trial Balance correctly reflects all posted ledger lines. ... [2026-04-07 22:36:48,496] INFO stohill.finance Posting journal entry: Sale 1 dated 2026-04-07 via GJ
+[2026-04-07 22:36:48,506] INFO stohill.finance Successfully posted entry GJ-000001 | DR: 1150.00
+[2026-04-07 22:36:48,507] INFO stohill.finance Posting journal entry: Expense 1 dated 2026-04-07 via GJ
+[2026-04-07 22:36:48,516] INFO stohill.finance Successfully posted entry GJ-000002 | DR: 575.00
+ok
+test_trial_balance_property_filter (apps.finance.tests.test_reports.ReportsTests.test_trial_balance_property_filter)
+Verify that the Trial Balance can be filtered by specific property. ... [2026-04-07 22:36:48,609] INFO stohill.finance Posting journal entry: Prop 1 Revenue dated 2026-04-07 via GJ
+ERROR
+test_input_vat_ledger_accuracy (apps.finance.tests.test_tax_vat.TaxVATTests.test_input_vat_ledger_accuracy)
+Verify that input VAT (purchases) correctly debits the VAT Receivable account. ... [2026-04-07 22:36:48,709] INFO stohill.finance Posting journal entry: Input VAT Purchase dated 2026-04-07 via GJ
+[2026-04-07 22:36:48,728] INFO stohill.finance Successfully posted entry GJ-000001 | DR: 230.00
+ok
+test_output_vat_ledger_accuracy (apps.finance.tests.test_tax_vat.TaxVATTests.test_output_vat_ledger_accuracy)
+Verify that output VAT (sales) correctly credits the VAT Payable account. ... [2026-04-07 22:36:48,850] INFO stohill.finance Posting journal entry: Output VAT Sale dated 2026-04-07 via GJ
+[2026-04-07 22:36:48,865] INFO stohill.finance Successfully posted entry GJ-000001 | DR: 460.00
+ok
+test_vat_tax_transaction_generation_output (apps.finance.tests.test_tax_vat.TaxVATTests.test_vat_tax_transaction_generation_output)
+Verify that posting a customer invoice creates automated TaxTransaction records. ... ERROR
+
+======================================================================
+ERROR: test_direct_supplier_invoice_post (apps.finance.tests.test_ap.AccountsPayableTests.test_direct_supplier_invoice_post)
+Verify that a standalone supplier invoice posts accurately to AP and Expenses.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\tests\test_ap.py", line 19, in setUp
+    self.supplier, _ = Supplier.objects.get_or_create(
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        name="Alpha Services",
+        ^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        ap_account=self.accounts['2000']
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 987, in get_or_create
+    return self.get(**kwargs), False
+           ~~~~~~~~^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 625, in get
+    clone = self._chain() if self.query.combinator else self.filter(*args, **kwargs)
+                                                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 1542, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 1560, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 1570, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\sql\query.py", line 1676, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+                ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\sql\query.py", line 1708, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ~~~~~~~~~~~~~~~~~^
+        child,
+        ^^^^^^
+    ...<7 lines>...
+        update_join_types=update_join_types,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\sql\query.py", line 1556, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+                                        ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\sql\query.py", line 1363, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+                                ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\sql\query.py", line 1842, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'contact_person' into field. Choices are: address_line1, address_line2, ap_account, ap_account_id, city, created_at, created_by, created_by_id, currency, currency_id, email, id, invoices, is_active, journalline, name, payment_terms_days, payments, phone, postal_code, purchase_orders, registration_number, tax_number, updated_at, updated_by, updated_by_id
+
+======================================================================
+ERROR: test_grni_accrual_clearing (apps.finance.tests.test_ap.AccountsPayableTests.test_grni_accrual_clearing)
+Verify that a supplier invoice correctly clears GRNI accrual from Inventory receipt.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\tests\test_ap.py", line 19, in setUp
+    self.supplier, _ = Supplier.objects.get_or_create(
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        name="Alpha Services",
+        ^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        ap_account=self.accounts['2000']
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 987, in get_or_create
+    return self.get(**kwargs), False
+           ~~~~~~~~^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 625, in get
+    clone = self._chain() if self.query.combinator else self.filter(*args, **kwargs)
+                                                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 1542, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 1560, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 1570, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\sql\query.py", line 1676, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+                ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\sql\query.py", line 1708, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ~~~~~~~~~~~~~~~~~^
+        child,
+        ^^^^^^
+    ...<7 lines>...
+        update_join_types=update_join_types,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\sql\query.py", line 1556, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+                                        ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\sql\query.py", line 1363, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+                                ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\sql\query.py", line 1842, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'contact_person' into field. Choices are: address_line1, address_line2, ap_account, ap_account_id, city, created_at, created_by, created_by_id, currency, currency_id, email, id, invoices, is_active, journalline, name, payment_terms_days, payments, phone, postal_code, purchase_orders, registration_number, tax_number, updated_at, updated_by, updated_by_id
+
+======================================================================
+ERROR: test_supplier_payment_with_imtt (apps.finance.tests.test_ap.AccountsPayableTests.test_supplier_payment_with_imtt)
+Verify that paying a supplier clears AP and automatically calculates 1% IMTT.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\tests\test_ap.py", line 19, in setUp
+    self.supplier, _ = Supplier.objects.get_or_create(
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        name="Alpha Services",
+        ^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        ap_account=self.accounts['2000']
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 987, in get_or_create
+    return self.get(**kwargs), False
+           ~~~~~~~~^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 625, in get
+    clone = self._chain() if self.query.combinator else self.filter(*args, **kwargs)
+                                                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 1542, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 1560, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 1570, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\sql\query.py", line 1676, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+                ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\sql\query.py", line 1708, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ~~~~~~~~~~~~~~~~~^
+        child,
+        ^^^^^^
+    ...<7 lines>...
+        update_join_types=update_join_types,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\sql\query.py", line 1556, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+                                        ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\sql\query.py", line 1363, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+                                ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\sql\query.py", line 1842, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'contact_person' into field. Choices are: address_line1, address_line2, ap_account, ap_account_id, city, created_at, created_by, created_by_id, currency, currency_id, email, id, invoices, is_active, journalline, name, payment_terms_days, payments, phone, postal_code, purchase_orders, registration_number, tax_number, updated_at, updated_by, updated_by_id
+
+======================================================================
+ERROR: test_customer_invoice_post (apps.finance.tests.test_ar.AccountsReceivableTests.test_customer_invoice_post)
+Verify that a customer invoice posts accurately to AR and Revenue.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\services\accounting.py", line 228, in _get_journal
+    return Journal.objects.get(code=code, is_active=True)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 639, in get
+    raise self.model.DoesNotExist(
+        "%s matching query does not exist." % self.model._meta.object_name
+    )
+apps.finance.models.core.Journal.DoesNotExist: Journal matching query does not exist.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\tests\test_ar.py", line 50, in test_customer_invoice_post
+    entry = self.service.post_customer_invoice(invoice)
+  File "C:\Users\mkavh\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 85, in inner
+    return func(*args, **kwds)
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\services\accounting.py", line 833, in post_customer_invoice
+    entry = self.post_entry(posting, journal_code='SJ')  # Sales Journal
+  File "C:\Users\mkavh\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 85, in inner
+    return func(*args, **kwds)
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\services\accounting.py", line 273, in post_entry
+    journal = self._get_journal(journal_code)
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\services\accounting.py", line 230, in _get_journal
+    raise AccountingError(f'Journal "{code}" not found.')
+apps.finance.services.accounting.AccountingError: Journal "SJ" not found.
+
+======================================================================
+ERROR: test_customer_receipt_allocation_fifo (apps.finance.tests.test_ar.AccountsReceivableTests.test_customer_receipt_allocation_fifo)
+Verify that a customer receipt clears AR and correctly allocates to invoices FIFO.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\backends\sqlite3\base.py", line 359, in execute
+    return super().execute(query, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+sqlite3.IntegrityError: NOT NULL constraint failed: finance_ar_invoices.due_date
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\tests\test_ar.py", line 70, in test_customer_receipt_allocation_fifo
+    inv1 = CustomerInvoice.objects.create(
+        customer=self.customer,
+    ...<3 lines>...
+        status=CustomerInvoice.InvoiceStatus.POSTED
+    )
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 669, in create
+    obj.save(force_insert=True, using=self.db)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\models\ar.py", line 105, in save
+    super().save(*args, **kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\base.py", line 874, in save
+    self.save_base(
+    ~~~~~~~~~~~~~~^
+        using=using,
+        ^^^^^^^^^^^^
+    ...<2 lines>...
+        update_fields=update_fields,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\base.py", line 966, in save_base
+    updated = self._save_table(
+        raw,
+    ...<4 lines>...
+        update_fields,
+    )
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\base.py", line 1169, in _save_table
+    results = self._do_insert(
+        cls._base_manager, using, insert_fields, returning_fields, raw
+    )
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\base.py", line 1220, in _do_insert
+    return manager._insert(
+           ~~~~~~~~~~~~~~~^
+        [self],
+        ^^^^^^^
+    ...<3 lines>...
+        raw=raw,
+        ^^^^^^^^
+    )
+    ^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 1918, in _insert
+    return query.get_compiler(using=using).execute_sql(returning_fields)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1925, in execute_sql
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\utils.py", line 94, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\backends\sqlite3\base.py", line 359, in execute
+    return super().execute(query, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+django.db.utils.IntegrityError: NOT NULL constraint failed: finance_ar_invoices.due_date
+
+======================================================================
+ERROR: test_imtt_on_payments_automated (apps.finance.tests.test_banking.BankingTests.test_imtt_on_payments_automated)
+Verify that the IMTT 1% is applied correctly in automated payment methods.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\tests\test_banking.py", line 78, in test_imtt_on_payments_automated
+    entry = self.service.post_supplier_payment(payment)
+  File "C:\Users\mkavh\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 85, in inner
+    return func(*args, **kwds)
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\services\accounting.py", line 788, in post_supplier_payment
+    return self.post_entry(posting, journal_code='GJ')
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 85, in inner
+    return func(*args, **kwds)
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\services\accounting.py", line 340, in post_entry
+    lines_to_create.append(JournalLine(
+                           ~~~~~~~~~~~^
+        entry=entry,
+        ^^^^^^^^^^^^
+    ...<7 lines>...
+        supplier_ref=line_data.get('supplier_ref'),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ))
+    ^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\base.py", line 566, in __init__
+    _setattr(self, field.name, rel_obj)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\fields\related_descriptors.py", line 287, in __set__
+    raise ValueError(
+    ...<7 lines>...
+    )
+ValueError: Cannot assign "<apps.finance.tests.test_banking.BankingTests.test_imtt_on_payments_automated.<locals>.MockSupplier object at 0x00000210B51D82F0>": "JournalLine.supplier_ref" must be a "Supplier" instance.
+
+======================================================================
+ERROR: test_asset_acquisition_gl_impact (apps.finance.tests.test_fixed_assets.FixedAssetsTests.test_asset_acquisition_gl_impact)
+Verify that acquiring a fixed asset increases the asset balance and records AP.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\tests\test_fixed_assets.py", line 19, in setUp
+    self.acc_asset, _ = ChartOfAccount.objects.get_or_create(
+                        ^^^^^^^^^^^^^^
+NameError: name 'ChartOfAccount' is not defined
+
+======================================================================
+ERROR: test_depreciation_posting_integrity (apps.finance.tests.test_fixed_assets.FixedAssetsTests.test_depreciation_posting_integrity)
+Verify that depreciation correctly debits expense and credits accumulated (contra-asset).
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\tests\test_fixed_assets.py", line 19, in setUp
+    self.acc_asset, _ = ChartOfAccount.objects.get_or_create(
+                        ^^^^^^^^^^^^^^
+NameError: name 'ChartOfAccount' is not defined
+
+======================================================================
+ERROR: test_trial_balance_property_filter (apps.finance.tests.test_reports.ReportsTests.test_trial_balance_property_filter)
+Verify that the Trial Balance can be filtered by specific property.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\tests\test_reports.py", line 58, in test_trial_balance_property_filter
+    self.service.post_entry(p1)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^
+  File "C:\Users\mkavh\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 85, in inner
+    return func(*args, **kwds)
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\services\accounting.py", line 340, in post_entry
+    lines_to_create.append(JournalLine(
+                           ~~~~~~~~~~~^
+        entry=entry,
+        ^^^^^^^^^^^^
+    ...<7 lines>...
+        supplier_ref=line_data.get('supplier_ref'),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ))
+    ^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\base.py", line 566, in __init__
+    _setattr(self, field.name, rel_obj)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\fields\related_descriptors.py", line 287, in __set__
+    raise ValueError(
+    ...<7 lines>...
+    )
+ValueError: Cannot assign "<apps.finance.tests.test_reports.ReportsTests.test_trial_balance_property_filter.<locals>.MockProperty object at 0x00000210B51D8830>": "JournalLine.property_ref" must be a "Property" instance.
+
+======================================================================
+ERROR: test_vat_tax_transaction_generation_output (apps.finance.tests.test_tax_vat.TaxVATTests.test_vat_tax_transaction_generation_output)
+Verify that posting a customer invoice creates automated TaxTransaction records.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\backends\sqlite3\base.py", line 359, in execute
+    return super().execute(query, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+sqlite3.IntegrityError: NOT NULL constraint failed: finance_ar_invoices.due_date
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\tests\test_tax_vat.py", line 28, in test_vat_tax_transaction_generation_output
+    invoice = CustomerInvoice.objects.create(
+        customer_id=1, # Mocking ID for simplicity if needed or use real from AR setup
+    ...<4 lines>...
+        currency=self.usd
+    )
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 669, in create
+    obj.save(force_insert=True, using=self.db)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\models\ar.py", line 105, in save
+    super().save(*args, **kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\base.py", line 874, in save
+    self.save_base(
+    ~~~~~~~~~~~~~~^
+        using=using,
+        ^^^^^^^^^^^^
+    ...<2 lines>...
+        update_fields=update_fields,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\base.py", line 966, in save_base
+    updated = self._save_table(
+        raw,
+    ...<4 lines>...
+        update_fields,
+    )
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\base.py", line 1169, in _save_table
+    results = self._do_insert(
+        cls._base_manager, using, insert_fields, returning_fields, raw
+    )
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\base.py", line 1220, in _do_insert
+    return manager._insert(
+           ~~~~~~~~~~~~~~~^
+        [self],
+        ^^^^^^^
+    ...<3 lines>...
+        raw=raw,
+        ^^^^^^^^
+    )
+    ^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\query.py", line 1918, in _insert
+    return query.get_compiler(using=using).execute_sql(returning_fields)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1925, in execute_sql
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\utils.py", line 94, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\venv\Lib\site-packages\django\db\backends\sqlite3\base.py", line 359, in execute
+    return super().execute(query, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+django.db.utils.IntegrityError: NOT NULL constraint failed: finance_ar_invoices.due_date
+
+======================================================================
+FAIL: test_period_lock_enforcement (apps.finance.tests.test_accounting_core.AccountingCoreTests.test_period_lock_enforcement)
+Verify that posting to a CLOSED or NON-EXISTENT period fails.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\mkavh\Desktop\Digital Tech Dynamics\Clients\2026\Stohil\erp-master\stohillerp-master\backend\apps\finance\tests\test_accounting_core.py", line 86, in test_period_lock_enforcement
+    self.assertIn("not open", str(cm.exception).lower())
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'not open' not found in 'fiscal period "april 2026" is "closed". cannot post to a locked or closed period.'
+
+----------------------------------------------------------------------
+Ran 25 tests in 2.033s
+
+FAILED (failures=1, errors=10)
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+

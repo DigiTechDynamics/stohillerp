@@ -26,6 +26,7 @@ export default function LeaseDetailPanel() {
   const lease = sidePanelData?.lease
   const [adjusting, setAdjusting] = useState(false)
   const [newRental, setNewRental] = useState(lease?.monthly_rental || '')
+  const [postDeposit, setPostDeposit] = useState(true)
 
   // Invoices for this lease
   const { data: invRes } = useQuery({
@@ -47,12 +48,21 @@ export default function LeaseDetailPanel() {
 
   // Lifecycle Mutations
   const activateMutation = useMutation({
-    mutationFn: () => rentalsAPI.leases.activate(lease.id),
-    onSuccess: () => {
+    mutationFn: () => rentalsAPI.leases.activate(lease.id, { post_deposit: postDeposit }),
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['rental-leases'] })
       queryClient.invalidateQueries({ queryKey: ['rental-stats'] })
+      const { deposit_posted, journal_reference } = res.data
+      if (deposit_posted) {
+        alert(`Lease activated and Security Deposit recorded in General Ledger: ${journal_reference}`)
+      } else {
+        alert('Lease activated successfully.')
+      }
       closeSidePanel()
     },
+    onError: (err) => {
+      alert(`Activation failed: ${err.response?.data?.error || err.message}`)
+    }
   })
 
   const terminateMutation = useMutation({
@@ -121,14 +131,30 @@ export default function LeaseDetailPanel() {
 
         {/* Lifecycle Quick Actions (Contextual) */}
         {(lease.status === 'draft' || lease.status === 'pending_signature') && (
-          <button 
-            onClick={() => activateMutation.mutate()}
-            disabled={activateMutation.isPending}
-            className="w-full btn-primary py-3 flex items-center justify-center gap-2 shadow-gold"
-          >
-            <CheckCircle2 size={16} /> 
-            {activateMutation.isPending ? 'Activating...' : 'Fully Activate Lease'}
-          </button>
+          <div className="space-y-3">
+            {parseFloat(lease.deposit_amount || 0) > 0 && (
+              <label className="flex items-center gap-3 p-3 rounded-xl bg-dark-800 border border-white/5 cursor-pointer hover:bg-dark-700 transition-colors">
+                <input 
+                  type="checkbox" 
+                  checked={postDeposit} 
+                  onChange={(e) => setPostDeposit(e.target.checked)}
+                  className="w-4 h-4 rounded border-white/10 text-primary bg-dark-900 focus:ring-primary"
+                />
+                <div className="flex-1">
+                  <p className="text-xs text-white font-medium">Record Security Deposit</p>
+                  <p className="text-[10px] text-dark-500 uppercase tracking-tighter">Automatically post {formatCurrency(lease.deposit_amount)} to Trust Bank (GL) on activation.</p>
+                </div>
+              </label>
+            )}
+            <button 
+              onClick={() => activateMutation.mutate()}
+              disabled={activateMutation.isPending}
+              className="w-full btn-primary py-3 flex items-center justify-center gap-2 shadow-gold group"
+            >
+              <CheckCircle2 size={16} className="group-hover:scale-110 transition-transform" /> 
+              {activateMutation.isPending ? 'Processing...' : 'Fully Activate Lease'}
+            </button>
+          </div>
         )}
 
         <div className="grid grid-cols-2 gap-3">

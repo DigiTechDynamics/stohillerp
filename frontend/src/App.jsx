@@ -10,11 +10,16 @@ import ForgotPasswordPage from '@/pages/ForgotPasswordPage'
 import ResetPasswordPage from '@/pages/ResetPasswordPage'
 
 // Page imports
+import IntelligenceSuite from '@/pages/dashboard/IntelligenceSuite'
 import ExecutiveDashboard from '@/pages/dashboard/ExecutiveDashboard'
+import AnalyticsDashboard from '@/pages/dashboard/AnalyticsDashboard'
+import InventoryDashboard from '@/pages/inventory/InventoryDashboard'
+import PurchaseOrderPage from '@/pages/procurement/PurchaseOrderPage'
 import PropertiesPage from '@/pages/properties/PropertiesPage'
 import CRMPage from '@/pages/crm/CRMPage'
 import SalesPage from '@/pages/sales/SalesPage'
 import RentalsPage from '@/pages/rentals/RentalsPage'
+import SettlementDashboard from '@/pages/rentals/SettlementDashboard'
 import FinancePage from '@/pages/finance/FinancePage'
 import JournalEntriesPage from '@/pages/finance/JournalEntriesPage'
 import ReportsPage from '@/pages/finance/ReportsPage'
@@ -72,7 +77,9 @@ export default function App() {
         }
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<ExecutiveDashboard />} />
+        <Route path="dashboard" element={<IntelligenceSuite />} />
+        <Route path="inventory" element={<InventoryDashboard />} />
+        <Route path="procurement" element={<PurchaseOrderPage />} />
         <Route path="properties" element={<PropertiesPage />} />
         <Route path="crm" element={<CRMPage />} />
         <Route path="sales" element={<SalesPage />} />

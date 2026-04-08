@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import {
   Building2, TrendingUp, Home, Award, Users, DollarSign,
   ArrowUpRight, ArrowDownRight, AlertTriangle, BarChart3,
-  RefreshCw, Calendar
+  RefreshCw, Calendar, ShoppingBag, Package
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
@@ -69,7 +69,7 @@ function getGreeting() {
   return 'Good evening'
 }
 
-export default function ExecutiveDashboard() {
+export default function ExecutiveDashboard({ isEmbedded = false }) {
   const executiveMode = useAuthStore((s) => s.executiveMode)
   const user = useAuthStore((s) => s.user)
   const openPanel = useUIStore((s) => s.openSidePanel)
@@ -100,252 +100,326 @@ export default function ExecutiveDashboard() {
   }))
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
+    <div className={isEmbedded ? "space-y-6" : "p-4 lg:p-6 space-y-6"}>
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <motion.h1
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="font-display text-2xl lg:text-3xl text-white"
-          >
-            {executiveMode ? `Executive Command Center • ${user?.first_name || 'Executive'}` : `${getGreeting()}, ${user?.first_name || 'User'}`}
-          </motion.h1>
-          <p className="text-dark-400 text-sm mt-1">
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
+      {!isEmbedded && (
+        <div className="flex items-start justify-between">
+          <div>
+            <motion.h1
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="font-display text-2xl lg:text-3xl text-white"
+            >
+              {executiveMode ? `Executive Command Center • ${user?.first_name || 'Executive'}` : `${getGreeting()}, ${user?.first_name || 'User'}`}
+            </motion.h1>
+            <p className="text-dark-400 text-sm mt-1">
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {dataUpdatedAt > 0 && (
+              <span className="text-xs text-dark-500">
+                Updated {new Date(dataUpdatedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            <button onClick={() => refetch()} className="btn-ghost p-2">
+              <RefreshCw size={16} />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {dataUpdatedAt > 0 && (
-            <span className="text-xs text-dark-500">
-              Updated {new Date(dataUpdatedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
-          <button onClick={() => refetch()} className="btn-ghost p-2">
-            <RefreshCw size={16} />
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* ── KPI Grid ────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard
-          title="Portfolio Value"
-          value={formatCurrency(parseFloat(kpis?.properties?.portfolio_value || 0), 'USD')}
-          subtitle={`${kpis?.properties?.total || 0} properties`}
-          icon={<Building2 size={20} />}
-          trend={trends?.portfolio}
-          trendLabel="vs last month"
-          delay={0}
-          onClick={() => navigate('/properties')}
-        />
-        <KpiCard
-          title="YTD Sales Revenue"
-          value={formatCurrency(parseFloat(kpis?.sales?.ytd_value || 0), 'USD')}
-          subtitle={`${kpis?.sales?.ytd_count || 0} transactions`}
-          icon={<TrendingUp size={20} />}
-          accent="text-emerald-400"
-          trend={trends?.sales}
-          delay={0.05}
-          onClick={() => navigate('/sales')}
-        />
-        <KpiCard
-          title="Monthly Rental Income"
-          value={formatCurrency(parseFloat(kpis?.rentals?.monthly_income || 0))}
-          subtitle={`${kpis?.rentals?.active_leases || 0} active leases`}
-          icon={<Home size={20} />}
-          accent="text-blue-400"
-          trend={trends?.rentals}
-          trendLabel={`${formatCurrency(parseFloat(kpis?.rentals?.annual_income || 0))} annualised`}
-          delay={0.1}
-          onClick={() => navigate('/rentals')}
-        />
-        <KpiCard
-          title="Pipeline Value"
-          value={formatCurrency(parseFloat(kpis?.sales?.pipeline_value || 0), 'USD')}
-          subtitle="Active opportunities"
-          icon={<BarChart3 size={20} />}
-          accent="text-purple-400"
-          delay={0.15}
-          onClick={() => openPanel('add-sale')}
-        />
+        {kpis?.properties && (
+          <KpiCard
+            title="Portfolio Value"
+            value={formatCurrency(parseFloat(kpis.properties.portfolio_value || 0), 'USD')}
+            subtitle={`${kpis.properties.total || 0} properties`}
+            icon={<Building2 size={20} />}
+            trend={trends?.portfolio}
+            trendLabel="vs last month"
+            delay={0}
+            onClick={() => navigate('/properties')}
+          />
+        )}
+        {kpis?.sales && (
+          <KpiCard
+            title="YTD Sales Revenue"
+            value={formatCurrency(parseFloat(kpis.sales.ytd_value || 0), 'USD')}
+            subtitle={`${kpis.sales.ytd_count || 0} transactions`}
+            icon={<TrendingUp size={20} />}
+            accent="text-emerald-400"
+            trend={trends?.sales}
+            delay={0.05}
+            onClick={() => navigate('/sales')}
+          />
+        )}
+        {kpis?.rentals && (
+          <KpiCard
+            title="Monthly Rental Income"
+            value={formatCurrency(parseFloat(kpis.rentals.monthly_income || 0))}
+            subtitle={`${kpis.rentals.active_leases || 0} active leases`}
+            icon={<Home size={20} />}
+            accent="text-blue-400"
+            trend={trends?.rentals}
+            trendLabel={`${formatCurrency(parseFloat(kpis.rentals.annual_income || 0))} annualised`}
+            delay={0.1}
+            onClick={() => navigate('/rentals')}
+          />
+        )}
+        {kpis?.sales && (
+          <KpiCard
+            title="Pipeline Value"
+            value={formatCurrency(parseFloat(kpis.sales.pipeline_value || 0), 'USD')}
+            subtitle="Active opportunities"
+            icon={<BarChart3 size={20} />}
+            accent="text-purple-400"
+            delay={0.15}
+            onClick={() => openPanel('add-sale')}
+          />
+        )}
       </div>
 
       {/* ── Second KPI Row ───────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard
-          title="Occupancy Rate"
-          value={`${kpis?.properties?.occupancy_rate || 0}%`}
-          subtitle={`${kpis?.properties?.occupied || 0} of ${kpis?.properties?.total || 1} occupied`}
-          icon={<Building2 size={20} />}
-          accent="text-primary"
-          delay={0.2}
-          onClick={() => navigate('/properties')}
-        />
-        <KpiCard
-          title="Available Properties"
-          value={String(kpis?.properties?.available || 0)}
-          subtitle={`${kpis?.properties?.under_contract || 0} under contract`}
-          icon={<Building2 size={20} />}
-          accent="text-primary"
-          delay={0.25}
-          onClick={() => openPanel('add-property')}
-        />
-        <KpiCard
-          title="YTD Commissions Paid"
-          value={formatCurrency(parseFloat(kpis?.commissions?.ytd_paid || 0))}
-          subtitle={`${formatCurrency(parseFloat(kpis?.commissions?.pending || 0))} pending`}
-          icon={<Award size={20} />}
-          accent="text-amber-400"
-          delay={0.3}
-          onClick={() => navigate('/commissions')}
-        />
-        <KpiCard
-          title={kpis?.rentals?.overdue_count > 0 ? '⚠ Overdue Rentals' : 'Active Contacts'}
-          value={kpis?.rentals?.overdue_count > 0
-            ? formatCurrency(parseFloat(kpis?.rentals?.overdue_amount || 0))
-            : formatNumber(kpis?.crm?.total_contacts || 0)
-          }
-          subtitle={kpis?.rentals?.overdue_count > 0
-            ? `${kpis?.rentals?.overdue_count} invoices overdue`
-            : `+${kpis?.crm?.new_leads_this_month || 0} new leads this month`
-          }
-          icon={kpis.rentals.overdue_count > 0 ? <AlertTriangle size={20} /> : <Users size={20} />}
-          accent={kpis.rentals.overdue_count > 0 ? 'text-red-400' : 'text-emerald-400'}
-          delay={0.35}
-          onClick={() => {
-            if (kpis.rentals.overdue_count > 0) {
-              navigate('/rentals')
-            } else {
-              navigate('/crm')
+        {kpis?.properties && (
+          <>
+            <KpiCard
+              title="Occupancy Rate"
+              value={`${kpis.properties.occupancy_rate || 0}%`}
+              subtitle={`${kpis.properties.occupied || 0} of ${kpis.properties.total || 1} occupied`}
+              icon={<Building2 size={20} />}
+              accent="text-primary"
+              delay={0.2}
+              onClick={() => navigate('/properties')}
+            />
+            <KpiCard
+              title="Available Properties"
+              value={String(kpis.properties.available || 0)}
+              subtitle={`${kpis.properties.under_contract || 0} under contract`}
+              icon={<Building2 size={20} />}
+              accent="text-primary"
+              delay={0.25}
+              onClick={() => openPanel('add-property')}
+            />
+          </>
+        )}
+        {kpis?.commissions && (
+          <KpiCard
+            title="YTD Commissions Paid"
+            value={formatCurrency(parseFloat(kpis.commissions.ytd_paid || 0))}
+            subtitle={`${formatCurrency(parseFloat(kpis.commissions.pending || 0))} pending`}
+            icon={<Award size={20} />}
+            accent="text-amber-400"
+            delay={0.3}
+            onClick={() => navigate('/commissions')}
+          />
+        )}
+        {(kpis?.rentals || kpis?.crm) && (
+          <KpiCard
+            title={kpis?.rentals?.overdue_count > 0 ? '⚠ Overdue Rentals' : 'Active Contacts'}
+            value={kpis?.rentals?.overdue_count > 0
+              ? formatCurrency(parseFloat(kpis.rentals.overdue_amount || 0))
+              : formatNumber(kpis?.crm?.total_contacts || 0)
             }
-          }}
-        />
+            subtitle={kpis?.rentals?.overdue_count > 0
+              ? `${kpis.rentals.overdue_count} invoices overdue`
+              : `+${kpis?.crm?.new_leads_this_month || 0} new leads this month`
+            }
+            icon={kpis?.rentals?.overdue_count > 0 ? <AlertTriangle size={20} /> : <Users size={20} />}
+            accent={kpis?.rentals?.overdue_count > 0 ? 'text-red-400' : 'text-emerald-400'}
+            delay={0.35}
+            onClick={() => {
+              if (kpis?.rentals?.overdue_count > 0) {
+                navigate('/rentals')
+              } else {
+                navigate('/crm')
+              }
+            }}
+          />
+        )}
+      </div>
+
+      {/* ── Third KPI Row ────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpis?.supply_chain && (
+          <>
+            <KpiCard
+              title="Procurement Approvals"
+              value={String(kpis.supply_chain.pending_approvals || 0)}
+              subtitle="Pending MD/Finance review"
+              icon={<ShoppingBag size={20} />}
+              accent={kpis.supply_chain.pending_approvals > 0 ? 'text-amber-400' : 'text-primary'}
+              delay={0.4}
+              onClick={() => navigate('/procurement')}
+            />
+            <KpiCard
+              title="Low Stock Alerts"
+              value={String(kpis.supply_chain.low_stock_items || 0)}
+              subtitle="Items below reorder point"
+              icon={<Package size={20} />}
+              accent={kpis.supply_chain.low_stock_items > 0 ? 'text-rose-400' : 'text-primary'}
+              delay={0.45}
+              onClick={() => navigate('/inventory')}
+            />
+          </>
+        )}
+        {kpis?.finance && (
+          <>
+            <KpiCard
+              title="Operating Margin"
+              value={`${kpis.finance.operating_margin || 0}%`}
+              subtitle={`Target: 35.0%`}
+              icon={<TrendingUp size={20} />}
+              accent="text-emerald-400"
+              delay={0.5}
+              onClick={() => navigate('/finance/reports')}
+            />
+            <KpiCard
+              title="Cash Position"
+              value={formatCurrency(parseFloat(kpis.finance.cash_position || 0))}
+              subtitle="Consolidated Bank Balances"
+              icon={<DollarSign size={20} />}
+              accent="text-emerald-400"
+              delay={0.55}
+              onClick={() => navigate('/finance/bank')}
+            />
+          </>
+        )}
       </div>
 
       {/* ── Charts Row ───────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Revenue Trend - spans 2 cols */}
+      {(charts?.revenue_trend || charts?.pipeline_stages) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Revenue Trend - spans 2 cols */}
+          {charts?.revenue_trend && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className={`${charts?.pipeline_stages ? 'lg:col-span-2' : 'lg:col-span-3'} card p-5`}
+            >
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h3 className="font-semibold text-white">Revenue Trend</h3>
+                  <p className="text-xs text-dark-400 mt-0.5">Monthly revenue – last 12 months</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-primary" />
+                  <span className="text-xs text-dark-400">Revenue</span>
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={revenueData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                  <defs>
+                    <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#E5A645" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#E5A645" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#777' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#777' }} axisLine={false} tickLine={false}
+                    tickFormatter={(v) => formatCurrency(v, 'USD')} />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Area type="monotone" dataKey="revenue" stroke="#E5A645" strokeWidth={2}
+                    fill="url(#revGrad)" dot={false} activeDot={{ r: 4, fill: '#E5A645' }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </motion.div>
+          )}
+
+          {/* Pipeline Stages */}
+          {charts?.pipeline_stages && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className={`${charts?.revenue_trend ? 'lg:col-span-1' : 'lg:col-span-3'} card p-5`}
+            >
+              <h3 className="font-semibold text-white mb-1">Pipeline Stages</h3>
+              <p className="text-xs text-dark-400 mb-5">Active opportunities by stage</p>
+              <ResponsiveContainer width="100%" height={160}>
+                <BarChart data={pipelineData} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                  <XAxis dataKey="stage" tick={{ fontSize: 10, fill: '#777' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: '#777' }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ background: '#333', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}
+                    labelStyle={{ color: '#fff', fontSize: 12 }}
+                    itemStyle={{ color: '#E5A645', fontSize: 11 }}
+                  />
+                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                    {pipelineData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color || '#E5A645'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="mt-4 space-y-2">
+                {pipelineData.slice(0, 4).map((s) => (
+                  <div key={s.stage} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full" style={{ background: s.color }} />
+                      <span className="text-dark-400">{s.stage}</span>
+                    </div>
+                    <span className="text-white font-medium">{s.count} deals</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </div>
+      )}
+
+      {/* ── Top Agents ───────────────────────────────────────────────── */}
+      {charts?.top_agents && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="lg:col-span-2 card p-5"
+          transition={{ delay: 0.6 }}
+          className="card p-5"
         >
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h3 className="font-semibold text-white">Revenue Trend</h3>
-              <p className="text-xs text-dark-400 mt-0.5">Monthly revenue – last 12 months</p>
+              <h3 className="font-semibold text-white">Top Performing Agents</h3>
+              <p className="text-xs text-dark-400 mt-0.5">Year-to-date by commission earned</p>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-primary" />
-              <span className="text-xs text-dark-400">Revenue</span>
-            </div>
+            <span className="badge-gold text-xs">YTD Leaderboard</span>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={revenueData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-              <defs>
-                <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#E5A645" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#E5A645" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#777' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#777' }} axisLine={false} tickLine={false}
-                tickFormatter={(v) => formatCurrency(v, 'USD')} />
-              <Tooltip content={<ChartTooltip />} />
-              <Area type="monotone" dataKey="revenue" stroke="#E5A645" strokeWidth={2}
-                fill="url(#revGrad)" dot={false} activeDot={{ r: 4, fill: '#E5A645' }} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </motion.div>
-
-        {/* Pipeline Stages */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="card p-5"
-        >
-          <h3 className="font-semibold text-white mb-1">Pipeline Stages</h3>
-          <p className="text-xs text-dark-400 mb-5">Active opportunities by stage</p>
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={pipelineData} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-              <XAxis dataKey="stage" tick={{ fontSize: 10, fill: '#777' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: '#777' }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ background: '#333', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}
-                labelStyle={{ color: '#fff', fontSize: 12 }}
-                itemStyle={{ color: '#E5A645', fontSize: 11 }}
-              />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                {pipelineData.map((entry, i) => (
-                  <Cell key={i} fill={entry.color || '#E5A645'} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-          <div className="mt-4 space-y-2">
-            {pipelineData.slice(0, 4).map((s) => (
-              <div key={s.stage} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ background: s.color }} />
-                  <span className="text-dark-400">{s.stage}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {charts.top_agents.map((agent, i) => (
+              <div key={agent.employee_number}
+                onClick={() => navigate('/commissions')}
+                className="flex flex-col items-center p-4 rounded-xl bg-dark-700/50 border border-white/5 cursor-pointer hover:border-primary/30 transition-colors">
+                <div className="relative mb-3">
+                  <div className="w-12 h-12 rounded-full bg-primary/20 border-2 border-primary/30
+                                  flex items-center justify-center text-primary font-semibold text-sm">
+                    {agent.name.split(' ').map(n => n[0]).join('')}
+                  </div>
+                  {i === 0 && (
+                    <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary
+                                    flex items-center justify-center text-dark-900 text-[10px] font-bold">
+                      #1
+                    </div>
+                  )}
                 </div>
-                <span className="text-white font-medium">{s.count} deals</span>
+                <p className="text-sm font-medium text-white text-center leading-tight">{agent.name}</p>
+                <p className="text-xs text-dark-400 mt-0.5">{agent.deal_count} deals</p>
+                <p className="text-sm font-semibold text-primary mt-2">
+                  {formatCurrency(parseFloat(agent.total_commission))}
+                </p>
               </div>
             ))}
+            {charts.top_agents.length === 0 && (
+              <div className="col-span-5 text-center py-8 text-dark-400 text-sm">
+                No commission data for this period yet.
+              </div>
+            )}
           </div>
         </motion.div>
-      </div>
-
-      {/* ── Top Agents ───────────────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-        className="card p-5"
-      >
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="font-semibold text-white">Top Performing Agents</h3>
-            <p className="text-xs text-dark-400 mt-0.5">Year-to-date by commission earned</p>
-          </div>
-          <span className="badge-gold text-xs">YTD Leaderboard</span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {charts.top_agents.map((agent, i) => (
-            <div key={agent.employee_number}
-              onClick={() => navigate('/commissions')}
-              className="flex flex-col items-center p-4 rounded-xl bg-dark-700/50 border border-white/5 cursor-pointer hover:border-primary/30 transition-colors">
-              <div className="relative mb-3">
-                <div className="w-12 h-12 rounded-full bg-primary/20 border-2 border-primary/30
-                                flex items-center justify-center text-primary font-semibold text-sm">
-                  {agent.name.split(' ').map(n => n[0]).join('')}
-                </div>
-                {i === 0 && (
-                  <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary
-                                  flex items-center justify-center text-dark-900 text-[10px] font-bold">
-                    #1
-                  </div>
-                )}
-              </div>
-              <p className="text-sm font-medium text-white text-center leading-tight">{agent.name}</p>
-              <p className="text-xs text-dark-400 mt-0.5">{agent.deal_count} deals</p>
-              <p className="text-sm font-semibold text-primary mt-2">
-                {formatCurrency(parseFloat(agent.total_commission))}
-              </p>
-            </div>
-          ))}
-          {charts.top_agents.length === 0 && (
-            <div className="col-span-5 text-center py-8 text-dark-400 text-sm">
-              No commission data for this period yet.
-            </div>
-          )}
-        </div>
-      </motion.div>
+      )}
     </div>
   )
 }

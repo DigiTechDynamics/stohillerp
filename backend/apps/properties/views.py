@@ -2,7 +2,7 @@
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count
 
@@ -22,9 +22,30 @@ class PropertyViewSet(viewsets.ModelViewSet):
     ordering_fields = ['asking_price', 'rental_rate', 'current_valuation', 'created_at', 'name', 'reference_number']
 
     def get_serializer_class(self):
-        if self.action == 'list':
+        if self.action in ['list', 'public']:
             return PropertyListSerializer
         return PropertyDetailSerializer
+
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny])
+    def public(self, request):
+        """
+        Public endpoint for website integration.
+        Returns only listed/available properties.
+        """
+        queryset = self.get_queryset().filter(
+            status__in=[
+                Property.PropertyStatus.AVAILABLE,
+                Property.PropertyStatus.LISTED_FOR_SALE,
+                Property.PropertyStatus.LISTED_FOR_RENT
+            ]
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
     def map_data(self, request):

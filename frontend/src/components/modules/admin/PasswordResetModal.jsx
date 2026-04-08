@@ -89,6 +89,7 @@ export default function PasswordResetModal({ user, isOpen, onClose }) {
               onChange={(e) => setPassword(e.target.value)}
               className="form-input w-full"
               placeholder="Minimum 8 characters"
+              autoComplete="new-password"
               autoFocus
             />
           </div>
@@ -101,6 +102,7 @@ export default function PasswordResetModal({ user, isOpen, onClose }) {
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="form-input w-full"
               placeholder="Must match new password"
+              autoComplete="new-password"
             />
           </div>
 

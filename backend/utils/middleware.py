@@ -31,21 +31,41 @@ class RequestLoggingMiddleware:
 
     def _create_audit_log(self, request, response):
         from apps.core.models import AuditLog
+        import json
         
-        # Determine the target model from path (simplified mapping)
+        # 1. Determine target model and action
         path_segments = request.path.strip('/').split('/')
         model_name = path_segments[-2] if len(path_segments) >= 2 else 'unknown'
+        object_id = path_segments[-1] if len(path_segments) > 2 else 'list'
         
+        # 2. Extract and Sanitize Request Data
+        changes = {'status_code': response.status_code}
+        try:
+            if request.body and request.content_type == 'application/json':
+                body_data = json.loads(request.body)
+                if isinstance(body_data, dict):
+                    # Redact sensitive fields
+                    REDACT_KEYS = ['password', 'token', 'secret', 'key', 'cvv', 'card_number']
+                    sanitized_body = {
+                        k: '********' if any(rk in k.lower() for rk in REDACT_KEYS) else v 
+                        for k, v in body_data.items()
+                    }
+                    # Limit size of logged data
+                    changes['request_body'] = str(sanitized_body)[:1000]
+        except Exception:
+            pass
+
+        # 3. Create Audit Entry
         try:
             AuditLog.objects.create(
                 user=request.user,
                 action=request.method.lower(),
                 model_name=model_name,
-                object_id=path_segments[-1] if len(path_segments) > 2 else 'list',
-                object_repr=f"{request.method} {request.path}",
+                object_id=object_id,
+                object_repr=f"{model_name.capitalize()} {object_id} ({request.method})",
                 ip_address=self._get_client_ip(request),
                 user_agent=request.META.get('HTTP_USER_AGENT', '')[:500],
-                changes={'status_code': response.status_code}
+                changes=changes
             )
         except Exception as e:
             logger.error(f"Failed to create audit log: {str(e)}")
