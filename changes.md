@@ -7,6 +7,7 @@ This document tracks the evolution of the Stohill ERP, documenting fixes, featur
 ### [Finance Module Configuration]
 - **Chart of Accounts Initialization**: Implemented and executed a custom initialization script to seed the system's Chart of Accounts. Created 55 new accounts and updated 19, fully mapping standard assets, liabilities, equity, revenue, and expenses.
 - **Account Hierarchy**: Linked accounts with parent-child relationships, ensuring header accounts (like 'Inventory' or 'Depreciation') restrict direct posting while their sub-accounts correctly accept general ledger transactions.
+- **Cross-Module Sync Alignment**: Configured the global `PostingProfile` to route automated journal entries (such as tenant billings, sales revenue, commissions, and bank receipts) from the Rentals, CRM, and Property Sales modules directly into the newly established Chart of Accounts.
 
 ---
 
