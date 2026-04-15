@@ -2,7 +2,15 @@
 
 This document tracks the evolution of the Stohill ERP, documenting fixes, features, and architectural improvements organized by module and date.
 
-## 🔵 Today: 8 April 2026
+## 🔵 Today: 15 April 2026
+
+### [Finance Module Configuration]
+- **Chart of Accounts Initialization**: Implemented and executed a custom initialization script to seed the system's Chart of Accounts. Created 55 new accounts and updated 19, fully mapping standard assets, liabilities, equity, revenue, and expenses.
+- **Account Hierarchy**: Linked accounts with parent-child relationships, ensuring header accounts (like 'Inventory' or 'Depreciation') restrict direct posting while their sub-accounts correctly accept general ledger transactions.
+
+---
+
+## 🟡 8 April 2026
 
 ### [Rentals & Finance Integration]
 - **Automated Test Stabilization**: Achieved 100% pass rate for the `apps.rentals` suite, resolving recursive `IntegrityError` and model mismatch issues.
