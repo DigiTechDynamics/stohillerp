@@ -9,7 +9,6 @@ import {
   Bell, LogOut, Settings, Zap, Menu, X, Landmark, Briefcase, FileSearch, Box,
   ShoppingBag, ChevronDown
 } from 'lucide-react'
-import CommandPalette from '@/components/common/CommandPalette'
 import SidePanelContainer from '@/components/common/SidePanelContainer'
 import ExecutiveModeToggle from '@/components/common/ExecutiveModeToggle'
 import ThemeToggle from '@/components/common/ThemeToggle'
@@ -18,6 +17,10 @@ import ConfirmDialog from '@/components/common/ConfirmDialog'
 import logo from '@/assets/logo.png'
 
 import NotificationDropdown from './NotificationDropdown'
+import Breadcrumbs from '@/components/common/Breadcrumbs'
+import QuickActionCenter from './QuickActionCenter'
+import SystemStatus from './SystemStatus'
+import CommandPalette from './CommandPalette'
 
 // Simple Error Boundary Fallback for robust UI
 class ErrorBoundaryFallback extends React.Component {
@@ -118,8 +121,8 @@ export default function AppLayout() {
         animate={{ width: sidebarCollapsed ? 72 : 260 }}
         transition={{ duration: 0.2, ease: 'easeInOut' }}
         className={`
-          fixed lg:static z-50 h-full flex flex-col
-          ${theme === 'light' ? 'bg-surface-main border-border-color' : 'bg-dark-900 border-white/5'}
+          fixed lg:static z-50 h-full flex flex-col glass backdrop-blur-xl
+          ${theme === 'light' ? 'bg-white/80 border-border-color' : 'bg-dark-900/60 border-white/5'}
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           transition-transform duration-200
         `}
@@ -263,6 +266,8 @@ export default function AppLayout() {
               {mobileOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
 
+            <Breadcrumbs />
+
             {/* Command Palette Trigger */}
             <button
               onClick={openCommandPalette}
@@ -284,8 +289,9 @@ export default function AppLayout() {
           </div>
 
             <div className="flex items-center gap-3">
+            <QuickActionCenter />
             <ThemeToggle />
-
+            <SystemStatus />
             <NotificationDropdown />
 
             <div className="h-8 w-px bg-white/5 mx-1" />

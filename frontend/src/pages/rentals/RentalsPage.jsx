@@ -6,7 +6,7 @@ import {
   Search, Plus, Home, Key, Wrench, Calendar, Filter,
   AlertTriangle, FileText, Building2, DollarSign,
   TrendingUp, MapPin, Users, Receipt, Edit2, Trash2,
-  RefreshCw, Zap, CheckCircle
+  RefreshCw, Zap, CheckCircle, Eye, Download
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { rentalsAPI, propertiesAPI, crmAPI } from '@/services/api'
@@ -16,6 +16,7 @@ import { useConfirmStore } from '@/stores/useConfirmStore'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
 import Pagination from '@/components/common/Pagination'
 import { useQueryClient } from '@tanstack/react-query'
+import PDFPreviewModal from '@/components/common/PDFPreviewModal'
 
 const TABS = [
   { id: 'properties', label: 'Managed Properties', icon: Building2 },
@@ -35,6 +36,10 @@ export default function RentalsPage() {
   const openPanel = useUIStore((s) => s.openSidePanel)
   const queryClient = useQueryClient()
   const confirm = useConfirmStore((s) => s.confirm)
+
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState('')
+  const [selectedInvoice, setSelectedInvoice] = useState(null)
 
   // ── Automation Actions ──────────────────────────────────────────
   const handleRunBilling = async () => {
@@ -76,6 +81,50 @@ export default function RentalsPage() {
       toast.error('Late fee processing failed')
     } finally {
       setAutomationLoading(false)
+    }
+  }
+
+  // ── PDF Actions ──────────────────────────────────────────────
+  const handleDownloadPDF = async (e, invoice) => {
+    e.stopPropagation()
+    try {
+      const response = await rentalsAPI.invoices.download(invoice.id)
+      const blob = new Blob([response.data], { type: 'application/pdf' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `Rental_Invoice_${invoice.invoice_number}.pdf`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      toast.error('Download failed')
+    }
+  }
+
+  const handlePreviewPDF = async (e, invoice) => {
+    e.stopPropagation()
+    try {
+      setSelectedInvoice(invoice)
+      setIsPreviewOpen(true)
+      setPreviewUrl('')
+      const response = await rentalsAPI.invoices.download(invoice.id)
+      
+      // Check if response is actually a JSON error wrapped in a blob
+      if (response.data.type === 'application/json') {
+        const text = await response.data.text()
+        const error = JSON.parse(text)
+        toast.error(error.error || 'Failed to load preview')
+        setIsPreviewOpen(false)
+        return
+      }
+
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+      setPreviewUrl(url)
+    } catch (err) {
+      toast.error('Preview failed to load')
+      setIsPreviewOpen(false)
     }
   }
 
@@ -547,15 +596,31 @@ export default function RentalsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {parseFloat(inv.balance_due) > 0 && (
+                      <div className="flex items-center justify-end gap-2">
                         <button 
-                          onClick={(e) => { e.stopPropagation(); openPanel('rental-payment-form', { invoice: inv }) }}
-                          className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all"
-                          title="Record Payment"
+                          onClick={(e) => handlePreviewPDF(e, inv)}
+                          className="p-1.5 rounded-lg bg-white/5 text-dark-400 hover:text-white transition-all"
+                          title="Preview PDF"
                         >
-                          <DollarSign size={14} />
+                          <Eye size={14} />
                         </button>
-                      )}
+                        <button 
+                          onClick={(e) => handleDownloadPDF(e, inv)}
+                          className="p-1.5 rounded-lg bg-white/5 text-dark-400 hover:text-white transition-all"
+                          title="Download PDF"
+                        >
+                          <Download size={14} />
+                        </button>
+                        {parseFloat(inv.balance_due) > 0 && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); openPanel('rental-payment-form', { invoice: inv }) }}
+                            className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all"
+                            title="Record Payment"
+                          >
+                            <DollarSign size={14} />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </motion.tr>
                 ))}
@@ -781,6 +846,20 @@ export default function RentalsPage() {
           onPageChange={setPage}
         />
       )}
+
+      <PDFPreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => {
+          setIsPreviewOpen(false)
+          if (previewUrl) {
+            window.URL.revokeObjectURL(previewUrl)
+            setPreviewUrl('')
+          }
+        }}
+        pdfUrl={previewUrl}
+        title={`Rental Invoice: ${selectedInvoice?.invoice_number}`}
+        filename={`Rental_Invoice_${selectedInvoice?.invoice_number}.pdf`}
+      />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Search, FileText, Download, TrendingUp, DollarSign } from 'lucide-react'
+import { Plus, Search, FileText, Download, TrendingUp, DollarSign, Eye } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { financeAPI } from '@/services/api'
 import { formatCurrency } from '@/utils/format'
@@ -7,6 +7,7 @@ import { useUIStore } from '@/stores/authStore'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
 import Pagination from '@/components/common/Pagination'
 import { useQueryClient } from '@tanstack/react-query'
+import PDFPreviewModal from '@/components/common/PDFPreviewModal'
 
 export default function AccountsReceivablePage() {
   const [activeTab, setActiveTab] = useState('customers')
@@ -15,6 +16,10 @@ export default function AccountsReceivablePage() {
   const [page, setPage] = useState(1)
   const queryClient = useQueryClient()
   const openPanel = useUIStore((s) => s.openSidePanel)
+
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState('')
+  const [selectedInvoice, setSelectedInvoice] = useState(null)
 
   const { data: invoicesData, isLoading: loadingInvoices } = useQuery({
     queryKey: ['ar-invoices', { search, ordering: sort, page }],
@@ -38,14 +43,50 @@ export default function AccountsReceivablePage() {
   const customers = customersData?.data?.results || customersData?.data || []
   const receipts = receiptsData?.data?.results || receiptsData?.data || []
 
-  // Mock PDF Downloader
-  const handleDownloadPDF = (e, invoiceId) => {
+  // PDF Actions
+  const handleDownloadPDF = async (e, invoice) => {
     e.stopPropagation()
-    // In a real app, this would fetch a blob from the server
-    const link = document.createElement('a')
-    link.href = `data:text/plain;charset=utf-8,Mock PDF Content for Invoice ${invoiceId}`
-    link.download = `Invoice_${invoiceId}.pdf`
-    link.click()
+    try {
+      const response = await financeAPI.ar.invoices.download(invoice.id)
+      const blob = new Blob([response.data], { type: 'application/pdf' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `Invoice_${invoice.invoice_number}.pdf`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Download failed', err)
+    }
+  }
+
+  const handlePreviewPDF = async (e, invoice) => {
+    e.stopPropagation()
+    try {
+      setSelectedInvoice(invoice)
+      setIsPreviewOpen(true)
+      setPreviewUrl('') // Loading state
+      const response = await financeAPI.ar.invoices.download(invoice.id)
+      
+      // Check if response is actually a JSON error wrapped in a blob
+      if (response.data.type === 'application/json') {
+        const text = await response.data.text()
+        const error = JSON.parse(text)
+        alert(error.error || 'Failed to load preview')
+        setIsPreviewOpen(false)
+        return
+      }
+
+      const blob = new Blob([response.data], { type: 'application/pdf' })
+      const url = window.URL.createObjectURL(blob)
+      setPreviewUrl(url)
+    } catch (err) {
+      console.error('Preview failed', err)
+      alert('Failed to load invoice preview.')
+      setIsPreviewOpen(false)
+    }
   }
 
   return (
@@ -189,7 +230,14 @@ export default function AccountsReceivablePage() {
                         </button>
                         <button 
                           className="btn-ghost p-1.5 text-dark-400 hover:text-white"
-                          onClick={(e) => handleDownloadPDF(e, inv.invoice_number)}
+                          onClick={(e) => handlePreviewPDF(e, inv)}
+                          title="Preview PDF"
+                        >
+                          <Eye size={14} />
+                        </button>
+                        <button 
+                          className="btn-ghost p-1.5 text-dark-400 hover:text-white"
+                          onClick={(e) => handleDownloadPDF(e, inv)}
                           title="Download PDF"
                         >
                           <Download size={14} />
@@ -313,6 +361,20 @@ export default function AccountsReceivablePage() {
           receiptsData?.data?.count
         }
         onPageChange={setPage}
+      />
+
+      <PDFPreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => {
+          setIsPreviewOpen(false)
+          if (previewUrl) {
+            window.URL.revokeObjectURL(previewUrl)
+            setPreviewUrl('')
+          }
+        }}
+        pdfUrl={previewUrl}
+        title={`Invoice: ${selectedInvoice?.invoice_number}`}
+        filename={`Invoice_${selectedInvoice?.invoice_number}.pdf`}
       />
     </div>
   )

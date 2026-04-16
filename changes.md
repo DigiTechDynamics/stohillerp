@@ -2,12 +2,22 @@
 
 This document tracks the evolution of the Stohill ERP, documenting fixes, features, and architectural improvements organized by module and date.
 
-## 🔵 Today: 15 April 2026
+## 🔵 Today: 16 April 2026
 
-### [Finance Module Configuration]
-- **Chart of Accounts Initialization**: Implemented and executed a custom initialization script to seed the system's Chart of Accounts. Created 55 new accounts and updated 19, fully mapping standard assets, liabilities, equity, revenue, and expenses.
-- **Account Hierarchy**: Linked accounts with parent-child relationships, ensuring header accounts (like 'Inventory' or 'Depreciation') restrict direct posting while their sub-accounts correctly accept general ledger transactions.
-- **Cross-Module Sync Alignment**: Configured the global `PostingProfile` to route automated journal entries (such as tenant billings, sales revenue, commissions, and bank receipts) from the Rentals, CRM, and Property Sales modules directly into the newly established Chart of Accounts.
+### [Navigation & UI Modernization]
+- **Universal Search Palette (Cmd+K)**: Launched a high-performance, keyboard-first search interface. Users can now instantly find Contacts, Properties, Bank Accounts, and more while performing "Quick Actions" from anywhere in the platform.
+- **Apple-Style Aesthetic Overhaul**: Modernized the main layout with glassmorphic sidebars (`backdrop-blur-xl`), refined Nav item hover states, and dynamic breadcrumbs for improved spatial awareness.
+- **System Health & Connectivity**: Integrated a real-time health monitor in the global header, providing live feedback on API latency and platform status.
+- **Quick Action Center**: Centralized essential creation workflows (Leads, Contacts, Properties, Journal Entries) into a unified "Plus" menu.
+
+### [Banking & Finance Setup]
+- **Tier-1 Bank Integration**: Added **NMB BANK** USD and ZWL accounts to the system, ensuring full compliance with official banking requirements.
+- **Multi-Currency Support**: Successfully registered **ZWL (Zimbabwean Dollar)** as a supported transaction currency.
+- **G/L Alignment**: Configured dedicated Chart of Accounts (1030/1040) linked to the physical NMB accounts for automated bank reconciliation.
+
+---
+
+## 🟡 15 April 2026
 
 ---
 

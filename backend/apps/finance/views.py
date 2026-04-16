@@ -771,6 +771,20 @@ class SupplierInvoiceViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=True, methods=['get'])
+    def download_pdf(self, request, pk=None):
+        """Generates and returns the Purchase Voucher PDF."""
+        invoice = self.get_object()
+        try:
+            from apps.finance.services.pdf_service import PDFService
+            pdf_bytes = PDFService.generate_supplier_bill_pdf(invoice)
+            response = HttpResponse(pdf_bytes, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="Purchase_Voucher_{invoice.invoice_number}.pdf"'
+            return response
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
+
     def update(self, request, *args, **kwargs):
         """Only draft invoices can be edited."""
         instance = self.get_object()
@@ -868,6 +882,21 @@ class CustomerInvoiceViewSet(viewsets.ModelViewSet):
             return Response({'status': 'sent', 'message': f'Invoice emailed to {invoice.customer.email}'})
         else:
             return Response({'error': 'Failed to send email. Ensure customer has an email address and PDF generation works.'}, status=500)
+
+    @action(detail=True, methods=['get'])
+    def download_pdf(self, request, pk=None):
+        """Generate and download a printable PDF invoice."""
+        from django.http import HttpResponse
+        from apps.finance.services.pdf_service import PDFService
+        
+        invoice = self.get_object()
+        try:
+            pdf_bytes = PDFService.generate_invoice_pdf(invoice)
+            response = HttpResponse(pdf_bytes, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="Invoice_{invoice.invoice_number}.pdf"'
+            return response
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
 
 class CustomerReceiptViewSet(viewsets.ModelViewSet):
     queryset = CustomerReceipt.objects.select_related('customer', 'bank_account')

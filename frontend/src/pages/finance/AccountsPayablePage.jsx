@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Search, FileText, ShoppingCart, Wallet, CreditCard, Settings2 } from 'lucide-react'
+import { Plus, Search, FileText, ShoppingCart, Wallet, CreditCard, Settings2, Eye, Download } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { financeAPI } from '@/services/api'
 import { formatCurrency } from '@/utils/format'
@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
 import Pagination from '@/components/common/Pagination'
 import { useQueryClient } from '@tanstack/react-query'
+import PDFPreviewModal from '@/components/common/PDFPreviewModal'
 
 export default function AccountsPayablePage() {
   const navigate = useNavigate()
@@ -17,6 +18,51 @@ export default function AccountsPayablePage() {
   const [page, setPage] = useState(1)
   const queryClient = useQueryClient()
   const openPanel = useUIStore((s) => s.openSidePanel)
+
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState('')
+  const [selectedInvoice, setSelectedInvoice] = useState(null)
+
+  const handlePreviewPDF = async (e, invoice) => {
+    e.stopPropagation()
+    try {
+      setSelectedInvoice(invoice)
+      setIsPreviewOpen(true)
+      setPreviewUrl('')
+      const response = await financeAPI.ap.invoices.download(invoice.id)
+      
+      // Check if response is actually a JSON error wrapped in a blob
+      if (response.data.type === 'application/json') {
+        const text = await response.data.text()
+        const error = JSON.parse(text)
+        alert(error.error || 'Failed to load preview')
+        setIsPreviewOpen(false)
+        return
+      }
+
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+      setPreviewUrl(url)
+    } catch (err) {
+      alert('Failed to preview purchase voucher.')
+      setIsPreviewOpen(false)
+    }
+  }
+
+  const handleDownloadPDF = async (e, invoice) => {
+    e.stopPropagation()
+    try {
+      const { data } = await financeAPI.ap.invoices.download(invoice.id)
+      const url = window.URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `Purchase_Voucher_${invoice.invoice_number}.pdf`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch (err) {
+      alert('Failed to download purchase voucher.')
+    }
+  }
 
   const { data: invoicesData, isLoading: loadingInvoices } = useQuery({
     queryKey: ['ap-invoices', { search, ordering: sort, page }],
@@ -155,6 +201,7 @@ export default function AccountsPayablePage() {
                   <th className="text-right">Amount</th>
                   <th className="text-right">Balance Due</th>
                   <th className="w-24">Status</th>
+                  <th className="w-16"></th>
                 </tr>
               </thead>
               <tbody>
@@ -176,11 +223,29 @@ export default function AccountsPayablePage() {
                         {inv.status}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button 
+                          className="btn-ghost p-1.5 text-dark-400 hover:text-white"
+                          onClick={(e) => handlePreviewPDF(e, inv)}
+                          title="Preview Voucher"
+                        >
+                          <Eye size={14} />
+                        </button>
+                        <button 
+                          className="btn-ghost p-1.5 text-dark-400 hover:text-white"
+                          onClick={(e) => handleDownloadPDF(e, inv)}
+                          title="Download Voucher"
+                        >
+                          <Download size={14} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
                 {invoices.length === 0 && !loadingInvoices && (
                   <tr>
-                    <td colSpan={7} className="text-center py-16 text-dark-400">
+                    <td colSpan={8} className="text-center py-16 text-dark-400">
                       <div className="flex flex-col items-center">
                         <ShoppingCart size={48} className="text-dark-600 mb-4" />
                         <p>No purchase invoices found. Record a bill to get started.</p>
@@ -291,6 +356,20 @@ export default function AccountsPayablePage() {
           paymentsData?.data?.count
         }
         onPageChange={setPage}
+      />
+
+      <PDFPreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => {
+          setIsPreviewOpen(false)
+          if (previewUrl) {
+            window.URL.revokeObjectURL(previewUrl)
+            setPreviewUrl('')
+          }
+        }}
+        pdfUrl={previewUrl}
+        title={`Purchase Voucher: ${selectedInvoice?.invoice_number}`}
+        filename={`Purchase_Voucher_${selectedInvoice?.invoice_number}.pdf`}
       />
     </div>
   )

@@ -180,32 +180,19 @@ class RentalInvoiceViewSet(viewsets.ModelViewSet):
     def download_pdf(self, request, pk=None):
         """Generate and download a printable PDF invoice."""
         from django.http import HttpResponse
-        from apps.finance.models.ar import CustomerInvoice
-        
         rental_invoice = self.get_object()
         
-        if not rental_invoice.is_posted_to_finance:
-            return Response(
-                {"error": "Invoice must be posted to finance before generating a PDF."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-            
-        ar_invoice = CustomerInvoice.objects.filter(journal_entry=rental_invoice.journal_entry).first()
-        if not ar_invoice:
-            return Response(
-                {"error": "Mirrored Accounts Receivable invoice not found."}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-            
         try:
             from apps.finance.services.pdf_service import PDFService
-            pdf_bytes = PDFService.generate_invoice_pdf(ar_invoice)
+            # We now use the specialized rental invoice generator which supports Drafts
+            pdf_bytes = PDFService.generate_rental_invoice_pdf(rental_invoice)
             
             response = HttpResponse(pdf_bytes, content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="Invoice_{rental_invoice.invoice_number}.pdf"'
             return response
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     @action(detail=False, methods=['post'])
     def run_billing(self, request):

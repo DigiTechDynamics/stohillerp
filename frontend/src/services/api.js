@@ -47,6 +47,8 @@ export const authAPI = {
   forgotPassword: (email) => api.post('auth/forgot-password/', { email }),
   resetPassword: (uid, token, new_password) => api.post('auth/reset-password/', { uid, token, new_password }),
   me: () => api.get('core/me/'),
+  healthCheck: () => api.get('core/health/'),
+  globalSearch: (q) => api.get('core/search/', { params: { q } }),
   updateMe: (data) => {
     const headers = data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}
     return api.patch('core/me/', data, { headers })
@@ -167,6 +169,7 @@ export const rentalsAPI = {
     update: (id, data) => api.patch(`rentals/invoices/${id}/`, data),
     runBilling: (date) => api.post('rentals/invoices/run_billing/', { date }),
     runLateFees: (date) => api.post('rentals/invoices/run_late_fees/', { date }),
+    download: (id) => api.get(`rentals/invoices/${id}/download_pdf/`, { responseType: 'blob' }),
   },
   payments: {
     list: (params) => api.get('rentals/payments/', { params }),
@@ -295,7 +298,9 @@ export const financeAPI = {
       delete: (id) => api.delete(`finance/supplier-invoices/${id}/`),
       review: (id) => api.post(`finance/supplier-invoices/${id}/review_invoice/`),
       post: (id) => api.post(`finance/supplier-invoices/${id}/post_invoice/`),
+      download: (id) => api.get(`finance/supplier-invoices/${id}/download_pdf/`, { responseType: 'blob' }),
     },
+
     payments: {
       list: (params) => api.get('finance/supplier-payments/', { params }),
       detail: (id) => api.get(`finance/supplier-payments/${id}/`),
@@ -317,6 +322,7 @@ export const financeAPI = {
       update: (id, data) => api.patch(`finance/customer-invoices/${id}/`, data),
       post: (id) => api.post(`finance/customer-invoices/${id}/post_invoice/`),
       email: (id) => api.post(`finance/customer-invoices/${id}/email_invoice/`),
+      download: (id) => api.get(`finance/customer-invoices/${id}/download_pdf/`, { responseType: 'blob' }),
     },
     receipts: {
       list: (params) => api.get('finance/customer-receipts/', { params }),
