@@ -9,5 +9,6 @@ router.register('payments', views.RentalPaymentViewSet, basename='rental-payment
 router.register('public-maintenance', views.PublicMaintenanceViewSet, basename='public-maintenance')
 router.register('maintenance', views.MaintenanceViewSet, basename='maintenance')
 router.register('settlements', views.OwnerSettlementViewSet, basename='owner-settlements')
+router.register('inspections', views.PropertyInspectionViewSet, basename='inspections')
 
 urlpatterns = [path('', include(router.urls))]

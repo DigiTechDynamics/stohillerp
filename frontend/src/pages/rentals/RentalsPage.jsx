@@ -6,7 +6,7 @@ import {
   Search, Plus, Home, Key, Wrench, Calendar, Filter,
   AlertTriangle, FileText, Building2, DollarSign,
   TrendingUp, MapPin, Users, Receipt, Edit2, Trash2,
-  RefreshCw, Zap, CheckCircle, Eye, Download
+  RefreshCw, Zap, CheckCircle, Eye, Download, ClipboardCheck
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { rentalsAPI, propertiesAPI, crmAPI } from '@/services/api'
@@ -255,6 +255,11 @@ export default function RentalsPage() {
           {activeTab === 'invoices' && (
             <button className="btn-primary flex items-center gap-2" onClick={() => openPanel('rental-invoice-form')}>
               <Plus size={16} /> New Invoice
+            </button>
+          )}
+          {activeTab === 'maintenance' && (
+            <button className="btn-secondary flex items-center gap-2" onClick={() => openPanel('property-inspection-wizard')}>
+              <ClipboardCheck size={16} /> Field Inspection
             </button>
           )}
           {activeTab === 'maintenance' && (

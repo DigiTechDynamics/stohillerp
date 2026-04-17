@@ -36,13 +36,13 @@ def seed_company_info():
         },
         {
             "key": "COMPANY_ADDRESS",
-            "value": "123 Samora Machel Avenue, Harare, Zimbabwe",
+            "value": "No. 11 Northampton Cresent, Eastlea, Harare",
             "description": "Physical headquarters address."
         },
         {
             "key": "COMPANY_CONTACT",
             "value": {
-                "phone": "+263 77 000 0000",
+                "phone": "+263771588307",
                 "email": "invoices@stohill.co.zw",
                 "website": "www.stohill.co.zw"
             },

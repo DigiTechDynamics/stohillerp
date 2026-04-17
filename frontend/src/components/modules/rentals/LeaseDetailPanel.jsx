@@ -1,5 +1,5 @@
 // Stohill Properties - Lease Detail Panel
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Key, Building2, User, Calendar, DollarSign, TrendingUp,
@@ -23,7 +23,14 @@ export default function LeaseDetailPanel() {
   const { sidePanelData, openSidePanel, closeSidePanel } = useUIStore()
   const queryClient = useQueryClient()
   const confirm = useConfirmStore((s) => s.confirm)
+  const setContext = useUIStore((s) => s.setContext)
   const lease = sidePanelData?.lease
+
+  useEffect(() => {
+    if (lease?.id) {
+      setContext('lease', lease.id)
+    }
+  }, [lease?.id, setContext])
   const [adjusting, setAdjusting] = useState(false)
   const [newRental, setNewRental] = useState(lease?.monthly_rental || '')
   const [postDeposit, setPostDeposit] = useState(true)

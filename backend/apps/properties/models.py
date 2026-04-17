@@ -267,13 +267,16 @@ class PropertyInspection(AuditedModel):
         COMPLETED = 'completed', 'Completed'
         CANCELLED = 'cancelled', 'Cancelled'
 
+    reference = models.CharField(max_length=50, unique=True, null=True, blank=True)
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='inspections')
     unit = models.ForeignKey(PropertyUnit, null=True, blank=True, on_delete=models.SET_NULL)
     inspection_type = models.CharField(max_length=20, choices=InspectionType.choices)
     status = models.CharField(max_length=20, choices=InspectionStatus.choices, default=InspectionStatus.SCHEDULED)
-    scheduled_date = models.DateTimeField()
+    inspection_date = models.DateField(null=True, blank=True) # Changed from scheduled_date to be consistent with PWA
+    scheduled_date = models.DateTimeField(null=True, blank=True)
     completed_date = models.DateTimeField(null=True, blank=True)
     inspector = models.ForeignKey('hr.Employee', on_delete=models.SET_NULL, null=True)
+    condition_data = models.JSONField(default=dict, blank=True)
     condition_rating = models.PositiveSmallIntegerField(null=True, blank=True, help_text='1-10 rating')
     findings = models.TextField(blank=True)
     action_required = models.TextField(blank=True)
@@ -281,4 +284,12 @@ class PropertyInspection(AuditedModel):
 
     class Meta:
         db_table = 'properties_inspections'
-        ordering = ['-scheduled_date']
+        ordering = ['-inspection_date']
+
+    def save(self, *args, **kwargs):
+        if not self.reference:
+            from apps.core.services.number_sequence import NumberSequenceService  # type: ignore
+            self.reference = NumberSequenceService.get_next_number("Property Inspection", prefix="INSP-", padding=5)
+        if not self.inspection_date and self.scheduled_date:
+            self.inspection_date = self.scheduled_date.date()
+        super().save(*args, **kwargs)

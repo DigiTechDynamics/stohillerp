@@ -27,6 +27,7 @@ export default function CommandPalette() {
   const [search, setSearch] = useState('')
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
+  const [mathResult, setMathResult] = useState(null)
   const { theme, openSidePanel } = useUIStore()
   const navigate = useNavigate()
 
@@ -42,6 +43,75 @@ export default function CommandPalette() {
     return () => document.removeEventListener('keydown', down)
   }, [])
 
+  // Intelligence & Math Parser
+  const parseIntelligence = useCallback((input) => {
+    if (!input || input.length < 2) {
+      setMathResult(null)
+      return
+    }
+
+    // 1. Check for basic arithmetic (e.g., "150 * 5")
+    const mathRegex = /^(\s*[-+]?[0-9]*\.?[0-9]+\s*[\+\-\*\/]\s*[-+]?[0-9]*\.?[0-9]+\s*)+$/
+    if (mathRegex.test(input)) {
+       try {
+         // Safe-ish eval using Function
+         const result = Function(`"use strict"; return (${input})`)()
+         if (typeof result === 'number' && !isNaN(result)) {
+           setMathResult({
+             id: 'math-arithmetic',
+             title: `Result: ${result.toLocaleString()}`,
+             subtitle: 'Basic Arithmetic',
+             icon: <Calculator size={18} />,
+             type: 'math'
+           })
+           return
+         }
+       } catch (e) { /* ignore */ }
+    }
+
+    // 2. Specialized Accounting Math
+    const vMatch = input.match(/vat\s+(?:of|on)\s+([0-9]*\.?[0-9]+)/i)
+    if (vMatch) {
+       const val = parseFloat(vMatch[1])
+       setMathResult({
+         id: 'math-vat',
+         title: `VAT: ${ (val * 0.15).toLocaleString() }`,
+         subtitle: `15% of ${val.toLocaleString()}`,
+         icon: <Receipt size={18} />,
+         type: 'math'
+       })
+       return
+    }
+
+    const exMatch = input.match(/ex-vat\s+(?:of|on)\s+([0-9]*\.?[0-9]+)/i)
+    if (exMatch) {
+       const val = parseFloat(exMatch[1])
+       setMathResult({
+         id: 'math-ex-vat',
+         title: `Ex-VAT: ${ (val / 1.15).toLocaleString() }`,
+         subtitle: `Extracted from ${val.toLocaleString()}`,
+         icon: <Receipt size={18} />,
+         type: 'math'
+       })
+       return
+    }
+
+    const commMatch = input.match(/comm\s+(?:of|on)\s+([0-9]*\.?[0-9]+)/i)
+    if (commMatch) {
+       const val = parseFloat(commMatch[1])
+       setMathResult({
+         id: 'math-comm',
+         title: `Commission: ${ (val * 0.075).toLocaleString() }`,
+         subtitle: `7.5% Management Fee on ${val.toLocaleString()}`,
+         icon: <Award size={18} />,
+         type: 'math'
+       })
+       return
+    }
+
+    setMathResult(null)
+  }, [])
+
   // Dynamic Search
   useEffect(() => {
     if (search.length < 2) {
@@ -51,6 +121,7 @@ export default function CommandPalette() {
 
     const timer = setTimeout(async () => {
       setLoading(true)
+      parseIntelligence(search)
       try {
         const { data } = await authAPI.globalSearch(search)
         setResults(data)
@@ -117,10 +188,53 @@ export default function CommandPalette() {
                 <p className="text-xs text-dark-500 mt-1">Try a different keyword or browse modules below</p>
               </Command.Empty>
 
+              {/* Intelligence & Math Section */}
+              {mathResult && (
+                <Command.Group heading={<span className="px-3 py-1 text-[10px] font-bold text-primary uppercase tracking-widest">Calculated Intelligence</span>}>
+                  <Command.Item
+                    onSelect={() => {
+                        // Copy to clipboard or just stay? Let's copy to clipboard as a feature
+                        navigator.clipboard.writeText(mathResult.title.split(': ')[1])
+                        toast.success('Result copied to clipboard')
+                    }}
+                    className={`group flex items-center gap-4 rounded-xl px-4 py-3 cursor-pointer transition-all
+                               ${theme === 'light' ? 'bg-primary/5 hover:bg-primary/10' : 'bg-primary/10 hover:bg-primary/20'}`}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-dark-900 shadow-gold">
+                      {mathResult.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-black tracking-tight ${theme === 'light' ? 'text-dark-900' : 'text-white'}`}>{mathResult.title}</p>
+                      <p className="text-[10px] text-primary/80 font-bold uppercase tracking-wider">{mathResult.subtitle}</p>
+                    </div>
+                    <div className="text-[10px] font-bold text-dark-500 bg-white/5 px-2 py-1 rounded border border-white/5">
+                      PRESS ENTER TO COPY
+                    </div>
+                  </Command.Item>
+                </Command.Group>
+              )}
+
               {/* Dynamic Search Results */}
               {results.length > 0 && (
                 <Command.Group heading={<span className="px-3 py-1 text-[10px] font-bold text-dark-500 uppercase tracking-widest">Global Search</span>}>
-                  {results.map((result) => (
+                  {results.filter(r => r.is_intelligence).map((result) => (
+                    <Command.Item
+                      key={result.id}
+                      onSelect={() => runCommand(() => navigate(result.url))}
+                      className={`group flex items-center gap-4 rounded-xl px-4 py-3 cursor-pointer transition-all border border-primary/20 bg-primary/5
+                                 ${theme === 'light' ? 'hover:bg-primary/10' : 'hover:bg-white/10'}`}
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary group-data-[selected]:bg-primary group-data-[selected]:text-dark-900 transition-colors">
+                        <Sparkles size={18} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-bold truncate ${theme === 'light' ? 'text-dark-900' : 'text-white'}`}>{result.title}</p>
+                        <p className="text-xs text-dark-500 font-medium truncate">{result.category} • {result.subtitle}</p>
+                      </div>
+                      <ChevronRight size={14} className="text-dark-600 opacity-0 group-data-[selected]:opacity-100 transition-all -translate-x-2 group-data-[selected]:translate-x-0" />
+                    </Command.Item>
+                  ))}
+                  {results.filter(r => !r.is_intelligence).map((result) => (
                     <Command.Item
                       key={result.id}
                       onSelect={() => runCommand(() => navigate(result.url))}

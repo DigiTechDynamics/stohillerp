@@ -6,11 +6,13 @@ import {
 } from 'recharts'
 import { 
   TrendingUp, Users, Home, DollarSign, ArrowUpRight, ArrowDownRight, 
-  Calendar, Layers, Filter, Download, Zap, Target
+  Calendar, Layers, Filter, Download, Zap, Target, Maximize2, Sparkles
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import { useUIStore } from '@/stores/authStore'
 import { analyticsAPI } from '@/services/api'
 import { formatCurrency } from '@/utils/format'
+import { KpiSkeleton, ChartSkeleton } from '@/components/common/Skeleton'
 
 const COLORS = ['#D4AF37', '#E5A645', '#C0C0C0', '#4A5568', '#2D3748']
 
@@ -88,115 +90,197 @@ export default function AnalyticsDashboard({ isEmbedded = false }) {
         animate="visible"
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
       >
-        <KpiCard 
-          title="Net Portfolio Yield" 
-          value={`${portfolio?.overview?.net_yield || 0}%`} 
-          trend="+1.2%" 
-          positive={true} 
-          icon={<TrendingUp className="text-primary" />} 
-          subtitle="Annualized ROI"
-        />
-        <KpiCard 
-          title="Vacancy Rate" 
-          value={`${portfolio?.overview?.vacancy_rate || 0}%`} 
-          trend="-0.5%" 
-          positive={true} 
-          icon={<Home className="text-primary" />} 
-          subtitle="Portfolio Occupancy"
-        />
-        <KpiCard 
-          title="Lead Conversion" 
-          value={`${funnel?.metrics?.win_rate || 0}%`} 
-          trend="+4.8%" 
-          positive={true} 
-          icon={<Target className="text-primary" />} 
-          subtitle="Sales Performance"
-        />
-        <KpiCard 
-          title="Coll. Rate" 
-          value={`${forecast?.current_month?.collection_rate || 0}%`} 
-          trend="-2.1%" 
-          positive={false} 
-          icon={<DollarSign className="text-primary" />} 
-          subtitle="Cash flow efficiency"
-        />
+        {isLoading ? (
+          <>
+            <KpiSkeleton />
+            <KpiSkeleton />
+            <KpiSkeleton />
+            <KpiSkeleton />
+          </>
+        ) : (
+          <>
+            <KpiCard 
+              title="Net Portfolio Yield" 
+              value={`${portfolio?.overview?.net_yield || 0}%`} 
+              trend="+1.2%" 
+              positive={true} 
+              icon={<TrendingUp className="text-primary" />} 
+              subtitle="Annualized ROI"
+            />
+            <KpiCard 
+              title="Vacancy Rate" 
+              value={`${portfolio?.overview?.vacancy_rate || 0}%`} 
+              trend="-0.5%" 
+              positive={true} 
+              icon={<Home className="text-primary" />} 
+              subtitle="Portfolio Occupancy"
+            />
+            <KpiCard 
+              title="Lead Conversion" 
+              value={`${funnel?.metrics?.win_rate || 0}%`} 
+              trend="+4.8%" 
+              positive={true} 
+              icon={<Target className="text-primary" />} 
+              subtitle="Sales Performance"
+            />
+            <KpiCard 
+              title="Coll. Rate" 
+              value={`${forecast?.current_month?.collection_rate || 0}%`} 
+              trend="-2.1%" 
+              positive={false} 
+              icon={<DollarSign className="text-primary" />} 
+              subtitle="Cash flow efficiency"
+            />
+          </>
+        )}
       </motion.div>
 
       {/* Main Analysis Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Yield Analysis */}
-        <motion.div 
-          variants={itemVariants}
-          className="lg:col-span-2 bg-dark-900/40 border border-white/5 rounded-3xl p-8 backdrop-blur-xl"
-        >
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-lg font-medium text-white flex items-center gap-3">
-              Portfolio Yield <span className="text-xs text-dark-500 uppercase tracking-widest font-bold">BY PROPERTY TYPE</span>
-            </h3>
-            <div className="flex items-center gap-2 text-xs text-dark-400">
-              <Zap size={14} className="text-primary" />
-              <span>Target: 10.5%</span>
+        {portfolioLoading ? (
+          <div className="lg:col-span-2">
+            <ChartSkeleton height={350} title="PORTFOLIO YIELD ANALYSIS" />
+          </div>
+        ) : (
+          <motion.div 
+            variants={itemVariants}
+            className="lg:col-span-2 bg-dark-900/40 border border-white/5 rounded-3xl p-8 backdrop-blur-xl"
+          >
+            <div className="flex items-center justify-between mb-8">
+               <h3 className="text-lg font-medium text-white flex items-center gap-3">
+                Portfolio Yield <span className="text-xs text-dark-500 uppercase tracking-widest font-bold">BY PROPERTY TYPE</span>
+              </h3>
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => {
+                    useUIStore.getState().setFocusedElement({
+                      id: 'analytics-yield-focus',
+                      title: 'Portfolio Yield Analysis',
+                      content: (
+                        <div className="h-[500px] w-full bg-dark-900/40 p-12 rounded-3xl border border-white/10">
+                           <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={portfolio?.by_type || []}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#2D3748" vertical={false} />
+                              <XAxis dataKey="type" stroke="#718096" />
+                              <YAxis stroke="#718096" tickFormatter={(v) => `${v}%`} />
+                              <Tooltip contentStyle={{ backgroundColor: '#1A202C', borderRadius: '12px' }} />
+                              <Bar dataKey="yield" fill="#D4AF37" radius={[10, 10, 0, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )
+                    })
+                  }}
+                  className="p-2 rounded-lg bg-white/5 text-dark-400 hover:text-white transition-colors"
+                >
+                  <Maximize2 size={16} />
+                </button>
+                <div className="flex items-center gap-2 text-xs text-dark-400">
+                  <Zap size={14} className="text-primary" />
+                  <span>Target: 10.5%</span>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="h-[350px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={portfolio?.by_type || []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2D3748" vertical={false} />
-                <XAxis dataKey="type" stroke="#718096" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#718096" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1A202C', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
-                  itemStyle={{ color: '#D4AF37' }}
-                />
-                <Bar 
-                  dataKey="yield" 
-                  fill="#D4AF37" 
-                  radius={[6, 6, 0, 0]} 
-                  barSize={40}
-                  animationBegin={200}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
+            <div className="h-[350px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={portfolio?.by_type || []}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2D3748" vertical={false} />
+                  <XAxis dataKey="type" stroke="#718096" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#718096" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#1A202C', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                    itemStyle={{ color: '#D4AF37' }}
+                  />
+                  <Bar 
+                    dataKey="yield" 
+                    fill="#D4AF37" 
+                    radius={[6, 6, 0, 0]} 
+                    barSize={40}
+                    animationBegin={200}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </motion.div>
+        )}
 
         {/* Sales Pipeline Funnel */}
-        <motion.div 
-          variants={itemVariants}
-          className="bg-dark-900/40 border border-white/5 rounded-3xl p-8 backdrop-blur-xl"
-        >
-          <h3 className="text-lg font-medium text-white mb-8">Pipeline Funnel</h3>
-          <div className="space-y-6">
-            {funnel?.funnel?.map((item, i) => (
-              <div key={item.stage} className="relative">
-                <div className="flex justify-between text-xs mb-2">
-                  <span className="text-dark-400 uppercase font-bold tracking-wider">{item.stage}</span>
-                  <span className="text-white font-bold">{item.count}</span>
+        {funnelLoading ? (
+          <ChartSkeleton title="SALES PIPELINE" />
+        ) : (
+          <motion.div 
+            variants={itemVariants}
+            className="bg-dark-900/40 border border-white/5 rounded-3xl p-8 backdrop-blur-xl"
+          >
+             <div className="flex items-center justify-between mb-8">
+               <h3 className="text-lg font-medium text-white">Pipeline Funnel</h3>
+               <button 
+                 onClick={() => {
+                   useUIStore.getState().setFocusedElement({
+                     id: 'analytics-funnel-focus',
+                     title: 'Sales Pipeline Intelligence',
+                     content: (
+                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                          <div className="space-y-8">
+                            {funnel?.funnel?.map((item) => (
+                              <div key={item.stage}>
+                                <div className="flex justify-between text-sm mb-3">
+                                  <span className="text-dark-400 uppercase font-bold">{item.stage}</span>
+                                  <span className="text-white font-bold">{item.count}</span>
+                                </div>
+                                <div className="h-4 w-full bg-dark-950 rounded-full overflow-hidden">
+                                  <div className="h-full bg-primary" style={{ width: `${(item.count / funnel?.funnel[0].count) * 100}%` }} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="p-12 bg-white/5 rounded-3xl border border-white/10 text-center">
+                             <Sparkles size={48} className="text-primary mx-auto mb-6" />
+                             <h4 className="text-4xl font-black text-white mb-2">{funnel?.metrics?.win_rate}%</h4>
+                             <p className="text-dark-400 uppercase tracking-[0.3em] text-xs font-bold">Conversion Rate</p>
+                          </div>
+                       </div>
+                     )
+                   })
+                 }}
+                 className="p-2 rounded-lg bg-white/5 text-dark-400 hover:text-white transition-colors"
+               >
+                 <Maximize2 size={16} />
+               </button>
+             </div>
+            <div className="space-y-6">
+              {funnel?.funnel?.map((item, i) => (
+                <div key={item.stage} className="relative">
+                  <div className="flex justify-between text-xs mb-2">
+                    <span className="text-dark-400 uppercase font-bold tracking-wider">{item.stage}</span>
+                    <span className="text-white font-bold">{item.count}</span>
+                  </div>
+                  <div className="h-2 w-full bg-dark-900 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(item.count / (funnel?.metrics?.total_leads || 1)) * 100}%` }}
+                      transition={{ duration: 1, delay: i * 0.1 }}
+                      className="h-full bg-gradient-to-r from-primary/40 to-primary rounded-full shadow-[0_0_10px_rgba(212,175,55,0.3)]"
+                    />
+                  </div>
                 </div>
-                <div className="h-2 w-full bg-dark-900 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(item.count / (funnel?.metrics?.total_leads || 1)) * 100}%` }}
-                    transition={{ duration: 1, delay: i * 0.1 }}
-                    className="h-full bg-gradient-to-r from-primary/40 to-primary rounded-full shadow-[0_0_10px_rgba(212,175,55,0.3)]"
-                  />
+              ))}
+            </div>
+            <div className="mt-10 p-6 bg-primary/5 rounded-2xl border border-primary/10">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                  <Calendar size={20} />
                 </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-10 p-6 bg-primary/5 rounded-2xl border border-primary/10">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                <Calendar size={20} />
-              </div>
-              <div>
-                <p className="text-dark-400 text-[10px] uppercase font-bold tracking-widest">Avg. Cycle Time</p>
-                <p className="text-xl font-bold text-white tracking-widest">{funnel?.metrics?.avg_close_cycle_days} DAYS</p>
+                <div>
+                  <p className="text-dark-400 text-[10px] uppercase font-bold tracking-widest">Avg. Cycle Time</p>
+                  <p className="text-xl font-bold text-white tracking-widest">{funnel?.metrics?.avg_close_cycle_days} DAYS</p>
+                </div>
               </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        )}
 
       </div>
 
@@ -204,60 +288,68 @@ export default function AnalyticsDashboard({ isEmbedded = false }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
         {/* Cash Flow Forecast */}
-        <motion.div 
-          variants={itemVariants}
-          className="bg-dark-900/40 border border-white/5 rounded-3xl p-8 backdrop-blur-xl"
-        >
-           <h3 className="text-lg font-medium text-white mb-8 flex items-center gap-3">
-             Expected Collections <span className="text-xs text-dark-500 uppercase tracking-widest font-bold">CURRENT MONTH</span>
-           </h3>
-           <div className="grid grid-cols-3 gap-6 mb-8 text-center">
-             <div className="p-4 bg-dark-900/50 rounded-2xl border border-white/5">
-                <p className="text-[10px] text-dark-500 uppercase font-bold tracking-widest mb-1">Forecasted</p>
-                <p className="text-lg font-bold text-white">{formatCurrency(forecast?.current_month?.forecasted)}</p>
+        {forecastLoading ? (
+          <ChartSkeleton height={200} title="CASH FLOW FORECAST" />
+        ) : (
+          <motion.div 
+            variants={itemVariants}
+            className="bg-dark-900/40 border border-white/5 rounded-3xl p-8 backdrop-blur-xl"
+          >
+             <h3 className="text-lg font-medium text-white mb-8 flex items-center gap-3">
+               Expected Collections <span className="text-xs text-dark-500 uppercase tracking-widest font-bold">CURRENT MONTH</span>
+             </h3>
+             <div className="grid grid-cols-3 gap-6 mb-8 text-center">
+               <div className="p-4 bg-dark-900/50 rounded-2xl border border-white/5">
+                  <p className="text-[10px] text-dark-500 uppercase font-bold tracking-widest mb-1">Forecasted</p>
+                  <p className="text-lg font-bold text-white">{formatCurrency(forecast?.current_month?.forecasted)}</p>
+               </div>
+               <div className="p-4 bg-dark-900/50 rounded-2xl border border-white/5">
+                  <p className="text-[10px] text-dark-500 uppercase font-bold tracking-widest mb-1">Actual</p>
+                  <p className="text-lg font-bold text-primary">{formatCurrency(forecast?.current_month?.actual_collected)}</p>
+               </div>
+               <div className="p-4 bg-dark-900/50 rounded-2xl border border-white/5">
+                  <p className="text-[10px] text-dark-500 uppercase font-bold tracking-widest mb-1">Variance</p>
+                  <p className={`text-lg font-bold ${forecast?.current_month?.variance >= 0 ? 'text-green-500' : 'text-rose-500'}`}>
+                    {formatCurrency(forecast?.current_month?.variance)}
+                  </p>
+               </div>
              </div>
-             <div className="p-4 bg-dark-900/50 rounded-2xl border border-white/5">
-                <p className="text-[10px] text-dark-500 uppercase font-bold tracking-widest mb-1">Actual</p>
-                <p className="text-lg font-bold text-primary">{formatCurrency(forecast?.current_month?.actual_collected)}</p>
-             </div>
-             <div className="p-4 bg-dark-900/50 rounded-2xl border border-white/5">
-                <p className="text-[10px] text-dark-500 uppercase font-bold tracking-widest mb-1">Variance</p>
-                <p className={`text-lg font-bold ${forecast?.current_month?.variance >= 0 ? 'text-green-500' : 'text-rose-500'}`}>
-                  {formatCurrency(forecast?.current_month?.variance)}
-                </p>
-             </div>
-           </div>
-        </motion.div>
+          </motion.div>
+        )}
 
         {/* Portfolio Value Breakdown */}
-        <motion.div 
-          variants={itemVariants}
-          className="bg-dark-900/40 border border-white/5 rounded-3xl p-8 backdrop-blur-xl"
-        >
-          <h3 className="text-lg font-medium text-white mb-8 text-center uppercase tracking-widest">Asset Allocation</h3>
-          <div className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={portfolio?.by_type || []}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                  animationBegin={400}
-                >
-                  {portfolio?.by_type?.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '20px' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
+        {portfolioLoading ? (
+          <ChartSkeleton height={200} title="ASSET ALLOCATION" />
+        ) : (
+          <motion.div 
+            variants={itemVariants}
+            className="bg-dark-900/40 border border-white/5 rounded-3xl p-8 backdrop-blur-xl"
+          >
+            <h3 className="text-lg font-medium text-white mb-8 text-center uppercase tracking-widest">Asset Allocation</h3>
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={portfolio?.by_type || []}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                    animationBegin={400}
+                  >
+                    {portfolio?.by_type?.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '20px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </motion.div>
+        )}
 
       </div>
     </div>
@@ -278,9 +370,34 @@ function KpiCard({ title, value, trend, positive, icon, subtitle }) {
         <div className="w-10 h-10 rounded-xl bg-dark-950 flex items-center justify-center border border-white/5 group-hover:border-primary/20 transition-all">
           {icon}
         </div>
-        <div className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg ${positive ? 'bg-green-500/10 text-green-500' : 'bg-rose-500/10 text-rose-500'}`}>
-          {positive ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
-          {trend}
+        <div className="flex items-center gap-2">
+           <button 
+             onClick={(e) => {
+               e.stopPropagation()
+               useUIStore.getState().setFocusedElement({
+                 id: `analytics-kpi-${title.toLowerCase()}`,
+                 title,
+                 content: (
+                   <div className="text-center py-20">
+                      <h1 className="text-9xl font-black text-white tracking-tighter mb-4">{value}</h1>
+                      <p className="text-2xl text-dark-400 font-medium uppercase tracking-[0.5em]">{title}</p>
+                      <div className="mt-12 flex justify-center gap-4">
+                         <div className={`px-6 py-3 rounded-full font-bold ${positive ? 'bg-green-500/10 text-green-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                           {trend} Improvement
+                         </div>
+                      </div>
+                   </div>
+                 )
+               })
+             }}
+             className="p-2 rounded-lg bg-white/5 text-dark-400 opacity-0 group-hover:opacity-100 hover:text-white transition-all focus-btn"
+           >
+             <Maximize2 size={12} />
+           </button>
+          <div className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg ${positive ? 'bg-green-500/10 text-green-500' : 'bg-rose-500/10 text-rose-500'}`}>
+            {positive ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
+            {trend}
+          </div>
         </div>
       </div>
       <div className="relative z-10">

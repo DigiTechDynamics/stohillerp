@@ -189,6 +189,13 @@ export const rentalsAPI = {
     approve: (id) => api.post(`rentals/settlements/${id}/approve_and_post/`),
     exportEft: (ids) => api.post('finance/disbursements/generate_eft/', { ids, source_type: 'owner_settlement' }, { responseType: 'blob' }),
   },
+  inspections: {
+    list: (params) => api.get('rentals/inspections/', { params }),
+    get: (id) => api.get(`rentals/inspections/${id}/`),
+    create: (data) => api.post('rentals/inspections/', data),
+    update: (id, data) => api.patch(`rentals/inspections/${id}/`, data),
+    delete: (id) => api.delete(`rentals/inspections/${id}/`),
+  },
 }
 
 export const financeAPI = {
@@ -261,6 +268,8 @@ export const financeAPI = {
         params: { ...params, export_format: format },
         responseType: 'blob'
       }),
+    vat7Report: (fromDate, toDate) =>
+      api.get('finance/reports/vat7-report/', { params: { start_date: fromDate, end_date: toDate } }),
   },
   fixedAssets: {
     categories: {
@@ -349,6 +358,9 @@ export const financeAPI = {
     list: (params) => api.get('finance/transactions/', { params }),
   },
   summary: () => api.get('finance/summary/'),
+  transfers: {
+    propertyTransfer: (data) => api.post('finance/transfers/property-transfer/', data),
+  },
 }
 
 export const bankingAPI = {
@@ -530,6 +542,7 @@ export const analyticsAPI = {
   portfolio: () => api.get('analytics/portfolio/'),
   salesFunnel: () => api.get('analytics/sales-funnel/'),
   forecast: () => api.get('analytics/forecast/'),
+  context: (type, id) => api.get('analytics/context/', { params: { type, id } }),
 }
 
 export const inventoryAPI = {

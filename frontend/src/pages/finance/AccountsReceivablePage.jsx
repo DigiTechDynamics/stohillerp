@@ -80,11 +80,24 @@ export default function AccountsReceivablePage() {
       }
 
       const blob = new Blob([response.data], { type: 'application/pdf' })
+      if (blob.size < 100) { // Unusually small for a PDF, might be an error or empty
+        const text = await blob.text()
+        try {
+          const error = JSON.parse(text)
+          alert(`Error: ${error.error || 'The server returned an empty document.'}`)
+          setIsPreviewOpen(false)
+          return
+        } catch (e) {
+          // Not JSON, but still too small
+          console.warn('PDF blob is suspiciously small:', blob.size)
+        }
+      }
       const url = window.URL.createObjectURL(blob)
       setPreviewUrl(url)
     } catch (err) {
       console.error('Preview failed', err)
-      alert('Failed to load invoice preview.')
+      const errorMsg = err.response?.data?.error || 'Failed to generate PDF. Please ensure all line items are valid and the server is running.'
+      alert(errorMsg)
       setIsPreviewOpen(false)
     }
   }

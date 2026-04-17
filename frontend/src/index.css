@@ -332,4 +332,56 @@ html.light .ring-dark-900 { --tw-ring-color: var(--bg-card) !important; }
   .theme-transition {
     transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
   }
+
+  /* Skeleton Shimmer Animation */
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .skeleton {
+    background: linear-gradient(
+      90deg, 
+      rgba(255, 255, 255, 0.03) 25%, 
+      rgba(255, 255, 255, 0.08) 50%, 
+      rgba(255, 255, 255, 0.03) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite linear;
+    @apply rounded-md;
+  }
+
+  html.light .skeleton {
+    background: linear-gradient(
+      90deg, 
+      rgba(0, 0, 0, 0.03) 25%, 
+      rgba(0, 0, 0, 0.08) 50%, 
+      rgba(0, 0, 0, 0.03) 75%
+    );
+    background-size: 200% 100%;
+  }
+
+  .skeleton-pulse {
+    @apply animate-pulse bg-white/5 rounded-md;
+  }
+
+  html.light .skeleton-pulse {
+    @apply bg-black/5;
+  }
+
+  /* Haptic Glow Animation */
+  @keyframes haptic-glow {
+    0%, 100% { opacity: 0.5; filter: blur(8px); }
+    50% { opacity: 0.8; filter: blur(12px); }
+  }
+
+  .glow-overlay {
+    @apply absolute -inset-0.5 rounded-xl opacity-0 transition-opacity duration-300 pointer-events-none z-0;
+    background: linear-gradient(135deg, var(--primary), transparent 60%);
+    animation: haptic-glow 3s infinite ease-in-out;
+  }
+
+  .kpi-card:hover .glow-overlay {
+    @apply opacity-20;
+  }
 }

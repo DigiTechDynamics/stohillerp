@@ -13,7 +13,8 @@ from django.conf import settings
 from apps.core.models import User, Role, AuditLog, Currency, Module, SODRule
 from django.db.models import Q
 from apps.crm.models import Contact, Opportunity
-from apps.properties.models import Property
+from apps.properties.models import Property, PropertyUnit
+from apps.rentals.models import Lease
 from apps.finance.models.ap import Supplier
 from apps.finance.models.ar import CustomerProfile
 from apps.finance.models.bank import BankAccount
@@ -195,6 +196,60 @@ class GlobalSearchView(APIView):
             return Response([])
 
         results = []
+        import re
+
+        # --- Structured Intelligence Queries ---
+        
+        # 1. Unit Status (e.g., "Unit 102 status")
+        unit_status_match = re.search(r'unit\s+(\S+)\s+status', q, re.I)
+        if unit_status_match:
+            unit_num = unit_status_match.group(1)
+            unit = PropertyUnit.objects.filter(unit_number__icontains=unit_num).select_related('property').first()
+            if unit:
+                results.append({
+                    'id': f'intel-unit-status-{unit.id}',
+                    'category': 'Intelligence',
+                    'title': f"Unit {unit.unit_number} is {unit.get_status_display().upper()}",
+                    'subtitle': f"Location: {unit.property.name} | View Details",
+                    'url': f'/properties/{unit.property.id}',
+                    'icon': 'zap',
+                    'is_intelligence': True
+                })
+
+        # 2. Rent Query (e.g., "Rent for Unit 102")
+        rent_match = re.search(r'rent\s+(?:for|of)\s+(?:unit\s+)?(\S+)', q, re.I)
+        if rent_match:
+            target = rent_match.group(1)
+            # Try Unit first
+            unit = PropertyUnit.objects.filter(unit_number__icontains=target).first()
+            if unit and unit.monthly_rental:
+                results.append({
+                    'id': f'intel-rent-{unit.id}',
+                    'category': 'Intelligence',
+                    'title': f"Monthly Rent: ${unit.monthly_rental:,.2f}",
+                    'subtitle': f"Unit {unit.unit_number} Standard Rate",
+                    'url': f'/properties/{unit.property_id}',
+                    'icon': 'dollar-sign',
+                    'is_intelligence': True
+                })
+
+        # 3. Lease Lookup (e.g., "Lease LSE-00001")
+        lease_match = re.search(r'lease\s+(\S+)', q, re.I)
+        if lease_match:
+            lease_num = lease_match.group(1)
+            lease = Lease.objects.filter(lease_number__icontains=lease_num).first()
+            if lease:
+                results.append({
+                    'id': f'intel-lease-{lease.id}',
+                    'category': 'Intelligence',
+                    'title': f"Lease {lease.lease_number}: {lease.get_status_display()}",
+                    'subtitle': f"Tenant: {lease.tenant.full_name} | Expires: {lease.end_date}",
+                    'url': f'/rentals/leases',
+                    'icon': 'file-text',
+                    'is_intelligence': True
+                })
+
+        # --- Standard Keyword Search ---
 
         # 1. CRM Contacts
         contacts = Contact.objects.filter(

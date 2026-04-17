@@ -72,6 +72,7 @@ class ReconciliationRule(AuditedModel):
         ('regex_match', 'Regular Expression Match'),
         ('keyword_match', 'Keyword Match'),
         ('date_amount_match', 'Date + Amount Match (within range)'),
+        ('fuzzy_match', 'Intelligent Fuzzy Reference Match'),
     ]
 
     name = models.CharField(max_length=100)

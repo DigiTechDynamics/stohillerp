@@ -1,6 +1,7 @@
 // Stohill Properties - Side Panel Container
 // Slide-in contextual panels for record details
 import { AnimatePresence, motion } from 'framer-motion'
+import { useEffect } from 'react'
 import { X, Building2, MapPin, BedDouble, Bath, Square, Calendar, DollarSign, Briefcase, FileText, User, Mail, Phone, ExternalLink, Trash2, Edit2, Loader2, Key, MessageSquare, CheckCircle, Plus } from 'lucide-react'
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
@@ -68,13 +69,22 @@ import SaleDetailPanel from '@/components/modules/sales/SaleDetailPanel'
 import FiscalYearForm from '@/components/modules/finance/FiscalYearForm'
 import PayrollRunForm from '@/components/modules/payroll/PayrollRunForm'
 import UserProfileForm from '@/components/modules/admin/UserProfileForm'
+import FundTransferWizard from '@/components/modules/finance/FundTransferWizard'
+import PropertyInspectionWizard from '@/components/modules/rentals/PropertyInspectionWizard'
 
 function PropertyDetailPanel({ property }) {
   const queryClient = useQueryClient()
   const openPanel = useUIStore(s => s.openSidePanel)
   const closePanel = useUIStore(s => s.closeSidePanel)
   const confirm = useConfirmStore(s => s.confirm)
+  const setContext = useUIStore(s => s.setContext)
   
+  useEffect(() => {
+    if (property?.id) {
+      setContext('property', property.id)
+    }
+  }, [property?.id, setContext])
+
   if (!property) return null
 
   const deleteMutation = useMutation({
@@ -426,6 +436,8 @@ export default function SidePanelContainer() {
                     activeSidePanel === 'sale-detail' ? 'Transaction Details' :
                     activeSidePanel === 'fiscal-year-form' ? (sidePanelData?.fiscalYear ? 'Edit Fiscal Year' : 'New Fiscal Year') :
                     activeSidePanel === 'payroll-run-form' ? (sidePanelData?.id ? 'Edit Payroll Run' : 'New Payroll Run') :
+                    activeSidePanel === 'fund-transfer-wizard' ? 'Internal Fund Transfer' :
+                    activeSidePanel === 'property-inspection-wizard' ? 'Field Inspection' :
                     activeSidePanel === 'my-profile' ? 'My Profile' :
                     'Details'}
                 </h2>
@@ -701,8 +713,16 @@ export default function SidePanelContainer() {
                 <UserProfileForm />
               )}
 
+              {activeSidePanel === 'fund-transfer-wizard' && (
+                <FundTransferWizard />
+              )}
+
+              {activeSidePanel === 'property-inspection-wizard' && (
+                <PropertyInspectionWizard />
+              )}
+
               {/* Fallback for other panels if not implemented yet */}
-              {!['property-detail', 'contact-detail', 'contact-form', 'account-form', 'account-detail', 'journal-entry-detail', 'employee-form', 'employee-detail', 'leave-management', 'document-upload', 'compliance-check', 'department-form', 'department-list', 'lease-form', 'lease-detail', 'lease-renewal-form', 'rental-invoice-form', 'rental-payment-form', 'tenant-form', 'maintenance-form', 'maintenance-detail', 'property-form', 'new-customer', 'new-ar-invoice', 'new-ar-receipt', 'new-supplier', 'new-ap-invoice', 'new-ap-payment', 'customer-receipt-detail', 'supplier-payment-detail', 'ar-invoice-detail', 'ap-invoice-detail', 'supplier-detail', 'tax-code-form', 'posting-profile-form', 'commission-structure-form', 'commission-calculator', 'commission-detail', 'currency-form', 'exchange-rate-form', 'opportunity-form', 'crm-detail', 'activity-form', 'bank-account-form', 'bank-transaction-view', 'statement-upload-form', 'reconciliation-rules-form', 'user-form', 'role-form', 'sod-rule-form', 'sale-form', 'sale-detail', 'asset-form', 'asset-category-form', 'asset-detail', 'asset-disposal', 'run-depreciation', 'payroll-run-form', 'fiscal-year-form', 'my-profile'].includes(activeSidePanel) && (
+              {!['property-detail', 'contact-detail', 'contact-form', 'account-form', 'account-detail', 'journal-entry-detail', 'employee-form', 'employee-detail', 'leave-management', 'document-upload', 'compliance-check', 'department-form', 'department-list', 'lease-form', 'lease-detail', 'lease-renewal-form', 'rental-invoice-form', 'rental-payment-form', 'tenant-form', 'maintenance-form', 'maintenance-detail', 'property-form', 'new-customer', 'new-ar-invoice', 'new-ar-receipt', 'new-supplier', 'new-ap-invoice', 'new-ap-payment', 'customer-receipt-detail', 'supplier-payment-detail', 'ar-invoice-detail', 'ap-invoice-detail', 'supplier-detail', 'tax-code-form', 'posting-profile-form', 'commission-structure-form', 'commission-calculator', 'commission-detail', 'currency-form', 'exchange-rate-form', 'opportunity-form', 'crm-detail', 'activity-form', 'bank-account-form', 'bank-transaction-view', 'statement-upload-form', 'reconciliation-rules-form', 'user-form', 'role-form', 'sod-rule-form', 'sale-form', 'sale-detail', 'asset-form', 'asset-category-form', 'asset-detail', 'asset-disposal', 'run-depreciation', 'payroll-run-form', 'fiscal-year-form', 'fund-transfer-wizard', 'property-inspection-wizard', 'my-profile'].includes(activeSidePanel) && (
                 <div className="p-20 text-center">
                   <div className="w-16 h-16 rounded-2xl bg-dark-800 flex items-center justify-center mx-auto mb-4 border border-white/5">
                     <FileText size={32} className="text-dark-600" />

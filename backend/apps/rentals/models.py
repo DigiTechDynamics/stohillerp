@@ -200,7 +200,7 @@ class RentalInvoice(AuditedModel):
 
     class InvoiceStatus(models.TextChoices):
         DRAFT = 'draft', 'Draft'
-        SENT = 'sent', 'Sent'
+        UNPAID = 'sent', 'Unpaid'
         PAID = 'paid', 'Paid'
         OVERDUE = 'overdue', 'Overdue'
         PARTIAL = 'partial', 'Partially Paid'
@@ -430,3 +430,4 @@ class OwnerSettlement(AuditedModel):
 
     def __str__(self):
         return f'Settlement: {self.property.name} - {self.period_start.strftime("%b %Y")}'
+

@@ -57,6 +57,9 @@ export default function FinancePage() {
           <Link to="/finance/posting-profiles" className="btn-secondary flex items-center gap-2">
             <Settings size={16} /> Posting Profiles
           </Link>
+          <button className="btn-secondary flex items-center gap-2" onClick={() => openPanel('fund-transfer-wizard')}>
+            <ArrowRightLeft size={16} /> Transfer Funds
+          </button>
           <button className="btn-primary flex items-center gap-2" onClick={() => openPanel('account-form')}>
             <Plus size={16} /> New Account
           </button>

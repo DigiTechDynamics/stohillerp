@@ -15,6 +15,7 @@ export default function TaxReportsPage() {
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState('codes')
   const [search, setSearch] = useState('')
+  const [vat7Preview, setVat7Preview] = useState(false)
   const [vatDates, setVatDates] = useState({
     from: new Date(new Date().getFullYear(), new Date().getMonth() - 2, 1).toISOString().split('T')[0],
     to: new Date().toISOString().split('T')[0]
@@ -72,7 +73,8 @@ export default function TaxReportsPage() {
       <div className="flex border-b border-white/10 gap-6">
         {[
           { id: 'codes', label: 'Tax Codes', icon: Percent },
-          { id: 'returns', label: 'VAT Returns', icon: FileText }
+          { id: 'returns', label: 'Standard Return', icon: FileText },
+          { id: 'vat7', label: 'VAT-7 (Zimbabwe)', icon: Calculator }
         ].map(tab => (
           <button
             key={tab.id}
@@ -361,6 +363,122 @@ export default function TaxReportsPage() {
           </div>
         </div>
       )}
+      {activeTab === 'vat7' && (
+        <VAT7ReportSection 
+          dates={vatDates} 
+          setDates={setVatDates}
+          isPreviewing={vat7Preview}
+          setIsPreviewing={setVat7Preview}
+        />
+      )}
+    </div>
+  )
+}
+
+function VAT7ReportSection({ dates, setDates, isPreviewing, setIsPreviewing }) {
+  const { data: vat7Data, isLoading, error } = useQuery({
+    queryKey: ['vat7-report', dates],
+    queryFn: () => financeAPI.reports.vat7Report(dates.from, dates.to),
+    enabled: isPreviewing
+  })
+
+  const report = vat7Data?.data
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="lg:col-span-1">
+        <div className="card p-5 space-y-6">
+          <h3 className="text-xs font-bold text-white uppercase tracking-widest border-b border-white/5 pb-3">ZIMRA VAT-7 Period</h3>
+          <div className="space-y-4">
+             <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-dark-400 uppercase">From Date</label>
+                <input type="date" className="form-input text-xs" value={dates.from} onChange={e => setDates({...dates, from: e.target.value})} />
+             </div>
+             <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-dark-400 uppercase">To Date</label>
+                <input type="date" className="form-input text-xs" value={dates.to} onChange={e => setDates({...dates, to: e.target.value})} />
+             </div>
+             <button className="btn-primary w-full h-11" onClick={() => setIsPreviewing(true)} disabled={isLoading}>
+                {isLoading ? <Loader2 className="animate-spin" size={18} /> : <span>Generate VAT-7</span>}
+             </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="lg:col-span-3">
+        {report ? (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+             {/* Box 1-13: Output Tax */}
+             <div className="card overflow-hidden">
+                <div className="p-4 bg-emerald-500/10 border-b border-emerald-500/20 flex items-center justify-between">
+                   <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-widest">Part I: Output Tax (Sales)</h4>
+                   <span className="text-[10px] text-emerald-500/60 font-mono">ZIMRA BOX 1-13</span>
+                </div>
+                <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                   <div className="bg-white/2 p-4 rounded-xl border border-white/5">
+                      <p className="text-[10px] text-dark-400 uppercase font-bold mb-1">Standard Rated Sales</p>
+                      <p className="text-lg text-white font-mono">{formatCurrency(report.sales.box_1_std_rated)}</p>
+                      <p className="text-[10px] text-emerald-500 mt-1">Tax: {formatCurrency(report.sales.box_1_tax)} (Box 1)</p>
+                   </div>
+                   <div className="bg-white/2 p-4 rounded-xl border border-white/5">
+                      <p className="text-[10px] text-dark-400 uppercase font-bold mb-1">Zero Rated Sales</p>
+                      <p className="text-lg text-white font-mono">{formatCurrency(report.sales.box_5_zero_rated)}</p>
+                      <p className="text-[10px] text-dark-500 mt-1">Nontaxable Supplies (Box 5)</p>
+                   </div>
+                   <div className="bg-white/2 p-4 rounded-xl border border-white/5">
+                      <p className="text-[10px] text-dark-400 uppercase font-bold mb-1">Exempt Supplies</p>
+                      <p className="text-lg text-white font-mono">{formatCurrency(report.sales.box_6_exempt)}</p>
+                      <p className="text-[10px] text-dark-500 mt-1">Nontaxable Supplies (Box 6)</p>
+                   </div>
+                </div>
+             </div>
+
+             {/* Box 14-19: Input Tax */}
+             <div className="card overflow-hidden">
+                <div className="p-4 bg-primary/10 border-b border-primary/20 flex items-center justify-between">
+                   <h4 className="text-xs font-bold text-primary uppercase tracking-widest">Part II: Input Tax (Purchases)</h4>
+                   <span className="text-[10px] text-primary/60 font-mono">ZIMRA BOX 14-19</span>
+                </div>
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                   <div className="bg-white/2 p-4 rounded-xl border border-white/5">
+                      <p className="text-[10px] text-dark-400 uppercase font-bold mb-1">Standard Rated Purchases</p>
+                      <p className="text-lg text-white font-mono">{formatCurrency(report.purchases.box_15_std_rated)}</p>
+                      <p className="text-[10px] text-primary mt-1">Claimable: {formatCurrency(report.purchases.box_15_tax)} (Box 15)</p>
+                   </div>
+                   <div className="bg-white/2 p-4 rounded-xl border border-white/5">
+                      <p className="text-[10px] text-dark-400 uppercase font-bold mb-1">Capital Goods</p>
+                      <p className="text-lg text-white font-mono">{formatCurrency(report.purchases.box_14_capital_goods)}</p>
+                      <p className="text-[10px] text-primary mt-1">Claimable: {formatCurrency(report.purchases.box_14_tax)} (Box 14)</p>
+                   </div>
+                </div>
+             </div>
+
+             {/* Final Summary */}
+             <div className="card p-8 bg-gradient-to-br from-amber-500/10 to-transparent border-amber-500/20 text-center relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-2 opacity-10">
+                   <ShieldCheck size={120} />
+                </div>
+                <p className="text-xs font-bold text-amber-500 uppercase tracking-[0.2em] mb-4">Total Amount Payable / Refundable</p>
+                <p className="text-5xl font-display text-white">{formatCurrency(report.summary.net_vat_payable)}</p>
+                <div className="flex items-center justify-center gap-4 mt-6">
+                   <button className="btn-secondary h-10 px-6 text-xs gap-2 border-white/10 hover:bg-white/5">
+                      <Download size={14} /> Download VAT-7 Form (PDF)
+                   </button>
+                   <button className="btn-secondary h-10 px-6 text-xs gap-2 border-white/10 hover:bg-white/5">
+                      <Download size={14} /> Schedule of Sales
+                   </button>
+                </div>
+             </div>
+          </div>
+        ) : (
+          <div className="h-full card flex flex-col items-center justify-center p-12 text-center border-dashed border-white/5 bg-white/[0.01]">
+             <Calculator size={48} className="text-dark-700 mb-6" />
+             <p className="text-dark-400 text-sm max-w-xs leading-relaxed uppercase tracking-widest font-bold">
+               Click "Generate VAT-7" to calculate ZIMRA compliant tax buckets for the selected period.
+             </p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

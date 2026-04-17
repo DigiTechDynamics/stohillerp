@@ -21,6 +21,8 @@ import Breadcrumbs from '@/components/common/Breadcrumbs'
 import QuickActionCenter from './QuickActionCenter'
 import SystemStatus from './SystemStatus'
 import CommandPalette from './CommandPalette'
+import IntelligenceRail from './IntelligenceRail'
+import FocusOverlay from './FocusOverlay'
 
 // Simple Error Boundary Fallback for robust UI
 class ErrorBoundaryFallback extends React.Component {
@@ -328,18 +330,23 @@ export default function AppLayout() {
           </div>
         </header>
 
-        {/* Page View */}
-        <main className="flex-1 overflow-y-auto custom-scrollbar">
-          <ErrorBoundaryFallback>
-            <Outlet />
-          </ErrorBoundaryFallback>
-        </main>
+        {/* Main Content & Intelligence Rail */}
+        <div className="flex-1 flex flex-row min-w-0 overflow-hidden">
+          <main className="flex-1 overflow-y-auto custom-scrollbar">
+            <ErrorBoundaryFallback>
+              <Outlet />
+            </ErrorBoundaryFallback>
+          </main>
+          
+          <IntelligenceRail />
+        </div>
       </div>
 
       {/* Global Modals/Panels */}
       <CommandPalette />
       <SidePanelContainer />
       <ConfirmDialog />
+      <FocusOverlay />
     </div>
   )
 }

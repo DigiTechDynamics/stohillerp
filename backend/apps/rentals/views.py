@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Sum, Count, Q
 from apps.rentals.models import Lease, RentalInvoice, RentalPayment, MaintenanceRequest, OwnerSettlement
+from apps.properties.models import PropertyInspection
 
 
 class LeaseViewSet(viewsets.ModelViewSet):
@@ -380,3 +381,15 @@ class PublicMaintenanceViewSet(viewsets.ViewSet):
             )
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class PropertyInspectionViewSet(viewsets.ModelViewSet):
+    queryset = PropertyInspection.objects.select_related('property', 'unit', 'inspector')
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'inspection_type', 'property', 'inspector']
+    search_fields = ['reference', 'property__name', 'final_comments']
+    ordering_fields = ['inspection_date', 'overall_rating', 'created_at']
+
+    def get_serializer_class(self):
+        from apps.rentals.serializers import PropertyInspectionSerializer
+        return PropertyInspectionSerializer

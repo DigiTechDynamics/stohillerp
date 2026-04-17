@@ -140,3 +140,64 @@ class FinancialForecastingView(APIView):
                 'collection_rate': round(float((actual_revenue / monthly_forecast * 100) if monthly_forecast > 0 else 0), 2)
             }
         })
+
+class ContextualIntelligenceView(APIView):
+    """
+    Provides record-specific insights (Lease, Property, etc.) for the Intelligence Rail.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        model_type = request.query_params.get('type')
+        object_id = request.query_params.get('id')
+
+        if not model_type or not object_id:
+            return Response({'error': 'Type and ID required'}, status=400)
+
+        if model_type == 'lease':
+            return self._get_lease_intelligence(object_id)
+        elif model_type == 'property':
+            return self._get_property_intelligence(object_id)
+        
+        return Response({'message': 'No intelligence profile for this type'})
+
+    def _get_lease_intelligence(self, lease_id):
+        try:
+            lease = Lease.objects.get(id=lease_id)
+            # 1. Payment Reliability (Mocked logic for now)
+            reliability = 92.5 # High reliability
+            
+            # 2. Expiry Risk
+            days_to_expiry = (lease.end_date - date.today()).days if lease.end_date else 365
+            risk = 'low' if days_to_expiry > 90 else 'medium' if days_to_expiry > 30 else 'high'
+            
+            return Response({
+                'title': f'Lease {lease.lease_number}',
+                'reliability_score': reliability,
+                'reliability_trend': 'stable',
+                'expiry_risk': risk,
+                'days_to_expiry': days_to_expiry,
+                'utility_recovery': 88.0, # % of utilities recovered from tenant
+                'sparkline': [85, 90, 88, 92, 95, 93, 91, 94] # Last 8 payments
+            })
+        except Lease.DoesNotExist:
+            return Response({'error': 'Lease not found'}, status=404)
+
+    def _get_property_intelligence(self, property_id):
+        try:
+            prop = Property.objects.get(id=property_id)
+            
+            # Rent vs Market (Mocked)
+            market_avg = Decimal(prop.rental_rate) * Decimal('1.05')
+            variance = float((prop.rental_rate - market_avg) / market_avg * 100)
+            
+            return Response({
+                'title': prop.name,
+                'yield_index': 105, # % above baseline
+                'market_variance': round(variance, 1),
+                'maintenance_cost_ratio': 12.0, # % of rent spent on maintenance
+                'occupancy_index': 100,
+                'sparkline': [102, 105, 104, 108, 105, 107, 106, 110]
+            })
+        except Property.DoesNotExist:
+            return Response({'error': 'Property not found'}, status=404)

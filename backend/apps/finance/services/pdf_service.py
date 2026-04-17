@@ -89,6 +89,13 @@ def _header_block(story, s, title, ref_label='', ref_value='', date_label='Date'
     contact = get_config('COMPANY_CONTACT', {})
     address = get_config('COMPANY_ADDRESS', '123 Samora Machel Avenue, Harare')
 
+    # Robustly handle contact info (could be string or dict from DB)
+    contact_phone = ''
+    if isinstance(contact, dict):
+        contact_phone = contact.get('phone', '')
+    elif isinstance(contact, str):
+        contact_phone = contact
+
     header_data = [
         [
             logo if logo else Paragraph(company_name, s['company']),
@@ -99,7 +106,7 @@ def _header_block(story, s, title, ref_label='', ref_value='', date_label='Date'
             Paragraph(f'<font color="#64748B">{ref_label}</font>  <b>{ref_value}</b>' if ref_value else '', s['right']),
         ],
         [
-            Paragraph(f"{address}<br/>TIN: {tin} | {contact.get('phone', '')}", s['tagline']),
+            Paragraph(f"{address}<br/>TIN: {tin} | {contact_phone}", s['tagline']),
             Paragraph(f'{date_label}: <b>{date_value or date.today().strftime("%d %B %Y")}</b>', s['right']),
         ],
     ]

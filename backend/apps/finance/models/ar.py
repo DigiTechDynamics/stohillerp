@@ -64,9 +64,9 @@ class CustomerInvoice(AuditedModel):
     """
     class InvoiceStatus(models.TextChoices):  # type: ignore
         DRAFT = 'draft', 'Draft'
-        POSTED = 'posted', 'Posted / Unpaid'
+        UNPAID = 'posted', 'Unpaid'
         PARTIAL = 'partial', 'Partially Paid'
-        PAID = 'paid', 'Paid in Full'
+        PAID = 'paid', 'Paid'
         OVERDUE = 'overdue', 'Overdue'
         CANCELLED = 'cancelled', 'Cancelled'
 

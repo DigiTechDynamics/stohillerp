@@ -22,6 +22,7 @@ from apps.finance.serializers import (  # type: ignore
     JournalLineSerializer, FiscalPeriodSerializer, FiscalYearSerializer,
     ExchangeRateSerializer, PostingProfileSerializer, CurrencySerializer
 )
+from apps.finance.services.tax_service import TaxService
 from apps.hr.models import Employee  # type: ignore
 from apps.notifications.utils import notify_user
 
@@ -1115,3 +1116,62 @@ class DisbursementEFTView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"error": "Failed to generate EFT file"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class VAT7ReportView(APIView):
+    """
+    Consolidated ZIMRA VAT-7 report endpoint.
+    """
+    permission_classes = [IsAuthenticated, IsFinanceAdminOrAccountant]
+
+    def get(self, request):
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+
+        if not start_date or not end_date:
+            from datetime import date
+            today = date.today()
+            start_date = date(today.year, today.month, 1)
+            import calendar
+            last_day = calendar.monthrange(today.year, today.month)[1]
+            end_date = date(today.year, today.month, last_day)
+
+        try:
+            data = TaxService.generate_vat7_report(start_date, end_date)
+            return Response(data)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class PropertyTransferView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from apps.finance.services.transfer_service import PropertyTransferService
+        from_prop_id = request.data.get('from_property_id')
+        to_prop_id = request.data.get('to_property_id')
+        amount = request.data.get('amount')
+        reason = request.data.get('reason', 'Internal Transfer')
+        date_str = request.data.get('date')
+
+        if not all([from_prop_id, to_prop_id, amount]):
+            return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            from datetime import datetime
+            t_date = datetime.strptime(date_str, "%Y-%m-%d").date() if date_str else None
+            
+            service = PropertyTransferService(user=request.user)
+            entry = service.execute_transfer(
+                from_property_id=from_prop_id,
+                to_property_id=to_prop_id,
+                amount=amount,
+                reason=reason,
+                transfer_date=t_date
+            )
+            return Response({
+                "message": "Transfer successful",
+                "reference": entry.reference,
+                "amount": amount
+            })
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

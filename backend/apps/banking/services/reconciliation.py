@@ -4,6 +4,10 @@ from apps.finance.models import JournalLine, JournalEntry
 from apps.finance.services.accounting import AccountingService, PostingData
 from decimal import Decimal
 from datetime import timedelta
+try:
+    from thefuzz import fuzz
+except ImportError:
+    fuzz = None
 
 class ReconciliationService:
     @staticmethod
@@ -57,12 +61,42 @@ class ReconciliationService:
                         continue
 
                     if potential_match:
-                        line.journal_entry_line = potential_match
-                        line.is_reconciled = True
-                        line.save()
                         matches_found += 1
                         matched = True
                         break
+                    
+                    elif rule.rule_type == 'fuzzy_match' and fuzz:
+                        # Find all candidate journal lines for this account and amount
+                        candidates = JournalLine.objects.filter(
+                            account=gl_account,
+                            amount=abs(line.amount),
+                            is_reconciled=False,
+                            entry__status=JournalEntry.EntryStatus.POSTED
+                        ).select_related('entry')
+
+                        best_match = None
+                        highest_score = 0
+                        
+                        for candidate in candidates:
+                            # Compare statement reference vs entry reference
+                            score = fuzz.token_set_ratio(line.reference.lower(), candidate.entry.reference.lower())
+                            
+                            # Also check against the description which might contain tenant names
+                            desc_score = fuzz.token_set_ratio(line.description.lower(), candidate.entry.description.lower())
+                            final_score = max(score, desc_score)
+                            
+                            if final_score > highest_score:
+                                highest_score = final_score
+                                best_match = candidate
+                        
+                        # Threshold for auto-matching (e.g., 85%)
+                        if best_match and highest_score >= 85:
+                            line.journal_entry_line = best_match
+                            line.is_reconciled = True
+                            line.save()
+                            matches_found += 1
+                            matched = True
+                            break
                 
                 # Fallback to legacy hardcoded logic if no rules matched
                 if not matched:

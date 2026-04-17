@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import {
   Building2, TrendingUp, Home, Award, Users, DollarSign,
   ArrowUpRight, ArrowDownRight, AlertTriangle, BarChart3,
-  RefreshCw, Calendar, ShoppingBag, Package
+  RefreshCw, Calendar, ShoppingBag, Package, Maximize2
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
@@ -16,6 +16,7 @@ import { dashboardAPI } from '@/services/api'
 import { formatCurrency, formatNumber } from '@/utils/format'
 import { useAuthStore, useUIStore } from '@/stores/authStore'
 import { useNavigate } from 'react-router-dom'
+import { KpiSkeleton, ChartSkeleton } from '@/components/common/Skeleton'
 
 // ─── Animated KPI Card ────────────────────────────────────────────────────────
 
@@ -32,15 +33,40 @@ function KpiCard({ title, value, subtitle, icon, trend, trendLabel, accent = 'te
         <div className={`w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center ${accent}`}>
           {icon}
         </div>
-        {trend !== undefined && (
-          <div className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full
-            ${trend >= 0
-              ? 'bg-emerald-500/10 text-emerald-400'
-              : 'bg-red-500/10 text-red-400'}`}>
-            {trend >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-            {Math.abs(trend)}%
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation()
+              useUIStore.getState().setFocusedElement({
+                id: `kpi-${title.replace(/ /g, '-').toLowerCase()}`,
+                title,
+                content: (
+                  <div className="flex flex-col items-center justify-center text-center space-y-8 py-12">
+                    <div className={`w-32 h-32 rounded-3xl bg-white/5 flex items-center justify-center ${accent} scale-150 mb-8`}>
+                      {icon && typeof icon === 'object' ? React.cloneElement(icon, { size: 64 }) : icon}
+                    </div>
+                    <h1 className="text-8xl font-black text-white tracking-tighter">{value}</h1>
+                    <p className="text-2xl text-dark-400 font-medium">{title}</p>
+                    <div className="mt-8 text-primary font-bold text-xl">{trend !== undefined ? `${trend > 0 ? '+' : ''}${trend}% Trend` : ''}</div>
+                  </div>
+                )
+              })
+            }}
+            className="p-2 rounded-lg bg-white/5 text-dark-400 opacity-0 group-hover:opacity-100 hover:text-white hover:bg-white/10 transition-all"
+            title="Focus Mode"
+          >
+            <Maximize2 size={14} />
+          </button>
+          {trend !== undefined && (
+            <div className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full
+              ${trend >= 0
+                ? 'bg-emerald-500/10 text-emerald-400'
+                : 'bg-red-500/10 text-red-400'}`}>
+              {trend >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+              {Math.abs(trend)}%
+            </div>
+          )}
+        </div>
       </div>
       <div className="stat-value mb-0.5">{value}</div>
       <div className="stat-label">{title}</div>
@@ -305,9 +331,41 @@ export default function ExecutiveDashboard({ isEmbedded = false }) {
                   <h3 className="font-semibold text-white">Revenue Trend</h3>
                   <p className="text-xs text-dark-400 mt-0.5">Monthly revenue – last 12 months</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-primary" />
-                  <span className="text-xs text-dark-400">Revenue</span>
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => {
+                        useUIStore.getState().setFocusedElement({
+                          id: 'chart-revenue',
+                          title: 'Revenue Analysis',
+                          content: (
+                            <div className="bg-dark-900/50 p-8 rounded-3xl border border-white/5 h-[600px]">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={revenueData}>
+                                  <defs>
+                                    <linearGradient id="revGradFocus" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="5%" stopColor="#E5A645" stopOpacity={0.3} />
+                                      <stop offset="95%" stopColor="#E5A645" stopOpacity={0} />
+                                    </linearGradient>
+                                  </defs>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                                  <XAxis dataKey="month" tick={{ fill: '#777' }} />
+                                  <YAxis tick={{ fill: '#777' }} tickFormatter={(v) => formatCurrency(v, 'USD')} />
+                                  <Tooltip content={<ChartTooltip />} />
+                                  <Area type="monotone" dataKey="revenue" stroke="#E5A645" strokeWidth={4} fill="url(#revGradFocus)" />
+                                </AreaChart>
+                              </ResponsiveContainer>
+                            </div>
+                          )
+                        })
+                    }}
+                    className="p-2 rounded-lg bg-white/5 text-dark-400 hover:text-white transition-colors"
+                  >
+                    <Maximize2 size={16} />
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary" />
+                    <span className="text-xs text-dark-400">Revenue</span>
+                  </div>
                 </div>
               </div>
               <ResponsiveContainer width="100%" height={220}>
@@ -338,8 +396,40 @@ export default function ExecutiveDashboard({ isEmbedded = false }) {
               transition={{ delay: 0.5 }}
               className={`${charts?.revenue_trend ? 'lg:col-span-1' : 'lg:col-span-3'} card p-5`}
             >
-              <h3 className="font-semibold text-white mb-1">Pipeline Stages</h3>
-              <p className="text-xs text-dark-400 mb-5">Active opportunities by stage</p>
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h3 className="font-semibold text-white mb-1">Pipeline Stages</h3>
+                  <p className="text-xs text-dark-400">Active opportunities by stage</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    useUIStore.getState().setFocusedElement({
+                      id: 'chart-pipeline',
+                      title: 'Pipeline Analysis',
+                      content: (
+                        <div className="h-[500px] w-full">
+                           <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={pipelineData}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                              <XAxis dataKey="stage" tick={{ fill: '#777' }} />
+                              <YAxis tick={{ fill: '#777' }} />
+                              <Tooltip contentStyle={{ background: '#333', borderRadius: 8 }} />
+                              <Bar dataKey="value" radius={[10, 10, 0, 0]}>
+                                {pipelineData.map((entry, i) => (
+                                  <Cell key={i} fill={entry.color || '#E5A645'} />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )
+                    })
+                  }}
+                  className="p-2 rounded-lg bg-white/5 text-dark-400 hover:text-white transition-colors"
+                >
+                  <Maximize2 size={16} />
+                </button>
+              </div>
               <ResponsiveContainer width="100%" height={160}>
                 <BarChart data={pipelineData} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
@@ -427,21 +517,24 @@ export default function ExecutiveDashboard({ isEmbedded = false }) {
 // ─── Loading Skeleton ─────────────────────────────────────────────────────────
 function DashboardSkeleton() {
   return (
-    <div className="p-6 space-y-6 animate-pulse">
-      <div className="h-8 w-64 bg-dark-700 rounded-lg" />
-      <div className="grid grid-cols-4 gap-4">
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-32 bg-dark-800 rounded-xl border border-white/5" />
+          <KpiSkeleton key={i} />
         ))}
       </div>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-32 bg-dark-800 rounded-xl border border-white/5" />
+          <KpiSkeleton key={i} />
         ))}
       </div>
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 h-72 bg-dark-800 rounded-xl border border-white/5" />
-        <div className="h-72 bg-dark-800 rounded-xl border border-white/5" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+           <ChartSkeleton height={220} title="REVENUE ANALYSIS" />
+        </div>
+        <div className="lg:col-span-1">
+           <ChartSkeleton height={160} title="PIPELINE OVERVIEW" />
+        </div>
       </div>
     </div>
   )

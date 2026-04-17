@@ -2,6 +2,7 @@
 from rest_framework import serializers
 from utils.serializers import SanitizedModelSerializer
 from apps.rentals.models import Lease, RentalInvoice, RentalPayment, MaintenanceRequest, OwnerSettlement
+from apps.properties.models import PropertyInspection
 
 
 class LeaseSerializer(SanitizedModelSerializer):
@@ -81,3 +82,14 @@ class OwnerSettlementSerializer(SanitizedModelSerializer):
         model = OwnerSettlement
         fields = '__all__'
         read_only_fields = ['status', 'total_rent_collected', 'management_fee_amount', 'expenses_deducted', 'net_payout_amount']
+
+class PropertyInspectionSerializer(SanitizedModelSerializer):
+    property_name = serializers.CharField(source='property.name', read_only=True)
+    property_ref = serializers.CharField(source='property.reference_number', read_only=True)
+    inspector_name = serializers.CharField(source='inspector.full_name', read_only=True)
+    unit_number = serializers.CharField(source='unit.unit_number', read_only=True, default=None)
+
+    class Meta:
+        model = PropertyInspection
+        fields = '__all__'
+        read_only_fields = ['reference']

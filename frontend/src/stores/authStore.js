@@ -87,14 +87,20 @@ export const useUIStore = create()(
       commandPaletteOpen: false,
       activeSidePanel: null,
       sidePanelData: null,
+      activeContext: { type: null, id: null }, // Context for Intelligence Rail
       theme: 'dark', // 'dark' | 'light'
+      focusedElement: null, // { title: string, content: ReactNode, type: string }
 
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       openCommandPalette: () => set({ commandPaletteOpen: true }),
       closeCommandPalette: () => set({ commandPaletteOpen: false }),
       openSidePanel: (panelId, data) => set({ activeSidePanel: panelId, sidePanelData: data || null }),
-      closeSidePanel: () => set({ activeSidePanel: null, sidePanelData: null }),
+      closeSidePanel: () => set({ activeSidePanel: null, sidePanelData: null, activeContext: { type: null, id: null } }),
+      setContext: (type, id) => set({ activeContext: { type, id } }),
+      clearContext: () => set({ activeContext: { type: null, id: null } }),
       toggleTheme: () => set((s) => ({ theme: s.theme === 'light' ? 'dark' : 'light' })),
+      setFocusedElement: (element) => set({ focusedElement: element }),
+      clearFocusedElement: () => set({ focusedElement: null }),
     }),
     {
       name: 'stohill-ui',
