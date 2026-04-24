@@ -10,7 +10,7 @@ from apps.finance.models.core import ChartOfAccount
 from apps.core.models import Currency
 
 def run():
-    # Make sure we have a base currency just in case, USD or ZAR etc.
+    # Make sure we have a base currency just in case, usually USD.
     currency, created = Currency.objects.get_or_create(
         code="USD",
         defaults={"name": "US Dollar", "symbol": "$"}

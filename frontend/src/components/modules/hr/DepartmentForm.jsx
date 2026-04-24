@@ -47,7 +47,14 @@ export default function DepartmentForm() {
   const handleSubmit = (e) => {
     e.preventDefault()
     setError(null)
-    mutation.mutate(formData)
+    
+    // Clean data: replace empty strings with null for nullable fields
+    const cleanedData = { ...formData }
+    if (cleanedData.manager === '') {
+      cleanedData.manager = null
+    }
+    
+    mutation.mutate(cleanedData)
   }
 
   return (

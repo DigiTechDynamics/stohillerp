@@ -59,7 +59,9 @@ class Employee(AuditedModel):
 
     # Job
     department = models.ForeignKey(Department, null=True, blank=True, on_delete=models.SET_NULL)
+    additional_departments = models.ManyToManyField(Department, blank=True, related_name='secondary_employees')
     job_position = models.ForeignKey(JobPosition, null=True, blank=True, on_delete=models.SET_NULL, related_name='employees')
+    additional_positions = models.ManyToManyField(JobPosition, blank=True, related_name='secondary_employees')
     employment_type = models.CharField(max_length=20, choices=EmploymentType.choices, default=EmploymentType.FULL_TIME)
     status = models.CharField(max_length=20, choices=EmployeeStatus.choices, default=EmployeeStatus.ACTIVE)
     start_date = models.DateField()

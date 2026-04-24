@@ -277,7 +277,7 @@ class PDFService:
             ],
             [
                 Paragraph('<b>Currency:</b> USD', s['body']),
-                Paragraph('<b>Currency:</b> ZWL', s['body']),
+                Paragraph('<b>Currency:</b> ZiG', s['body']),
             ],
             [
                 Paragraph('<b>Account No:</b> 00000021087758', s['body']),
@@ -398,12 +398,101 @@ class PDFService:
         bank_data = [
             [Paragraph('<b>Bank:</b> NMB BANK', s['body']), Paragraph('<b>Account Name:</b> Stohill Properties', s['body'])],
             [Paragraph('<b>Currency:</b> USD', s['body']), Paragraph('<b>Account No:</b> 00000021087758', s['body'])],
+            [Paragraph('<b>Currency:</b> ZiG', s['body']), Paragraph('<b>Account No:</b> 00000020141255', s['body'])],
         ]
         bt = Table(bank_data, colWidths=[usable_w/2, usable_w/2])
         bt.setStyle(TableStyle([('LEFTPADDING', (0, 0), (-1, -1), 0)]))
         story.append(bt)
 
         story.extend(_footer_paragraph(s, 'Rental Invoice'))
+
+        doc.build(story)
+        return buf.getvalue()
+
+    @staticmethod
+    def generate_rent_increase_notice_pdf(lease, new_rental, effective_date) -> bytes:
+        """
+        Generates a professional 'Notice of Rent Increase' PDF.
+        """
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=MARGIN, bottomMargin=MARGIN, leftMargin=MARGIN, rightMargin=MARGIN)
+        s = _base_styles()
+        story = []
+
+        currency = lease.currency.code if lease.currency else 'USD'
+        tenant_name = str(lease.tenant)
+        property_name = str(lease.property.name)
+        unit_number = str(lease.unit.unit_number) if lease.unit else '—'
+        old_rental = lease.monthly_rental
+        escalation_rate = lease.rental_escalation_rate
+
+        # Header
+        _header_block(story, s, 'NOTICE OF RENT INCREASE',
+                    ref_label='Lease Ref.', ref_value=lease.lease_number,
+                    date_label='Notice Date', date_value=date.today().strftime('%d %b %Y'))
+
+        # Recipient Info
+        story.append(Paragraph('RECIPIENT', s['section']))
+        story.append(_info_table([
+            ('Tenant:', tenant_name),
+            ('Property:', property_name),
+            ('Unit:', unit_number),
+        ], s))
+        story.append(Spacer(1, 10 * mm))
+
+        # Formal Letter Body
+        story.append(Paragraph(f"Dear {lease.tenant.first_name or 'Tenant'},", s['body_bold']))
+        story.append(Spacer(1, 4 * mm))
+        
+        body_text = (
+            f"This letter serves as formal notice regarding your lease agreement for <b>{property_name} ({unit_number})</b>. "
+            f"In accordance with the terms of your agreement, an annual rental escalation of <b>{escalation_rate}%</b> "
+            f"will be applied to your monthly rent."
+        )
+        story.append(Paragraph(body_text, s['body']))
+        story.append(Spacer(1, 6 * mm))
+
+        # Escalation Table
+        story.append(Paragraph('REVISED RENTAL DETAILS', s['section']))
+        usable_w = PAGE_W - 2 * MARGIN
+        col_widths = [usable_w * 0.65, usable_w * 0.35]
+        
+        rows = [
+            [Paragraph("Current Monthly Rent", s['body']), Paragraph(_fmt(old_rental, currency), s['right'])],
+            [Paragraph(f"Escalation Applied ({escalation_rate}%)", s['body']), Paragraph(_fmt(new_rental - old_rental, currency), s['right'])],
+            [Paragraph("New Monthly Rent", s['body_bold']), Paragraph(_fmt(new_rental, currency), s['right_bold'])],
+            [Paragraph("Effective Date", s['body_bold']), Paragraph(effective_date.strftime('%d %B %Y'), s['right_bold'])],
+        ]
+
+        t = Table(rows, colWidths=col_widths)
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 2), (-1, 2), BRAND_LIGHT),
+            ('LINEABOVE', (0, 2), (-1, 2), 1, BRAND_GOLD),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 10 * mm))
+
+        # Closing
+        closing_text = (
+            "All other terms and conditions of your existing lease agreement remain in full force and effect. "
+            "Please ensure that your future payments are adjusted to reflect this new amount from the effective date mentioned above."
+        )
+        story.append(Paragraph(closing_text, s['body']))
+        story.append(Spacer(1, 8 * mm))
+        
+        story.append(Paragraph("If you have any questions, please contact our Property Management department.", s['body']))
+        story.append(Spacer(1, 12 * mm))
+        
+        story.append(Paragraph("Sincerely,", s['body']))
+        story.append(Spacer(1, 4 * mm))
+        story.append(Paragraph("<b>Stohill Properties Management Team</b>", s['body_bold']))
+
+        story.extend(_footer_paragraph(s, 'Rent Increase Notice'))
 
         doc.build(story)
         return buf.getvalue()
@@ -505,177 +594,395 @@ class PDFService:
     @staticmethod
     def generate_payslip_pdf(payslip) -> bytes:
         """
-        Generates a branded Payslip PDF for a single payslip instance.
+        Generates a branded Payslip PDF matching the classic Zimbabwe layout.
         """
         buf = io.BytesIO()
-        doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=MARGIN, bottomMargin=MARGIN, leftMargin=MARGIN, rightMargin=MARGIN)
+        doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=15*mm, bottomMargin=15*mm, leftMargin=15*mm, rightMargin=15*mm)
         s = _base_styles()
         story = []
 
-        currency = payslip.payroll_run.currency.code if payslip.payroll_run.currency else 'USD'
+        currency = payslip.payroll_run.currency.code if payslip.payroll_run and payslip.payroll_run.currency else 'USD'
         emp = payslip.employee
         contract = payslip.contract
+        period_end = payslip.payroll_run.period_end.strftime('%B %Y').upper() if payslip.payroll_run else 'N/A'
 
-        _header_block(story, s, 'EMPLOYEE PAYSLIP',
-                    ref_label='Run Ref', ref_value=str(payslip.payroll_run.name),
-                    date_label='Pay Period',
-                    date_value=f"{payslip.date_from.strftime('%d %b')} – {payslip.date_to.strftime('%d %b %Y')}")
+        # 1. Simple Header (matches sample)
+        story.append(Paragraph("STOHILL INVESTMENTS (PRIVATE LIMITED) T/A STOHILL PROPERTIES", s['body_bold']))
+        story.append(Spacer(1, 10))
+        story.append(Paragraph(f"PAYSLIP FOR THE MONTH ENDED {period_end}", s['body']))
+        story.append(Spacer(1, 15))
 
-        # Employee info block
-        story.append(Paragraph('EMPLOYEE INFORMATION', s['section']))
-        ei_data = [
-            [
-                _info_table([
-                    ('Full Name:', emp.name),
-                    ('Staff ID:', emp.employee_number or '—'),
-                    ('Department:', str(emp.department) if emp.department else '—'),
-                    ('Job Title:', str(contract.job_position) if contract else '—'),
-                ], s),
-                _info_table([
-                    ('Pay Period:', f"{payslip.date_from.strftime('%d %b %Y')} – {payslip.date_to.strftime('%d %b %Y')}"),
-                    ('Bank:', emp.bank_name or '—'),
-                    ('Account:', emp.bank_account_number or '—'),
-                    ('Currency:', currency),
-                ], s),
-            ]
+        # 2. Employee Details Block
+        info_data = [
+            ['Name', f": {emp.full_name}"],
+            ['Position', f": {str(contract.job_position) if contract else '—'}"],
+            ['Department', f": {str(emp.department) if emp.department else '—'}"],
         ]
-        ei_table = Table(ei_data, colWidths=[(PAGE_W - 2 * MARGIN) / 2, (PAGE_W - 2 * MARGIN) / 2])
-        ei_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'), ('LEFTPADDING', (0, 0), (-1, -1), 0)]))
-        story.append(ei_table)
-        story.append(Spacer(1, 6 * mm))
+        info_table = Table(info_data, colWidths=[30*mm, 100*mm])
+        info_table.setStyle(TableStyle([
+            ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+            ('FONTSIZE', (0,0), (-1,-1), 10),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+            ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ]))
+        story.append(info_table)
+        story.append(Spacer(1, 5))
+        story.append(HRFlowable(width="100%", thickness=1, color=BRAND_DARK, spaceAfter=20))
 
-        # Lines split by category
-        all_lines = list(payslip.lines.select_related('salary_rule').all()) if hasattr(payslip, 'lines') else []
+        # 3. Earnings & Deductions (Classic 2-Column)
+        all_lines = list(payslip.lines.select_related('salary_rule').all())
         earnings = [l for l in all_lines if l.category in ('basic', 'allowance')]
         deductions = [l for l in all_lines if l.category == 'deduction']
 
-        usable_w = PAGE_W - 2 * MARGIN
-        half_w = usable_w / 2 - 4 * mm
+        # Pre-process rows for the main layout
+        max_rows = max(len(earnings), len(deductions))
+        
+        body_data = []
+        for i in range(max_rows):
+            row = ['', '', '', '']
+            if i < len(earnings):
+                row[0] = earnings[i].name
+                row[1] = _fmt(earnings[i].amount, currency)
+            if i < len(deductions):
+                row[2] = deductions[i].name
+                row[3] = _fmt(deductions[i].amount, currency)
+            body_data.append(row)
 
-        def _side_table(title, lines, color=SUCCESS_GRN):
-            hdr = [Paragraph('Component', ParagraphStyle('th', fontName='Helvetica-Bold', fontSize=7.5, textColor=BRAND_WHITE)),
-                Paragraph('Amount', ParagraphStyle('thr', fontName='Helvetica-Bold', fontSize=7.5, textColor=BRAND_WHITE, alignment=TA_RIGHT))]
-            data = [hdr]
-            for line in lines:
-                data.append([Paragraph(line.name, s['body']), Paragraph(_fmt(line.amount, currency), s['right'])])
-            if not lines:
-                data.append([Paragraph('None', s['body']), Paragraph('—', s['right'])])
-            t = Table(data, colWidths=[half_w * 0.6, half_w * 0.4])
-            t.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), BRAND_SLATE),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [TABLE_STRIPE, BRAND_WHITE]),
-                ('TEXTCOLOR', (0, 0), (-1, 0), BRAND_WHITE),
-                ('FONTSIZE', (0, 0), (-1, -1), 8.5),
-                ('TOPPADDING', (0, 0), (-1, -1), 5),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-                ('LEFTPADDING', (0, 0), (0, -1), 8),
-                ('RIGHTPADDING', (-1, 0), (-1, -1), 8),
-                ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
-                ('LINEBELOW', (0, 0), (-1, 0), 1, color),
-            ]))
-            return t
-
-        story.append(Paragraph('EARNINGS & DEDUCTIONS', s['section']))
-        cols = [[_side_table('Earnings', earnings, SUCCESS_GRN), _side_table('Deductions', deductions, DANGER_RED)]]
-        split_table = Table(cols, colWidths=[half_w + 4 * mm, half_w + 4 * mm])
-        split_table.setStyle(TableStyle([('LEFTPADDING', (0, 0), (-1, -1), 0), ('RIGHTPADDING', (0, 0), (-1, -1), 0), ('VALIGN', (0, 0), (-1, -1), 'TOP'), ('BOTTOMPADDING', (0, 0), (0, 0), 0)]))
-        story.append(split_table)
-        story.append(Spacer(1, 6 * mm))
-
-        # Net pay summary
+        # Totals logic
         gross = sum(Decimal(str(l.amount)) for l in earnings)
-        total_deductions = sum(Decimal(str(l.amount)) for l in deductions)
-        net = payslip.net_amount or (gross - total_deductions)
+        total_deduc = sum(Decimal(str(l.amount)) for l in deductions)
+        net = payslip.net_amount or (gross - total_deduc)
 
-        summary = Table([
-            [Paragraph('Gross Earnings', s['body']), Paragraph(_fmt(gross, currency), s['right'])],
-            [Paragraph('Total Deductions', s['body']), Paragraph(f'({_fmt(total_deductions, currency)})', ParagraphStyle('rd', fontName='Helvetica', fontSize=9, textColor=DANGER_RED, leading=12, alignment=TA_RIGHT))],
-            [Paragraph('NET PAY', s['body_bold']), Paragraph(_fmt(net, currency), s['net_pay'])],
-        ], colWidths=[usable_w * 0.75, usable_w * 0.25])
-        summary.setStyle(TableStyle([
-            ('LINEABOVE', (0, 0), (-1, 0), 0.5, TABLE_STRIPE),
-            ('LINEABOVE', (0, 2), (-1, 2), 1.5, BRAND_GOLD),
-            ('BACKGROUND', (0, 2), (-1, 2), BRAND_LIGHT),
-            ('TOPPADDING', (0, 0), (-1, -1), 7),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
-            ('LEFTPADDING', (0, 0), (-1, -1), 8),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-        ]))
-        story.append(summary)
-        story.extend(_footer_paragraph(s, 'Payslip'))
+        # Layout Column Widths
+        usable_w = PAGE_W - 30*mm
+        c_w = [usable_w*0.35, usable_w*0.15, usable_w*0.35, usable_w*0.15]
+        
+        # Add a special row for totals at the bottom of the content
+        footer_rows = [
+            ['', '', '', ''], # Spacer
+            [Paragraph('<b>Gross Earnings</b>', s['body']), Paragraph(f'<b>{_fmt(gross, currency)}</b>', s['right']), 
+             Paragraph('<b>Net Salary</b>', s['body']), Paragraph(f'<b>{_fmt(net, currency)}</b>', s['right'])],
+        ]
+        
+        full_table_data = body_data + footer_rows
+        
+        t = Table(full_table_data, colWidths=c_w)
+        
+        # Base styles for the content
+        t_style = [
+            ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+            ('FONTSIZE', (0,0), (-1,-1), 9),
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('ALIGN', (1,0), (1,-1), 'RIGHT'),
+            ('ALIGN', (3,0), (3,-1), 'RIGHT'),
+            ('LEFTPADDING', (0,0), (-1,-1), 0),
+            ('RIGHTPADDING', (0,0), (-1,-1), 0),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ]
+
+        # Double underline for totals (matching sample)
+        totals_idx = len(full_table_data) - 1
+        t_style.extend([
+            ('LINEBELOW', (1, totals_idx), (1, totals_idx), 1, BRAND_DARK),
+            ('LINEBELOW', (1, totals_idx), (1, totals_idx), 1, BRAND_DARK, 0, (1, 1), 2), 
+            ('LINEBELOW', (3, totals_idx), (3, totals_idx), 1, BRAND_DARK),
+            ('LINEBELOW', (3, totals_idx), (3, totals_idx), 1, BRAND_DARK, 0, (1, 1), 2),
+        ])
+        
+        t.setStyle(TableStyle(t_style))
+        story.append(t)
 
         doc.build(story)
         return buf.getvalue()
 
     @staticmethod
-    def generate_statement_pdf(statement_data: dict) -> bytes:
-        """
-        Generates a comprehensive Employee Earnings Statement.
-        `statement_data` must match the format returned by hrAPI.employees.statement().
-        """
+    def generate_trial_balance_pdf(data: dict) -> bytes:
         buf = io.BytesIO()
         doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=MARGIN, bottomMargin=MARGIN, leftMargin=MARGIN, rightMargin=MARGIN)
         s = _base_styles()
         story = []
 
-        emp = statement_data.get('employee', {})
-        history = statement_data.get('history', [])
-        summary = statement_data.get('summary', {})
+        _header_block(story, s, 'TRIAL BALANCE',
+                    ref_label='Fiscal Period', ref_value=data.get('period', '—'))
 
-        _header_block(story, s, 'EMPLOYEE LEDGER STATEMENT',
-                    ref_label='Staff ID', ref_value=emp.get('number', '—'),
-                    date_label='Generated', date_value=date.today().strftime('%d %B %Y'))
+        usable_w = PAGE_W - 2 * MARGIN
+        col_widths = [usable_w * 0.5, usable_w * 0.25, usable_w * 0.25]
+        
+        rows = []
+        for acc in data.get('accounts', []):
+            dr = Decimal(str(acc.get('total_debit', 0)))
+            cr = Decimal(str(acc.get('total_credit', 0)))
+            rows.append([
+                Paragraph(f"<b>{acc['code']}</b> {acc['name']}", s['body']),
+                Paragraph(_fmt(dr) if dr > 0 else '—', s['right']),
+                Paragraph(_fmt(cr) if cr > 0 else '—', s['right']),
+            ])
+        
+        story.append(_line_items_table(['Account', 'Debit', 'Credit'], rows, col_widths, s))
+        story.append(Spacer(1, 5 * mm))
 
-        story.append(Paragraph('EMPLOYEE DETAILS', s['section']))
-        story.append(_info_table([
-            ('Full Name:', emp.get('name', '—')),
-            ('Staff ID:', emp.get('number', '—')),
-            ('Report Date:', date.today().strftime('%d %B %Y')),
-        ], s))
+        # Totals
+        totals_row = [
+            Paragraph('TOTALS', s['body_bold']),
+            Paragraph(_fmt(data.get('total_debit', 0)), s['right_bold']),
+            Paragraph(_fmt(data.get('total_credit', 0)), s['right_bold']),
+        ]
+        t_tot = Table([totals_row], colWidths=col_widths)
+        t_tot.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), BRAND_LIGHT),
+            ('LINEABOVE', (0, 0), (-1, -1), 1, BRAND_GOLD),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        story.append(t_tot)
+
+        story.extend(_footer_paragraph(s, 'Trial Balance'))
+        doc.build(story)
+        return buf.getvalue()
+
+    @staticmethod
+    def generate_income_statement_pdf(data: dict) -> bytes:
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=MARGIN, bottomMargin=MARGIN, leftMargin=MARGIN, rightMargin=MARGIN)
+        s = _base_styles()
+        story = []
+
+        _header_block(story, s, 'INCOME STATEMENT (P&L)',
+                    ref_label='Period', ref_value=f"{data.get('from_date')} to {data.get('to_date')}")
+
+        usable_w = PAGE_W - 2 * MARGIN
+        col_widths = [usable_w * 0.7, usable_w * 0.3]
+
+        # Revenue
+        story.append(Paragraph('REVENUE', s['section']))
+        rev_rows = []
+        for item in data.get('revenue', []):
+            rev_rows.append([Paragraph(item['name'], s['body']), Paragraph(_fmt(item['amount']), s['right'])])
+        rev_rows.append([Paragraph('<b>TOTAL REVENUE</b>', s['body_bold']), Paragraph(_fmt(data.get('total_revenue', 0)), s['right_bold'])])
+        
+        t_rev = Table(rev_rows, colWidths=col_widths)
+        t_rev.setStyle(TableStyle([
+            ('LINEABOVE', (0, -1), (-1, -1), 0.5, BRAND_SLATE),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        story.append(t_rev)
         story.append(Spacer(1, 6 * mm))
 
-        # Payroll history table
-        story.append(Paragraph('PAYROLL HISTORY', s['section']))
+        # Expenses
+        story.append(Paragraph('EXPENSES', s['section']))
+        exp_rows = []
+        for item in data.get('expenses', []):
+            exp_rows.append([Paragraph(item['name'], s['body']), Paragraph(_fmt(item['amount']), s['right'])])
+        exp_rows.append([Paragraph('<b>TOTAL EXPENSES</b>', s['body_bold']), Paragraph(_fmt(data.get('total_expenses', 0)), s['right_bold'])])
+        
+        t_exp = Table(exp_rows, colWidths=col_widths)
+        t_exp.setStyle(TableStyle([
+            ('LINEABOVE', (0, -1), (-1, -1), 0.5, BRAND_SLATE),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        story.append(t_exp)
+        story.append(Spacer(1, 10 * mm))
+
+        # Net Profit
+        net_profit = Decimal(str(data.get('net_profit', 0)))
+        profit_label = 'NET PROFIT' if net_profit >= 0 else 'NET LOSS'
+        
+        res_rows = [[Paragraph(f'<b>{profit_label}</b>', s['doc_title']), Paragraph(_fmt(net_profit), s['net_pay'])]]
+        t_res = Table(res_rows, colWidths=col_widths)
+        t_res.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), BRAND_LIGHT),
+            ('LINEABOVE', (0, 0), (-1, -1), 2, BRAND_GOLD),
+            ('TOPPADDING', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        story.append(t_res)
+
+        story.extend(_footer_paragraph(s, 'Income Statement'))
+        doc.build(story)
+        return buf.getvalue()
+
+    @staticmethod
+    def generate_balance_sheet_pdf(data: dict) -> bytes:
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=MARGIN, bottomMargin=MARGIN, leftMargin=MARGIN, rightMargin=MARGIN)
+        s = _base_styles()
+        story = []
+
+        _header_block(story, s, 'BALANCE SHEET',
+                    ref_label='As At', ref_value=data.get('as_at_date', '—'))
+
         usable_w = PAGE_W - 2 * MARGIN
-        col_widths = [usable_w * 0.28, usable_w * 0.1, usable_w * 0.17, usable_w * 0.15, usable_w * 0.15, usable_w * 0.15]
-        rows = []
-        for record in history:
-            currency = record.get('currency', 'USD')
-            rows.append([
-                Paragraph(f"<b>{record.get('run_name', '—')}</b><br/><font color='#64748B' size='7'>{record.get('period', '—')}</font>", s['body']),
-                Paragraph(record.get('status', '').upper(), s['body']),
-                Paragraph(record.get('reference') or '—', s['mono']),
-                Paragraph(_fmt(record.get('gross', 0), currency), s['right']),
-                Paragraph(f"({_fmt(record.get('deductions', 0), currency)})", ParagraphStyle('rd2', fontName='Helvetica', fontSize=8.5, textColor=DANGER_RED, leading=12, alignment=TA_RIGHT)),
-                Paragraph(_fmt(record.get('net', 0), currency), s['right_bold']),
-            ])
-        if not rows:
-            rows = [[Paragraph('No payroll history found.', s['body']), '', '', '', '', '']]
+        col_widths = [usable_w * 0.7, usable_w * 0.3]
 
-        story.append(_line_items_table(
-            ['Period / Run', 'Status', 'Reference', 'Gross', 'Deductions', 'Net Pay'],
-            rows, col_widths, s
-        ))
-        story.append(Spacer(1, 8 * mm))
+        def _add_section(title, items, total, color=BRAND_SLATE):
+            story.append(Paragraph(title.upper(), s['section']))
+            rows = []
+            for item in items:
+                rows.append([Paragraph(item['name'], s['body']), Paragraph(_fmt(item['amount']), s['right'])])
+            rows.append([Paragraph(f'<b>TOTAL {title.upper()}</b>', s['body_bold']), Paragraph(_fmt(total), s['right_bold'])])
+            
+            t = Table(rows, colWidths=col_widths)
+            t.setStyle(TableStyle([
+                ('LINEABOVE', (0, -1), (-1, -1), 0.5, color),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ]))
+            story.append(t)
+            story.append(Spacer(1, 6 * mm))
 
-        # Totals box
-        summary_data = [
-            [Paragraph('Total Gross Earned', s['body']), Paragraph(_fmt(summary.get('total_earnings', 0), 'USD'), s['right'])],
-            [Paragraph('Total Deductions', s['body']), Paragraph(f"({_fmt(summary.get('total_deductions', 0), 'USD')})", ParagraphStyle('rd3', fontName='Helvetica', fontSize=9, textColor=DANGER_RED, leading=12, alignment=TA_RIGHT))],
-            [Paragraph('TOTAL NET DISBURSED', s['body_bold']), Paragraph(_fmt(summary.get('total_net', 0), 'USD'), s['net_pay'])],
-        ]
-        t_sum = Table(summary_data, colWidths=[usable_w * 0.75, usable_w * 0.25])
+        _add_section('Assets', data.get('assets', []), data.get('total_assets', 0), BRAND_GOLD)
+        _add_section('Liabilities', data.get('liabilities', []), data.get('total_liabilities', 0), DANGER_RED)
+        _add_section('Equity', data.get('equity', []), data.get('total_equity', 0), colors.HexColor('#2563EB'))
+
+        # Summary / Balanced Check
+        story.append(Spacer(1, 4 * mm))
+        is_balanced = data.get('balanced', False)
+        summary_rows = [[
+            Paragraph('<b>TOTAL LIABILITIES & EQUITY</b>', s['body_bold']),
+            Paragraph(_fmt(Decimal(str(data.get('total_liabilities', 0))) + Decimal(str(data.get('total_equity', 0)))), s['right_bold'])
+        ]]
+        t_sum = Table(summary_rows, colWidths=col_widths)
         t_sum.setStyle(TableStyle([
-            ('LINEABOVE', (0, 0), (-1, 0), 0.5, TABLE_STRIPE),
-            ('LINEABOVE', (0, 2), (-1, 2), 1.5, BRAND_GOLD),
-            ('BACKGROUND', (0, 2), (-1, 2), BRAND_LIGHT),
-            ('TOPPADDING', (0, 0), (-1, -1), 7),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
+            ('BACKGROUND', (0, 0), (-1, -1), BRAND_LIGHT),
+            ('LINEABOVE', (0, 0), (-1, -1), 1.5, BRAND_GOLD),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
             ('LEFTPADDING', (0, 0), (-1, -1), 8),
             ('RIGHTPADDING', (0, 0), (-1, -1), 8),
         ]))
         story.append(t_sum)
-        story.extend(_footer_paragraph(s, 'Statement'))
 
+        if not is_balanced:
+            story.append(Spacer(1, 4 * mm))
+            story.append(Paragraph('<b>WARNING:</b> This statement is currently out of balance.', ParagraphStyle('warn', parent=s['body'], textColor=DANGER_RED)))
+
+        story.extend(_footer_paragraph(s, 'Balance Sheet'))
+        doc.build(story)
+        return buf.getvalue()
+
+    @staticmethod
+    def generate_vat_return_pdf(data: dict) -> bytes:
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=MARGIN, bottomMargin=MARGIN, leftMargin=MARGIN, rightMargin=MARGIN)
+        s = _base_styles()
+        story = []
+
+        period = data.get('period', {})
+        _header_block(story, s, 'VAT RETURN REPORT',
+                    ref_label='Tax Period', ref_value=f"{period.get('start_date')} to {period.get('end_date')}")
+
+        usable_w = PAGE_W - 2 * MARGIN
+        
+        # Summary Grid
+        story.append(Paragraph('VAT SUMMARY', s['section']))
+        summary_data = [
+            ['Output Tax (Sales)', _fmt(data.get('output_tax', 0))],
+            ['Input Tax (Purchases)', f"({_fmt(data.get('input_tax', 0))})"],
+            ['NET VAT LIABILITY', _fmt(data.get('vat_liability', 0))],
+        ]
+        t_sum = Table(summary_data, colWidths=[usable_w * 0.7, usable_w * 0.3])
+        t_sum.setStyle(TableStyle([
+            ('BACKGROUND', (0, 2), (-1, 2), BRAND_LIGHT),
+            ('LINEABOVE', (0, 2), (-1, 2), 1.5, BRAND_GOLD),
+            ('FONTNAME', (0, 2), (-1, 2), 'Helvetica-Bold'),
+            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        story.append(t_sum)
+        story.append(Spacer(1, 8 * mm))
+
+        # Detailed Breakdown
+        def _tax_detail_table(title, items, net_total):
+            story.append(Paragraph(title, s['section']))
+            headers = ['Tax Code', 'Gross Amount', 'Tax Amount']
+            rows = []
+            for item in items:
+                rows.append([
+                    Paragraph(f"{item.get('tax_code__code')} ({item.get('tax_code__rate')}%)", s['body']),
+                    Paragraph(_fmt(item.get('total_gross', 0)), s['right']),
+                    Paragraph(_fmt(item.get('total_tax', 0)), s['right_bold']),
+                ])
+            
+            story.append(_line_items_table(headers, rows, [usable_w * 0.4, usable_w * 0.3, usable_w * 0.3], s))
+            story.append(Spacer(1, 3 * mm))
+            story.append(Paragraph(f"<b>Net Base Amount:</b> {_fmt(net_total)}", s['right']))
+            story.append(Spacer(1, 6 * mm))
+
+        _tax_detail_table('OUTPUT TAX DETAILS', data.get('output_details', []), data.get('total_sales_net', 0))
+        _tax_detail_table('INPUT TAX DETAILS', data.get('input_details', []), data.get('total_purchases_net', 0))
+
+        story.extend(_footer_paragraph(s, 'VAT Return'))
+        doc.build(story)
+        return buf.getvalue()
+
+    @staticmethod
+    def generate_ar_aging_pdf(data: list) -> bytes:
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=MARGIN, bottomMargin=MARGIN, leftMargin=MARGIN, rightMargin=MARGIN)
+        s = _base_styles()
+        story = []
+
+        _header_block(story, s, 'ACCOUNTS RECEIVABLE AGING',
+                    ref_label='Run Date', ref_value=date.today().strftime('%d %B %Y'))
+
+        usable_w = PAGE_W - 2 * MARGIN
+        col_widths = [usable_w * 0.35, usable_w * 0.13, usable_w * 0.13, usable_w * 0.13, usable_w * 0.13, usable_w * 0.13]
+        
+        headers = ['Customer', 'Current', '30 Days', '60 Days', '90+ Days', 'Total']
+        rows = []
+        
+        totals = {
+            'current': Decimal('0'),
+            'days_30': Decimal('0'),
+            'days_60': Decimal('0'),
+            'days_90_plus': Decimal('0'),
+            'total': Decimal('0'),
+        }
+
+        for row in data:
+            rows.append([
+                Paragraph(row.get('name', '—'), s['body']),
+                Paragraph(_fmt(row.get('current', 0)), s['right']),
+                Paragraph(_fmt(row.get('days_30', 0)), s['right']),
+                Paragraph(_fmt(row.get('days_60', 0)), s['right']),
+                Paragraph(_fmt(row.get('days_90_plus', 0)), s['right']),
+                Paragraph(_fmt(row.get('total', 0)), s['right_bold']),
+            ])
+            totals['current'] += Decimal(str(row.get('current', 0)))
+            totals['days_30'] += Decimal(str(row.get('days_30', 0)))
+            totals['days_60'] += Decimal(str(row.get('days_60', 0)))
+            totals['days_90_plus'] += Decimal(str(row.get('days_90_plus', 0)))
+            totals['total'] += Decimal(str(row.get('total', 0)))
+
+        story.append(_line_items_table(headers, rows, col_widths, s))
+        story.append(Spacer(1, 5 * mm))
+
+        # Totals
+        totals_row = [
+            Paragraph('GRAND TOTALS', s['body_bold']),
+            Paragraph(_fmt(totals['current']), s['right_bold']),
+            Paragraph(_fmt(totals['days_30']), s['right_bold']),
+            Paragraph(_fmt(totals['days_60']), s['right_bold']),
+            Paragraph(_fmt(totals['days_90_plus']), s['right_bold']),
+            Paragraph(_fmt(totals['total']), s['right_bold']),
+        ]
+        t_tot = Table([totals_row], colWidths=col_widths)
+        t_tot.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), BRAND_LIGHT),
+            ('LINEABOVE', (0, 0), (-1, -1), 1.5, BRAND_GOLD),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        story.append(t_tot)
+
+        story.extend(_footer_paragraph(s, 'AR Aging Report'))
         doc.build(story)
         return buf.getvalue()

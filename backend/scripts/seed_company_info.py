@@ -16,7 +16,7 @@ def seed_company_info():
     configs = [
         {
             "key": "COMPANY_NAME",
-            "value": "STOHILL INVESTMENTS (PVT) LTD",
+            "value": "STOHILL PROPERTIES"
             "description": "Legal trading name of the company."
         },
         {
@@ -43,8 +43,8 @@ def seed_company_info():
             "key": "COMPANY_CONTACT",
             "value": {
                 "phone": "+263771588307",
-                "email": "invoices@stohill.co.zw",
-                "website": "www.stohill.co.zw"
+                "email": "info@stohillproperties.co.zw"
+                "website": "www.stohillproperties.co.zw"
             },
             "description": "Official contact details for invoices."
         }

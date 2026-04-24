@@ -45,6 +45,19 @@ class TaxService:
         # Net VAT Payable (if positive) or Refundable (if negative)
         vat_liability = total_output_tax - total_input_tax
 
+        return {
+            'period': {'start_date': str(start_date), 'end_date': str(end_date)},
+            'output_details': list(output_txns),
+            'input_details': list(input_txns),
+            'output_tax': str(total_output_tax),
+            'input_tax': str(total_input_tax),
+            'total_sales_gross': str(total_sales_gross),
+            'total_sales_net': str(total_sales_net),
+            'total_purchases_gross': str(total_purchases_gross),
+            'total_purchases_net': str(total_purchases_net),
+            'vat_liability': str(vat_liability)
+        }
+
     @staticmethod
     def generate_vat7_report(start_date: date, end_date: date) -> dict:
         """

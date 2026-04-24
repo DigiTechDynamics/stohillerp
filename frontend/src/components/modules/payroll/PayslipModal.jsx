@@ -69,6 +69,23 @@ const PayslipModal = ({ isOpen, onClose, itemId }) => {
     }, 500);
   };
 
+  const handleDownload = async () => {
+    try {
+      const response = await payrollAPI.payslips.exportPdf(itemId);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      const filename = `Payslip_${payslip?.employee?.name.replace(/\s+/g, '_')}.pdf`;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Failed to download PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    }
+  };
+
   if (!isOpen) return null;
 
   const earnings = payslip?.lines?.filter(l => ['basic', 'allowance'].includes(l.category)) || [];
@@ -99,8 +116,11 @@ const PayslipModal = ({ isOpen, onClose, itemId }) => {
                    <FileText size={16} className="text-primary" /> Employee Payslip
                 </div>
                 <div className="flex gap-2">
+                  <button onClick={handleDownload} className="btn-secondary h-9 gap-2 text-xs">
+                    <Download size={16} /> Download PDF
+                  </button>
                   <button onClick={handlePrint} className="btn-primary h-9 gap-2 text-xs">
-                    <Printer size={16} /> Print Payslip
+                    <Printer size={16} /> Print
                   </button>
                   <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-200 text-slate-500 transition-colors">
                     <X size={20} />

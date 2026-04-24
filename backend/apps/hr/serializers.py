@@ -13,6 +13,15 @@ class EmployeeSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source='department.name', read_only=True)
     job_position_name = serializers.CharField(source='job_position.name', read_only=True)
     manager_name = serializers.CharField(source='reports_to.full_name', read_only=True)
+    
+    additional_departments_names = serializers.SerializerMethodField()
+    additional_positions_names = serializers.SerializerMethodField()
+
+    # Explicitly define date fields to handle various input formats from frontend pickers
+    start_date = serializers.DateField(input_formats=['%Y-%m-%d', '%Y/%m/%d', 'iso-8601'])
+    end_date = serializers.DateField(input_formats=['%Y-%m-%d', '%Y/%m/%d', 'iso-8601'], required=False, allow_null=True)
+    fidelity_fund_expiry = serializers.DateField(input_formats=['%Y-%m-%d', '%Y/%m/%d', 'iso-8601'], required=False, allow_null=True)
+
     class Meta:
         model = Employee
         fields = '__all__'
@@ -21,6 +30,12 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'bank_account_number': {'write_only': True},
             'bank_branch_code': {'write_only': True}
         }
+
+    def get_additional_departments_names(self, obj):
+        return [d.name for d in obj.additional_departments.all()]
+
+    def get_additional_positions_names(self, obj):
+        return [p.name for p in obj.additional_positions.all()]
 
 class LeaveRequestSerializer(serializers.ModelSerializer):
     employee_name = serializers.CharField(source='employee.full_name', read_only=True)

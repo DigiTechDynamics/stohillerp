@@ -46,6 +46,8 @@ export default function EmployeeForm() {
     fidelity_fund_number: employee?.fidelity_fund_number || '',
     fidelity_fund_expiry: employee?.fidelity_fund_expiry || '',
     notes: employee?.notes || '',
+    additional_departments: employee?.additional_departments || [],
+    additional_positions: employee?.additional_positions || [],
   })
 
   const { data: deptsData } = useQuery({
@@ -86,10 +88,37 @@ export default function EmployeeForm() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
+  const handleMultiChange = (name, id) => {
+    setFormData(prev => {
+      const current = prev[name] || []
+      const updated = current.includes(id)
+        ? current.filter(i => i !== id)
+        : [...current, id]
+      return { ...prev, [name]: updated }
+    })
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
     setError(null)
-    mutation.mutate(formData)
+
+    // Clean data: replace empty strings with null for nullable fields
+    const cleanedData = { ...formData }
+    const nullableFields = [
+      'fidelity_fund_expiry', 
+      'end_date', 
+      'reports_to', 
+      'department', 
+      'job_position'
+    ]
+    
+    nullableFields.forEach(field => {
+      if (cleanedData[field] === '') {
+        cleanedData[field] = null
+      }
+    })
+
+    mutation.mutate(cleanedData)
   }
 
   const TabButton = ({ id, label, icon: Icon }) => (
@@ -216,6 +245,48 @@ export default function EmployeeForm() {
                       <option key={e.id} value={e.id}>{e.full_name} ({e.job_position_name})</option>
                     ))}
                   </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6 border-t border-white/5 pt-5 mt-5">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Additional Departments</label>
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-2 scrollbar-hide">
+                    {departments.filter(d => d.id !== formData.department).map(d => (
+                      <label key={d.id} className="flex items-center gap-2 group cursor-pointer">
+                        <input 
+                          type="checkbox"
+                          checked={formData.additional_departments.includes(d.id)}
+                          onChange={() => handleMultiChange('additional_departments', d.id)}
+                          className="w-3.5 h-3.5 rounded border-white/10 bg-dark-800 text-primary focus:ring-primary/50"
+                        />
+                        <span className="text-xs text-dark-300 group-hover:text-white transition-colors">{d.name}</span>
+                      </label>
+                    ))}
+                    {departments.filter(d => d.id !== formData.department).length === 0 && (
+                      <p className="text-[10px] text-dark-600 italic">No other departments available</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Additional Roles</label>
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-2 scrollbar-hide">
+                    {jobPositions.filter(p => p.id !== formData.job_position).map(p => (
+                      <label key={p.id} className="flex items-center gap-2 group cursor-pointer">
+                        <input 
+                          type="checkbox"
+                          checked={formData.additional_positions.includes(p.id)}
+                          onChange={() => handleMultiChange('additional_positions', p.id)}
+                          className="w-3.5 h-3.5 rounded border-white/10 bg-dark-800 text-primary focus:ring-primary/50"
+                        />
+                        <span className="text-xs text-dark-300 group-hover:text-white transition-colors">{p.name}</span>
+                      </label>
+                    ))}
+                    {jobPositions.filter(p => p.id !== formData.job_position).length === 0 && (
+                      <p className="text-[10px] text-dark-600 italic">No other roles available</p>
+                    )}
+                  </div>
                 </div>
               </div>
 

@@ -429,6 +429,7 @@ export const hrAPI = {
     detail: (id) => api.get(`hr/employees/${id}/`),
     create: (data) => api.post('hr/employees/', data),
     update: (id, data) => api.patch(`hr/employees/${id}/`, data),
+    delete: (id) => api.delete(`hr/employees/${id}/`),
     statement: (id) => api.get(`hr/employees/${id}/statement/`),
   },
   departments: { 
@@ -466,6 +467,7 @@ export const payrollAPI = {
     detail: (id) => api.get(`payroll/payslips/${id}/`),
     update: (id, data) => api.patch(`payroll/payslips/${id}/`, data),
     details: (id) => api.get(`payroll/payslips/${id}/details/`),
+    exportPdf: (id) => api.get(`payroll/payslips/${id}/export_pdf/`, { responseType: 'blob' }),
   },
   salaryRules: {
     list: (params) => api.get('payroll/salary-rules/', { params }),

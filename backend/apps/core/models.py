@@ -341,9 +341,10 @@ class SystemConfig(UUIDModel):
 class Currency(AuditedModel):
     """
     Currencies supported by the system.
-    Reporting currency (base) is usually USD or ZAR.
+    Reporting currency (base) is usually USD.
+    Secondary currency is ZiG (Zimbabwe Gold).
     """
-    code = models.CharField(max_length=3, unique=True)  # e.g., 'USD', 'ZAR'
+    code = models.CharField(max_length=3, unique=True)  # e.g., 'USD', 'ZiG'
     name = models.CharField(max_length=50)
     symbol = models.CharField(max_length=5, blank=True)
     is_base = models.BooleanField(default=False, help_text="System-wide reporting currency")

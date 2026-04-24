@@ -128,7 +128,7 @@ function ReportViewer({ report, params, setParams, periods, properties, onBack }
       const url = window.URL.createObjectURL(new Blob([response.data]))
       const link = document.createElement('a')
       link.href = url
-      link.setAttribute('download', `${report.id}.${format === 'excel' ? 'csv' : 'csv'}`) // Default to csv for now as backend returns csv
+      link.setAttribute('download', `${report.id}.${format}`)
       document.body.appendChild(link)
       link.click()
       link.remove()
@@ -285,7 +285,7 @@ function ReportViewer({ report, params, setParams, periods, properties, onBack }
             <div className="grid grid-cols-2 gap-2">
               <button 
                 className="btn-secondary h-9 text-[10px] gap-1.5 flex-1"
-                onClick={() => handleExport('csv')}
+                onClick={() => handleExport('pdf')}
                 disabled={isExporting}
               >
                 <Download size={14} /> PDF
@@ -295,7 +295,7 @@ function ReportViewer({ report, params, setParams, periods, properties, onBack }
                 onClick={() => handleExport('csv')}
                 disabled={isExporting}
               >
-                <Download size={14} /> Excel
+                <Download size={14} /> CSV
               </button>
             </div>
           </div>

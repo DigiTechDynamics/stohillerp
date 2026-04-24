@@ -189,7 +189,7 @@ class ExchangeRate(AuditedModel):
     """
     Exchange rates for multi-currency support.
     Rates are stored relative to the system base currency (reporting currency).
-    Example: if USD is base, ZAR rate might be 0.052 (1 ZAR = 0.052 USD).
+    Example: if USD is base, ZiG rate might be 0.05 (1 ZiG = 0.05 USD).
     """
     currency = models.ForeignKey('core.Currency', on_delete=models.CASCADE, related_name='exchange_rates')
     rate = models.DecimalField(max_digits=18, decimal_places=10)

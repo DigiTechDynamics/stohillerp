@@ -585,6 +585,8 @@ class ReportExportView(APIView):
             view = BalanceSheetView.as_view()
         elif report_id == 'vat-return':
             view = VATReturnView.as_view()
+        elif report_id == 'accounts-receivable':
+            view = AccountsReceivableAgingView.as_view()
         else:
             return Response({'error': 'Invalid report ID'}, status=400)
 
@@ -598,54 +600,27 @@ class ReportExportView(APIView):
         output['Content-Disposition'] = f'attachment; filename="{report_id}.csv"'
         
         if format_type == 'pdf':
-            from reportlab.lib import colors
-            from reportlab.lib.pagesizes import letter
-            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-            from reportlab.lib.styles import getSampleStyleSheet
+            from apps.finance.services.pdf_service import PDFService
             
-            output = HttpResponse(content_type='application/pdf')
-            output['Content-Disposition'] = f'attachment; filename="{report_id}.pdf"'
+            pdf_content = None
+            if report_id == 'trial-balance':
+                pdf_content = PDFService.generate_trial_balance_pdf(data)
+            elif report_id == 'income-statement':
+                pdf_content = PDFService.generate_income_statement_pdf(data)
+            elif report_id == 'balance-sheet':
+                pdf_content = PDFService.generate_balance_sheet_pdf(data)
+            elif report_id == 'vat-return':
+                pdf_content = PDFService.generate_vat_return_pdf(data)
+            elif report_id == 'accounts-receivable':
+                pdf_content = PDFService.generate_ar_aging_pdf(data)
             
-            doc = SimpleDocTemplate(output, pagesize=letter)
-            elements = []
-            styles = getSampleStyleSheet()
+            if pdf_content:
+                output = HttpResponse(content_type='application/pdf')
+                output['Content-Disposition'] = f'attachment; filename="{report_id}.pdf"'
+                output.write(pdf_content)
+                return output
             
-            if report_id == 'vat-return':
-                period = data.get('period', {})
-                elements.append(Paragraph("VAT Return Report", styles['Title']))
-                elements.append(Paragraph(f"From: {period.get('start_date')} To: {period.get('end_date')}", styles['Normal']))
-                elements.append(Spacer(1, 20))
-                
-                table_data = [
-                    ['SUMMARY', ''],
-                    ['Output Tax', str(data.get('output_tax', 0))],
-                    ['Input Tax', str(data.get('input_tax', 0))],
-                    ['Net Liability', str(data.get('vat_liability', 0))],
-                    ['', ''],
-                    ['DETAILED CATEGORIES', ''],
-                    ['Total Sales Gross', str(data.get('total_sales_gross', 0))],
-                    ['Total Sales Net', str(data.get('total_sales_net', 0))],
-                    ['Total Purchases Gross', str(data.get('total_purchases_gross', 0))],
-                    ['Total Purchases Net', str(data.get('total_purchases_net', 0))]
-                ]
-                
-                t = Table(table_data, colWidths=[200, 200])
-                t.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (1, 0), colors.grey),
-                    ('TEXTCOLOR', (0, 0), (1, 0), colors.whitesmoke),
-                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                    ('BACKGROUND', (0, 5), (1, 5), colors.grey),
-                    ('TEXTCOLOR', (0, 5), (1, 5), colors.whitesmoke),
-                    ('FONTNAME', (0, 5), (-1, 5), 'Helvetica-Bold'),
-                    ('GRID', (0,0), (-1,-1), 1, colors.black)
-                ]))
-                
-                elements.append(t)
-            
-            doc.build(elements)
-            return output
+            return Response({'error': f'PDF export not implemented for {report_id}'}, status=400)
 
         import csv
         writer = csv.writer(output)

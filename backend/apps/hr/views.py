@@ -5,11 +5,12 @@ from rest_framework.response import Response
 from decimal import Decimal
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
+from apps.core.permissions import IsHRAdminOrManager
 from apps.hr.models import Employee, Department, LeaveRequest, JobPosition, EmployeeContract, Attendance, LeaveAllocation
 
 class EmployeeViewSet(viewsets.ModelViewSet):
     queryset = Employee.objects.select_related('department', 'reports_to')
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsHRAdminOrManager]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'employment_type', 'department']
     search_fields = ['first_name', 'last_name', 'employee_number', 'email']
@@ -77,7 +78,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsHRAdminOrManager]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name']
     ordering_fields = ['name']
@@ -104,7 +105,7 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
 
 class JobPositionViewSet(viewsets.ModelViewSet):
     queryset = JobPosition.objects.select_related('department')
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsHRAdminOrManager]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['department']
     search_fields = ['name']
@@ -115,7 +116,7 @@ class JobPositionViewSet(viewsets.ModelViewSet):
 
 class EmployeeContractViewSet(viewsets.ModelViewSet):
     queryset = EmployeeContract.objects.select_related('employee', 'job_position', 'department')
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsHRAdminOrManager]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['employee', 'status']
     ordering_fields = ['start_date']

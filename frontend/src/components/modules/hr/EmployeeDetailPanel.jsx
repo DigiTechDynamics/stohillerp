@@ -1,14 +1,46 @@
 import React, { useState } from 'react'
-import { User, Briefcase, Mail, Phone, CreditCard, Calendar, ShieldCheck, MapPin } from 'lucide-react'
+import { User, Briefcase, Mail, Phone, CreditCard, Calendar, ShieldCheck, MapPin, Trash2 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import EmployeeStatementModal from './EmployeeStatementModal'
 import ActionGuard from '@/components/common/ActionGuard'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { hrAPI } from '@/services/api'
+import { useConfirmStore } from '@/stores/useConfirmStore'
+import { toast } from 'react-hot-toast'
 
 export default function EmployeeDetailPanel({ employee }) {
   const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
   if (!employee) return null
   const openSidePanel = useUIStore((s) => s.openSidePanel)
+  const closeSidePanel = useUIStore((s) => s.closeSidePanel)
+  const queryClient = useQueryClient()
+  const confirm = useConfirmStore((s) => s.confirm)
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => hrAPI.employees.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr-employees'] })
+      toast.success('Employee deleted successfully')
+      closeSidePanel()
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.detail || 'Failed to delete employee')
+    }
+  })
+
+  const handleDelete = async () => {
+    const ok = await confirm({
+      title: 'Delete Employee',
+      message: `Are you sure you want to delete ${employee.first_name} ${employee.last_name}? This action cannot be undone.`,
+      confirmLabel: 'Delete Permanently',
+      type: 'danger'
+    })
+
+    if (ok) {
+      deleteMutation.mutate(employee.id)
+    }
+  }
 
   const Section = ({ title, icon: Icon, children }) => (
     <div className="space-y-3">
@@ -71,9 +103,35 @@ export default function EmployeeDetailPanel({ employee }) {
       </Section>
 
       <Section title="Job & Reporting" icon={Briefcase}>
-        <InfoRow label="Department" value={employee.department_name} />
-        <InfoRow label="Reports To" value={employee.manager_name} />
-        <InfoRow label="Job Position" value={employee.job_position_name} />
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <InfoRow label="Primary Department" value={employee.department_name} />
+            {employee.additional_departments_names?.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {employee.additional_departments_names.map(name => (
+                  <span key={name} className="px-2 py-0.5 rounded-full bg-dark-700 text-[10px] text-dark-300 border border-white/5">
+                    + {name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          <div className="space-y-2 pt-2 border-t border-white/5">
+            <InfoRow label="Primary Position" value={employee.job_position_name} />
+            {employee.additional_positions_names?.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {employee.additional_positions_names.map(name => (
+                  <span key={name} className="px-2 py-0.5 rounded-full bg-dark-700 text-[10px] text-dark-300 border border-white/5">
+                    + {name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <InfoRow label="Reports To" value={employee.manager_name} />
+        </div>
       </Section>
 
       <Section title="Employment Contracts" icon={CreditCard}>
@@ -106,21 +164,34 @@ export default function EmployeeDetailPanel({ employee }) {
       )}
 
       {/* Actions */}
-      <div className="pt-4 flex gap-3">
+      <div className="pt-4 flex flex-col gap-3">
+        <div className="flex gap-3">
+          <ActionGuard>
+            <button 
+              className="flex-1 btn-primary py-2.5 flex items-center justify-center gap-2"
+              onClick={() => openSidePanel('employee-form', { employee })}
+            >
+              Edit Profile
+            </button>
+          </ActionGuard>
+          <button 
+            className="btn-secondary px-4 py-2.5 flex-1"
+            onClick={() => setIsStatementModalOpen(true)}
+          >
+            Generate Statement
+          </button>
+        </div>
+
         <ActionGuard>
           <button 
-            className="flex-1 btn-primary py-2.5 flex items-center justify-center gap-2"
-            onClick={() => openSidePanel('employee-form', { employee })}
+            className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl border border-red-500/20 transition-all"
+            onClick={handleDelete}
+            disabled={deleteMutation.isLoading}
           >
-            Edit Profile
+            <Trash2 size={14} />
+            {deleteMutation.isLoading ? 'Deleting...' : 'Delete Employee Record'}
           </button>
         </ActionGuard>
-        <button 
-          className="btn-secondary px-4 py-2.5 flex-1"
-          onClick={() => setIsStatementModalOpen(true)}
-        >
-          Generate Statement
-        </button>
       </div>
 
       <EmployeeStatementModal 

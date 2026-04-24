@@ -12,21 +12,21 @@ from apps.finance.models.core import ChartOfAccount
 from apps.finance.models.bank import BankAccount
 
 def seed_nmb_bank():
-    print("Starting NMB Bank seeding...")
+    print("Starting NMB Bank seeding (USD & ZiG)...")
 
-    # 1. Ensure ZWL Currency exists
-    zwl, created = Currency.objects.get_or_create(
-        code='ZWL',
+    # 1. Ensure ZiG Currency exists
+    zig, created = Currency.objects.get_or_create(
+        code='ZiG',
         defaults={
-            'name': 'Zimbabwean Dollar',
-            'symbol': 'Z$',
+            'name': 'Zimbabwe Gold',
+            'symbol': 'ZiG',
             'is_base': False
         }
     )
     if created:
-        print(f"Created Currency: {zwl}")
+        print(f"Created Currency: {zig}")
     else:
-        print(f"Currency exists: {zwl}")
+        print(f"Currency exists: {zig}")
 
     usd = Currency.objects.get(code='USD')
 
@@ -47,21 +47,21 @@ def seed_nmb_bank():
     else:
         print(f"GL Account exists: {usd_gl}")
 
-    # ZWL GL
-    zwl_gl, created = ChartOfAccount.objects.get_or_create(
+    # ZiG GL
+    zig_gl, created = ChartOfAccount.objects.get_or_create(
         code='1040',
         defaults={
-            'name': 'NMB Bank - ZWL',
+            'name': 'NMB Bank - ZiG',
             'account_type': 'asset',
             'account_sub_type': 'bank',
-            'currency': zwl,
-            'description': 'Main ZWL Operating Account - Masvingo'
+            'currency': zig,
+            'description': 'Main ZiG Operating Account - Masvingo'
         }
     )
     if created:
-        print(f"Created GL Account: {zwl_gl}")
+        print(f"Created GL Account: {zig_gl}")
     else:
-        print(f"GL Account exists: {zwl_gl}")
+        print(f"GL Account exists: {zig_gl}")
 
     # 3. Create BankAccount Records
     # NMB USD
@@ -82,23 +82,23 @@ def seed_nmb_bank():
     else:
         print(f"Bank Account exists: {nmb_usd}")
 
-    # NMB ZWL
-    nmb_zwl, created = BankAccount.objects.get_or_create(
+    # NMB ZiG
+    nmb_zig, created = BankAccount.objects.get_or_create(
         account_number='00000020141255',
         defaults={
-            'name': 'NMB ZWL Current',
+            'name': 'NMB ZiG Current',
             'bank_name': 'NMB BANK',
             'branch_code': 'MASVINGO',
-            'currency_id': 'ZWL',
+            'currency_id': 'ZiG',
             'account_type': 'cheque',
-            'gl_account': zwl_gl,
+            'gl_account': zig_gl,
             'is_active': True
         }
     )
     if created:
-        print(f"Created Bank Account: {nmb_zwl}")
+        print(f"Created Bank Account: {nmb_zig}")
     else:
-        print(f"Bank Account exists: {nmb_zwl}")
+        print(f"Bank Account exists: {nmb_zig}")
 
     print("Seeding completed successfully.")
 

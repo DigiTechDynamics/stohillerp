@@ -15,6 +15,8 @@ from apps.finance.models.core import ChartOfAccount, Journal, JournalEntry, Jour
 from apps.core.services.number_sequence import NumberSequenceService
 from apps.core.permissions import IsFinanceAdminOrAccountant
 from rest_framework.permissions import IsAuthenticated
+from django.http import HttpResponse
+from apps.finance.services.pdf_service import PDFService
 
 class PayrollRunViewSet(viewsets.ModelViewSet):
     queryset = PayrollRun.objects.all()
@@ -281,6 +283,16 @@ class PayslipViewSet(viewsets.ModelViewSet):
             }
         }
         return Response(data)
+
+    @action(detail=True, methods=['get'])
+    def export_pdf(self, request, pk=None):
+        payslip = self.get_object()
+        pdf_bytes = PDFService.generate_payslip_pdf(payslip)
+        
+        filename = f"Payslip_{payslip.employee.full_name.replace(' ', '_')}_{payslip.payroll_run.period_end.strftime('%b_%Y')}.pdf"
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
 
 from .serializers import TaxBracketSerializer, PayrollSettingSerializer, PayslipLineSerializer
 from .models import TaxBracket, PayrollSetting, SalaryRule, SalaryStructure
