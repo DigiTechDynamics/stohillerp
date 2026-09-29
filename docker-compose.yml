@@ -1,0 +1,62 @@
+# Stohill ERP - full stack.
+#   cp .env.example .env    # then set DJANGO_SECRET_KEY and POSTGRES_PASSWORD
+#   docker compose up -d --build
+#   open http://localhost:8080
+#
+# Services: db (PostgreSQL 16) -> api (Django/gunicorn) -> web (nginx + SPA)
+
+name: stohill-erp
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stohill_erp}
+      POSTGRES_USER: ${POSTGRES_USER:-stohill}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Not published to the host: only the api service can reach it.
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,api}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-http://localhost:8080}
+      # TLS terminates in front of this stack in real deployments. For a plain
+      # local HTTP run, disable the redirect (see .env.example).
+      DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-True}
+      DATABASE_URL: postgres://${POSTGRES_USER:-stohill}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-stohill_erp}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      TIME_ZONE: ${TIME_ZONE:-Africa/Harare}
+    volumes:
+      - media:/app/media
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    volumes:
+      - media:/srv/media:ro
+
+volumes:
+  pgdata:
+  media:
