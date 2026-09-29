@@ -1,5 +1,6 @@
 // Stohill Properties - Side Panel Container
 // Slide-in contextual panels for record details
+import { Suspense, lazy } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { X, Building2, MapPin, BedDouble, Bath, Square, Calendar, DollarSign, Briefcase, FileText, User, Mail, Phone, ExternalLink, Trash2, Edit2, Loader2, Key, MessageSquare, CheckCircle, Plus } from 'lucide-react'
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query'
@@ -7,62 +8,64 @@ import { toast } from 'react-hot-toast'
 import { propertiesAPI, crmAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
-import AccountForm from '@/components/modules/finance/AccountForm'
-import AccountDetailPanel from '@/components/modules/finance/AccountDetailPanel'
-import JournalEntryDetailPanel from '@/components/modules/finance/JournalEntryDetailPanel'
-import EmployeeForm from '@/components/modules/hr/EmployeeForm'
-import EmployeeDetailPanel from '@/components/modules/hr/EmployeeDetailPanel'
-import LeaveManagementPanel from '@/components/modules/hr/LeaveManagementPanel'
-import DocumentUploadForm from '@/components/modules/documents/DocumentUploadForm'
-import ComplianceAuditPanel from '@/components/modules/documents/ComplianceAuditPanel'
-import DepartmentForm from '@/components/modules/hr/DepartmentForm'
-import DepartmentListPanel from '@/components/modules/hr/DepartmentListPanel'
-import LeaseForm from '@/components/modules/rentals/LeaseForm'
-import LeaseDetailPanel from '@/components/modules/rentals/LeaseDetailPanel'
-import RentalInvoiceForm from '@/components/modules/rentals/RentalInvoiceForm'
-import RentalPaymentForm from '@/components/modules/rentals/RentalPaymentForm'
-import TenantForm from '@/components/modules/rentals/TenantForm'
-import MaintenanceForm from '@/components/modules/rentals/MaintenanceForm'
-import PropertyForm from '@/components/modules/properties/PropertyForm'
-import CustomerForm from '@/components/modules/finance/CustomerForm'
-import CustomerInvoiceForm from '@/components/modules/finance/CustomerInvoiceForm'
-import CustomerReceiptForm from '@/components/modules/finance/CustomerReceiptForm'
-import SupplierForm from '@/components/modules/finance/SupplierForm'
-import SupplierInvoiceForm from '@/components/modules/finance/SupplierInvoiceForm'
-import SupplierPaymentForm from '@/components/modules/finance/SupplierPaymentForm'
-import CustomerReceiptDetailPanel from '@/components/modules/finance/CustomerReceiptDetailPanel'
-import SupplierPaymentDetailPanel from '@/components/modules/finance/SupplierPaymentDetailPanel'
-import ARInvoiceDetailPanel from '@/components/modules/finance/ARInvoiceDetailPanel'
-import APInvoiceDetailPanel from '@/components/modules/finance/APInvoiceDetailPanel'
-import SupplierDetailPanel from '@/components/modules/finance/SupplierDetailPanel'
-import TaxCodeForm from '@/components/modules/finance/TaxCodeForm'
-import PostingProfileForm from '@/components/modules/finance/PostingProfileForm'
+// Module forms/panels load on demand: importing them eagerly pulled every
+// module's UI into the initial bundle for every user.
+const AccountForm = lazy(() => import('@/components/modules/finance/AccountForm'))
+const AccountDetailPanel = lazy(() => import('@/components/modules/finance/AccountDetailPanel'))
+const JournalEntryDetailPanel = lazy(() => import('@/components/modules/finance/JournalEntryDetailPanel'))
+const EmployeeForm = lazy(() => import('@/components/modules/hr/EmployeeForm'))
+const EmployeeDetailPanel = lazy(() => import('@/components/modules/hr/EmployeeDetailPanel'))
+const LeaveManagementPanel = lazy(() => import('@/components/modules/hr/LeaveManagementPanel'))
+const DocumentUploadForm = lazy(() => import('@/components/modules/documents/DocumentUploadForm'))
+const ComplianceAuditPanel = lazy(() => import('@/components/modules/documents/ComplianceAuditPanel'))
+const DepartmentForm = lazy(() => import('@/components/modules/hr/DepartmentForm'))
+const DepartmentListPanel = lazy(() => import('@/components/modules/hr/DepartmentListPanel'))
+const LeaseForm = lazy(() => import('@/components/modules/rentals/LeaseForm'))
+const LeaseDetailPanel = lazy(() => import('@/components/modules/rentals/LeaseDetailPanel'))
+const RentalInvoiceForm = lazy(() => import('@/components/modules/rentals/RentalInvoiceForm'))
+const RentalPaymentForm = lazy(() => import('@/components/modules/rentals/RentalPaymentForm'))
+const TenantForm = lazy(() => import('@/components/modules/rentals/TenantForm'))
+const MaintenanceForm = lazy(() => import('@/components/modules/rentals/MaintenanceForm'))
+const PropertyForm = lazy(() => import('@/components/modules/properties/PropertyForm'))
+const CustomerForm = lazy(() => import('@/components/modules/finance/CustomerForm'))
+const CustomerInvoiceForm = lazy(() => import('@/components/modules/finance/CustomerInvoiceForm'))
+const CustomerReceiptForm = lazy(() => import('@/components/modules/finance/CustomerReceiptForm'))
+const SupplierForm = lazy(() => import('@/components/modules/finance/SupplierForm'))
+const SupplierInvoiceForm = lazy(() => import('@/components/modules/finance/SupplierInvoiceForm'))
+const SupplierPaymentForm = lazy(() => import('@/components/modules/finance/SupplierPaymentForm'))
+const CustomerReceiptDetailPanel = lazy(() => import('@/components/modules/finance/CustomerReceiptDetailPanel'))
+const SupplierPaymentDetailPanel = lazy(() => import('@/components/modules/finance/SupplierPaymentDetailPanel'))
+const ARInvoiceDetailPanel = lazy(() => import('@/components/modules/finance/ARInvoiceDetailPanel'))
+const APInvoiceDetailPanel = lazy(() => import('@/components/modules/finance/APInvoiceDetailPanel'))
+const SupplierDetailPanel = lazy(() => import('@/components/modules/finance/SupplierDetailPanel'))
+const TaxCodeForm = lazy(() => import('@/components/modules/finance/TaxCodeForm'))
+const PostingProfileForm = lazy(() => import('@/components/modules/finance/PostingProfileForm'))
 import Chatter from '@/components/common/Chatter'
-import AssetForm from '@/components/modules/finance/AssetForm'
-import AssetCategoryForm from '@/components/modules/finance/AssetCategoryForm'
-import AssetDetailPanel from '@/components/modules/finance/AssetDetailPanel'
-import AssetDisposalForm from '@/components/modules/finance/AssetDisposalForm'
-import RunDepreciationForm from '@/components/modules/finance/RunDepreciationForm'
-import CommissionStructureForm from '@/components/modules/commissions/CommissionStructureForm'
-import CommissionCalculator from '@/components/modules/commissions/CommissionCalculator'
-import CommissionDetailPanel from '@/components/modules/commissions/CommissionDetailPanel'
-import CurrencyForm from '@/components/modules/finance/CurrencyForm'
-import ExchangeRateForm from '@/components/modules/finance/ExchangeRateForm'
-import OpportunityForm from '@/components/modules/crm/OpportunityForm'
-import ActivityForm from '@/components/modules/crm/ActivityForm'
-import CrmDetailPanel from '@/components/modules/crm/CrmDetailPanel'
-import CrmContactDetailPanel from '@/components/modules/crm/ContactDetailPanel'
-import BankAccountForm from '@/components/modules/finance/BankAccountForm'
-import BankTransactionView from '@/components/modules/finance/BankTransactionView'
-import StatementUploadForm from '@/components/modules/finance/StatementUploadForm'
-import ReconciliationRulesForm from '@/components/modules/finance/ReconciliationRulesForm'
-import UserForm from '@/components/modules/admin/UserForm'
-import RoleForm from '@/components/modules/admin/RoleForm'
-import SODRuleForm from '@/components/modules/admin/SODRuleForm'
-import SaleForm from '@/components/modules/sales/SaleForm'
-import SaleDetailPanel from '@/components/modules/sales/SaleDetailPanel'
-import FiscalYearForm from '@/components/modules/finance/FiscalYearForm'
-import PayrollRunForm from '@/components/modules/payroll/PayrollRunForm'
+const AssetForm = lazy(() => import('@/components/modules/finance/AssetForm'))
+const AssetCategoryForm = lazy(() => import('@/components/modules/finance/AssetCategoryForm'))
+const AssetDetailPanel = lazy(() => import('@/components/modules/finance/AssetDetailPanel'))
+const AssetDisposalForm = lazy(() => import('@/components/modules/finance/AssetDisposalForm'))
+const RunDepreciationForm = lazy(() => import('@/components/modules/finance/RunDepreciationForm'))
+const CommissionStructureForm = lazy(() => import('@/components/modules/commissions/CommissionStructureForm'))
+const CommissionCalculator = lazy(() => import('@/components/modules/commissions/CommissionCalculator'))
+const CommissionDetailPanel = lazy(() => import('@/components/modules/commissions/CommissionDetailPanel'))
+const CurrencyForm = lazy(() => import('@/components/modules/finance/CurrencyForm'))
+const ExchangeRateForm = lazy(() => import('@/components/modules/finance/ExchangeRateForm'))
+const OpportunityForm = lazy(() => import('@/components/modules/crm/OpportunityForm'))
+const ActivityForm = lazy(() => import('@/components/modules/crm/ActivityForm'))
+const CrmDetailPanel = lazy(() => import('@/components/modules/crm/CrmDetailPanel'))
+const CrmContactDetailPanel = lazy(() => import('@/components/modules/crm/ContactDetailPanel'))
+const BankAccountForm = lazy(() => import('@/components/modules/finance/BankAccountForm'))
+const BankTransactionView = lazy(() => import('@/components/modules/finance/BankTransactionView'))
+const StatementUploadForm = lazy(() => import('@/components/modules/finance/StatementUploadForm'))
+const ReconciliationRulesForm = lazy(() => import('@/components/modules/finance/ReconciliationRulesForm'))
+const UserForm = lazy(() => import('@/components/modules/admin/UserForm'))
+const RoleForm = lazy(() => import('@/components/modules/admin/RoleForm'))
+const SODRuleForm = lazy(() => import('@/components/modules/admin/SODRuleForm'))
+const SaleForm = lazy(() => import('@/components/modules/sales/SaleForm'))
+const SaleDetailPanel = lazy(() => import('@/components/modules/sales/SaleDetailPanel'))
+const FiscalYearForm = lazy(() => import('@/components/modules/finance/FiscalYearForm'))
+const PayrollRunForm = lazy(() => import('@/components/modules/payroll/PayrollRunForm'))
 
 function PropertyDetailPanel({ property }) {
   const queryClient = useQueryClient()
@@ -331,6 +334,14 @@ function ContactDetailPanel({ contact }) {
   )
 }
 
+function PanelLoader() {
+  return (
+    <div role="status" className="flex items-center justify-center py-16">
+      <Loader2 size={20} className="animate-spin text-primary" />
+    </div>
+  )
+}
+
 export default function SidePanelContainer() {
   const { activeSidePanel, sidePanelData, closeSidePanel } = useUIStore()
 
@@ -418,7 +429,8 @@ export default function SidePanelContainer() {
               </button>
             </div>
 
-            {/* Panel Content Builder */}
+            {/* Panel Content Builder (Suspense: panels are lazy-loaded) */}
+            <Suspense fallback={<PanelLoader />}>
             <div className="relative">
               {activeSidePanel === 'property-detail' && sidePanelData?.property && (
                 <PropertyDetailPanel property={sidePanelData.property} />
@@ -683,6 +695,7 @@ export default function SidePanelContainer() {
                 </div>
               )}
             </div>
+            </Suspense>
           </motion.div>
         </>
       )}
