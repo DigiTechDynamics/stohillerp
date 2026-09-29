@@ -1,8 +1,14 @@
+# Runtime dependencies (pinned for reproducible builds).
+# Dev/test tooling lives in requirements-dev.txt.
 Django==5.0.6
 djangorestframework==3.15.2
 djangorestframework-simplejwt==5.3.1
 django-cors-headers==4.4.0
 django-filter==24.2
+django-environ==0.14.0
 Pillow==10.4.0
-python-decouple==3.8
+psycopg[binary]==3.3.6
+python-dateutil==2.9.0.post0
+reportlab==5.0.1
+whitenoise==6.12.0
 gunicorn==22.0.0

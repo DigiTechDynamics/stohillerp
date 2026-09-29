@@ -12,7 +12,8 @@ import CommandPalette from '@/components/common/CommandPalette'
 import SidePanelContainer from '@/components/common/SidePanelContainer'
 import ExecutiveModeToggle from '@/components/common/ExecutiveModeToggle'
 import ThemeToggle from '@/components/common/ThemeToggle'
-import logo from '@/assets/logo.png'
+import BrandLogo from '@/components/common/BrandLogo'
+import { signOut } from '@/services/api'
 
 // Simple Error Boundary Fallback for robust UI
 class ErrorBoundaryFallback extends React.Component {
@@ -75,7 +76,7 @@ const navItems = [
 ]
 
 export default function AppLayout() {
-  const { user, logout } = useAuthStore()
+  const { user } = useAuthStore()
   const { sidebarCollapsed, toggleSidebar, openCommandPalette, theme } = useUIStore()
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -110,7 +111,7 @@ export default function AppLayout() {
         {/* Logo */}
         <div className={`flex items-center gap-3 px-4 py-5 border-b ${theme === 'light' ? 'border-border-color' : 'border-white/5'}`}>
           <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
-            <img src={logo} alt="Stohill Logo" className="w-8 h-8 object-contain" />
+            <BrandLogo className="w-8 h-8" />
           </div>
           <AnimatePresence>
             {!sidebarCollapsed && (
@@ -187,7 +188,7 @@ export default function AppLayout() {
         <div className="border-t border-white/5 p-3 space-y-2">
           {!sidebarCollapsed && <ExecutiveModeToggle />}
           <button
-            onClick={() => logout()}
+            onClick={() => signOut()}
             className="sidebar-item w-full text-red-400/80 hover:text-red-400 hover:bg-red-500/10"
           >
             <LogOut size={16} className="flex-shrink-0" />

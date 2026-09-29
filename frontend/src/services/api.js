@@ -2,7 +2,13 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/authStore'
 
-const BASE_URL = '/api/v1/'
+// Same-origin by default: Vite proxies /api in dev and nginx does in prod.
+// Override with VITE_API_BASE_URL only if the API lives on another origin.
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1/'
+
+// Endpoints that must never trigger the refresh-and-retry flow. A 401 from
+// login means "wrong password", not "expired token".
+const AUTH_ENDPOINTS = ['auth/login/', 'auth/refresh/']
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -16,26 +22,52 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+// Single-flight refresh: when several requests hit 401 at once they all await
+// the same refresh call. Without this, parallel refreshes would each send the
+// same refresh token, and with rotation + blacklisting all but the first fail.
+let refreshPromise = null
+
+function refreshAccessToken() {
+  if (!refreshPromise) {
+    const { refreshToken, user, setAuth } = useAuthStore.getState()
+    refreshPromise = axios
+      .post(`${BASE_URL}auth/refresh/`, { refresh: refreshToken })
+      .then(({ data }) => {
+        // The backend rotates refresh tokens: always store the new one.
+        setAuth(user, data.access, data.refresh ?? refreshToken)
+        return data.access
+      })
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+  return refreshPromise
+}
+
+function forceLogout() {
+  useAuthStore.getState().logout()
+  if (window.location.pathname !== '/login') window.location.assign('/login')
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const isAuthCall = AUTH_ENDPOINTS.some((path) => originalRequest?.url?.endsWith(path))
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthCall) {
       originalRequest._retry = true
-      const refreshToken = useAuthStore.getState().refreshToken
-      if (refreshToken) {
-        try {
-          const { data } = await axios.post(`${BASE_URL}auth/refresh/`, { refresh: refreshToken })
-          useAuthStore.getState().setAuth(useAuthStore.getState().user, data.access, refreshToken)
-          originalRequest.headers.Authorization = `Bearer ${data.access}`
-          return api(originalRequest)
-        } catch {
-          useAuthStore.getState().logout()
-          window.location.href = '/login'
-        }
-      } else {
-        useAuthStore.getState().logout()
-        window.location.href = '/login'
+      if (!useAuthStore.getState().refreshToken) {
+        forceLogout()
+        return Promise.reject(error)
+      }
+      try {
+        const access = await refreshAccessToken()
+        originalRequest.headers.Authorization = `Bearer ${access}`
+        return api(originalRequest)
+      } catch (refreshError) {
+        forceLogout()
+        return Promise.reject(refreshError)
       }
     }
     return Promise.reject(error)
@@ -44,6 +76,8 @@ api.interceptors.response.use(
 
 export const authAPI = {
   login: (email, password) => api.post('auth/login/', { email, password }),
+  // Revokes the refresh token server-side so a stolen copy can't be reused.
+  logout: (refresh) => api.post('auth/logout/', { refresh }),
   me: () => api.get('core/me/'),
   updateMe: (data) => api.patch('core/me/', data),
   currencies: {
@@ -476,3 +510,19 @@ export const dataManagementAPI = {
 }
 
 export default api
+
+/**
+ * Sign the user out everywhere this refresh token is used.
+ * Server-side revocation is best-effort: local state is always cleared,
+ * even if the network call fails (e.g. the token already expired).
+ */
+export async function signOut() {
+  const { refreshToken, logout } = useAuthStore.getState()
+  try {
+    if (refreshToken) await authAPI.logout(refreshToken)
+  } catch {
+    // Ignore: an expired/invalid token needs no revocation.
+  } finally {
+    logout()
+  }
+}

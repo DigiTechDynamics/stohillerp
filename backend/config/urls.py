@@ -7,16 +7,19 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-    TokenVerifyView,
-)
+from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
+
+from apps.core.auth_views import LogoutView, ThrottledTokenObtainPairView
+from apps.core.health import health
 
 # ─── API v1 Routes ─────────────────────────────────────────────────────────────
 api_v1_patterns = [
+    # Health (unauthenticated; used by Docker / load balancers)
+    path('health/', health, name='health'),
+
     # Authentication
-    path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('auth/login/', ThrottledTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('auth/logout/', LogoutView.as_view(), name='token_logout'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/verify/', TokenVerifyView.as_view(), name='token_verify'),
 

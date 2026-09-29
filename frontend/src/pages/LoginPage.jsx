@@ -6,7 +6,7 @@ import { authAPI } from '@/services/api'
 import { useAuthStore } from '@/stores/authStore'
 import toast from 'react-hot-toast'
 import { AlertCircle, Eye, EyeOff } from 'lucide-react'
-import logo from '@/assets/logo.png'
+import BrandLogo from '@/components/common/BrandLogo'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -64,7 +64,7 @@ export default function LoginPage() {
         <div className="bg-dark-900 border border-white/8 rounded-2xl p-8 shadow-dark">
           <div className="flex items-center gap-4 mb-8">
             <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center shadow-lg border border-white/5">
-              <img src={logo} alt="Stohill Logo" className="w-9 h-9 object-contain" />
+              <BrandLogo className="w-9 h-9" />
             </div>
             <div>
               <h1 className="font-display text-2xl text-white leading-none">Stohill Properties</h1>
