@@ -5,9 +5,14 @@ from rest_framework.response import Response  # type: ignore
 from rest_framework.views import APIView  # type: ignore
 from rest_framework.permissions import IsAuthenticated  # type: ignore
 from django_filters.rest_framework import DjangoFilterBackend  # type: ignore
-from django.db import models
+import logging
+
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import models, transaction
+from django.utils import timezone
 from django.db.models import Sum, Count, Case, When, Q  # type: ignore
 from django.http import HttpResponse
+from datetime import date
 from decimal import Decimal
 
 from apps.finance.models import (  # type: ignore
@@ -23,6 +28,9 @@ from apps.finance.serializers import (  # type: ignore
 )
 from apps.hr.models import Employee  # type: ignore
 
+
+
+logger = logging.getLogger('stohill.finance')
 
 class CurrencyViewSet(viewsets.ModelViewSet):
     queryset = Currency.objects.all().order_by('code')
@@ -161,62 +169,77 @@ class JournalBatchViewSet(viewsets.ModelViewSet):
         from apps.finance.serializers import JournalBatchSerializer  # type: ignore
         return JournalBatchSerializer
 
+    # All three workflow actions lock the batch row (select_for_update) inside a
+    # transaction, so concurrent clicks can't approve or post a batch twice.
+
+    def _locked_batch(self):
+        batch = self.get_object()  # enforces permissions / 404
+        return JournalBatch.objects.select_for_update().get(pk=batch.pk)
+
     @action(detail=True, methods=['post'])
     def submit_for_approval(self, request, pk=None):
-        batch = self.get_object()
-        if batch.status != JournalBatch.BatchStatus.DRAFT:
-            return Response({'error': 'Only draft batches can be submitted.'}, status=400)
-        
-        # Verify balance
-        if not batch.is_balanced():
-            return Response({'error': 'Batch is out of balance. Debits must equal credits.'}, status=400)
-            
-        batch.status = JournalBatch.BatchStatus.PENDING_APPROVAL
-        batch.save(update_fields=['status'])
-        
-        # Lock entries to pending
-        batch.entries.update(status='pending')
-        
+        with transaction.atomic():
+            batch = self._locked_batch()
+            if batch.status != JournalBatch.BatchStatus.DRAFT:
+                return Response({'error': 'Only draft batches can be submitted.'}, status=400)
+            if not batch.is_balanced():
+                return Response({'error': 'Batch is out of balance. Debits must equal credits.'}, status=400)
+
+            batch.status = JournalBatch.BatchStatus.PENDING_APPROVAL
+            batch.save(update_fields=['status'])
+            batch.entries.update(status=JournalEntry.EntryStatus.PENDING_APPROVAL)
         return Response({'status': 'submitted', 'batch_number': batch.batch_number})
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
-        batch = self.get_object()
-        if batch.status != JournalBatch.BatchStatus.PENDING_APPROVAL:
-            return Response({'error': 'Batch is not pending approval.'}, status=400)
-            
-        if batch.maker_id == request.user.id and not request.user.is_superuser:  # Exception for testing
-            return Response({'error': 'Maker cannot approve their own batch. Role segregation required.'}, status=400)
-            
-        from django.utils import timezone  # type: ignore
-        batch.status = JournalBatch.BatchStatus.APPROVED
-        batch.checker = request.user
-        batch.approved_at = timezone.now()
-        batch.save(update_fields=['status', 'checker', 'approved_at'])
-        
-        batch.entries.update(status='approved')
+        with transaction.atomic():
+            batch = self._locked_batch()
+            if batch.status != JournalBatch.BatchStatus.PENDING_APPROVAL:
+                return Response({'error': 'Batch is not pending approval.'}, status=400)
+
+            # Segregation of duties applies to everyone, superusers included.
+            # (A former superuser bypass here also crashed with a 500, because
+            # JournalBatch.save() enforces maker != checker at the model level.)
+            if batch.maker_id == request.user.id:
+                return Response(
+                    {'error': 'Maker cannot approve their own batch. Role segregation required.'},
+                    status=400,
+                )
+
+            batch.status = JournalBatch.BatchStatus.APPROVED
+            batch.checker = request.user
+            batch.approved_at = timezone.now()
+            batch.save(update_fields=['status', 'checker', 'approved_at'])
+            batch.entries.update(status=JournalEntry.EntryStatus.APPROVED)
+        logger.info('Batch %s approved by user %s', batch.batch_number, request.user.pk)
         return Response({'status': 'approved'})
 
     @action(detail=True, methods=['post'])
     def post_batch(self, request, pk=None):
-        batch = self.get_object()
-        if batch.status != JournalBatch.BatchStatus.APPROVED:
-            return Response({'error': 'Batch must be approved before posting.'}, status=400)
-            
-        from apps.finance.services.accounting import AccountingService  # type: ignore
+        from apps.finance.services.accounting import AccountingError, AccountingService  # type: ignore
+
         service = AccountingService(user=request.user)
         try:
-            for entry in batch.entries.filter(status='approved'):
-               service.post_saved_entry(entry)
-            
-            from django.utils import timezone  # type: ignore
-            batch.status = JournalBatch.BatchStatus.POSTED
-            batch.posted_by = request.user
-            batch.posted_at = timezone.now()
-            batch.save(update_fields=['status', 'posted_by', 'posted_at'])
-            return Response({'status': 'posted'})
-        except Exception as e:
-            return Response({'error': str(e)}, status=400)
+            # All-or-nothing: if any entry fails, no entry in the batch posts.
+            with transaction.atomic():
+                batch = self._locked_batch()
+                if batch.status != JournalBatch.BatchStatus.APPROVED:
+                    return Response({'error': 'Batch must be approved before posting.'}, status=400)
+
+                for entry in batch.entries.filter(status=JournalEntry.EntryStatus.APPROVED):
+                    service.post_saved_entry(entry)
+
+                batch.status = JournalBatch.BatchStatus.POSTED
+                batch.posted_by = request.user
+                batch.posted_at = timezone.now()
+                batch.save(update_fields=['status', 'posted_by', 'posted_at'])
+        except (AccountingError, DjangoValidationError) as exc:
+            # Business-rule failures are safe to show the user; anything else
+            # propagates to the global handler (logged, generic 500).
+            message = exc.messages[0] if isinstance(exc, DjangoValidationError) else str(exc)
+            return Response({'error': message}, status=400)
+        logger.info('Batch %s posted by user %s', batch.batch_number, request.user.pk)
+        return Response({'status': 'posted'})
 
 
 class JournalEntryViewSet(viewsets.ModelViewSet):
@@ -482,7 +505,16 @@ class BalanceSheetView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        as_at_date = request.query_params.get('as_at_date')
+        # Default to today. A missing date used to reach the ORM as None and
+        # crash with a 500 ("Cannot use None as a query value").
+        raw_date = request.query_params.get('as_at_date')
+        if raw_date:
+            try:
+                as_at_date = date.fromisoformat(raw_date)
+            except ValueError:
+                return Response({'error': 'as_at_date must be YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            as_at_date = timezone.localdate()
 
         lines = JournalLine.objects.filter(
             entry__status=JournalEntry.EntryStatus.POSTED,
@@ -515,8 +547,24 @@ class BalanceSheetView(APIView):
                 elif t == 'liability': liabilities.append(item)
                 else: equity.append(item)
 
+        # Unclosed earnings: until a year-end closing entry moves profit into
+        # retained earnings, revenue/expense balances must still appear in
+        # equity or the balance sheet can never balance.
+        pnl = JournalLine.objects.filter(
+            entry__status=JournalEntry.EntryStatus.POSTED,
+            entry__entry_date__lte=as_at_date,
+            account__account_type__in=['revenue', 'expense'],
+        ).aggregate(
+            dr=Sum('amount', filter=Q(side='debit')),
+            cr=Sum('amount', filter=Q(side='credit')),
+        )
+        unclosed_earnings = (pnl['cr'] or Decimal('0')) - (pnl['dr'] or Decimal('0'))
+        if unclosed_earnings != 0:
+            equity.append({'code': '', 'name': 'Current Earnings (unclosed)', 'amount': str(unclosed_earnings)})
+            totals['equity'] += unclosed_earnings
+
         return Response({
-            'as_at_date': as_at_date,
+            'as_at_date': as_at_date.isoformat(),
             'assets': assets,
             'liabilities': liabilities,
             'equity': equity,
@@ -532,7 +580,7 @@ class ReportExportView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, report_id):
-        print("INSIDE ReportExportView GET", report_id)
+        logger.debug("Exporting report %s", report_id)
         format_type = request.query_params.get('export_format', 'csv')
         
         # Re-use existing view logic to get data

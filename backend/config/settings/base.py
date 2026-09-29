@@ -223,7 +223,7 @@ COMPANY_CONFIG = {
     # os.environ, not env(): django-environ treats values starting with "$"
     # as references to other variables.
     "currency_symbol": os.environ.get("COMPANY_CURRENCY_SYMBOL", "$"),
-    "fiscal_year_start_month": env.int("COMPANY_FISCAL_START_MONTH", default=1),
+    "fiscal_year_start_month": env.int("COMPANY_FISCAL_START_MONTH", default=3),  # March, matches existing data
     "vat_rate": env.float("COMPANY_VAT_RATE", default=0.155),
     "country": env("COMPANY_COUNTRY", default="ZW"),
 }

@@ -171,54 +171,42 @@ class Command(BaseCommand):
         self.stdout.write(f'    [OK] {len(accounts)} accounts')
 
     def _create_fiscal_periods(self):
-        self.stdout.write('  Creating fiscal periods...')
-        fy, _ = FiscalYear.objects.get_or_create(
-            name='FY 2024/25',
-            defaults={'start_date': date(2024, 3, 1), 'end_date': date(2025, 2, 28)}
-        )
-        months = [
-            (1, 'March 2024', date(2024, 3, 1), date(2024, 3, 31)),
-            (2, 'April 2024', date(2024, 4, 1), date(2024, 4, 30)),
-            (3, 'May 2024', date(2024, 5, 1), date(2024, 5, 31)),
-            (4, 'June 2024', date(2024, 6, 1), date(2024, 6, 30)),
-            (5, 'July 2024', date(2024, 7, 1), date(2024, 7, 31)),
-            (6, 'August 2024', date(2024, 8, 1), date(2024, 8, 31)),
-            (7, 'September 2024', date(2024, 9, 1), date(2024, 9, 30)),
-            (8, 'October 2024', date(2024, 10, 1), date(2024, 10, 31)),
-            (9, 'November 2024', date(2024, 11, 1), date(2024, 11, 30)),
-            (10, 'December 2024', date(2024, 12, 1), date(2024, 12, 31)),
-            (11, 'January 2025', date(2025, 1, 1), date(2025, 1, 31)),
-            (12, 'February 2025', date(2025, 2, 1), date(2025, 2, 28)),
-        ]
-        for num, name, start, end in months:
-            FiscalPeriod.objects.get_or_create(
-                fiscal_year=fy, period_number=num,
-                defaults={'name': name, 'start_date': start, 'end_date': end}
-            )
+        """
+        Fiscal years from FY2024 up to and including the one containing today.
 
-        # Current FY
-        fy25, _ = FiscalYear.objects.get_or_create(
-            name='FY 2025/26',
-            defaults={'start_date': date(2025, 3, 1), 'end_date': date(2026, 2, 28)}
-        )
-        for i, (num, name, start, end) in enumerate([
-            (1, 'March 2025', date(2025, 3, 1), date(2025, 3, 31)),
-            (2, 'April 2025', date(2025, 4, 1), date(2025, 4, 30)),
-            (3, 'May 2025', date(2025, 5, 1), date(2025, 5, 31)),
-            (4, 'June 2025', date(2025, 6, 1), date(2025, 6, 30)),
-            (5, 'July 2025', date(2025, 7, 1), date(2025, 7, 31)),
-            (6, 'August 2025', date(2025, 8, 1), date(2025, 8, 31)),
-            (7, 'September 2025', date(2025, 9, 1), date(2025, 9, 30)),
-            (8, 'October 2025', date(2025, 10, 1), date(2025, 10, 31)),
-            (9, 'November 2025', date(2025, 11, 1), date(2025, 11, 30)),
-            (10, 'December 2025', date(2025, 12, 1), date(2025, 12, 31)),
-            (11, 'January 2026', date(2026, 1, 1), date(2026, 1, 31)),
-            (12, 'February 2026', date(2026, 2, 1), date(2026, 2, 28)),
-        ]):
-            FiscalPeriod.objects.get_or_create(
-                fiscal_year=fy25, period_number=num,
-                defaults={'name': name, 'start_date': start, 'end_date': end}
+        Previously hardcoded to FY2024/25-FY2025/26, so after Feb 2026 nothing
+        dated "today" could be posted (reversals, receipts...) in a fresh demo.
+        Uses COMPANY_CONFIG["fiscal_year_start_month"] (default March).
+        """
+        from calendar import monthrange
+
+        self.stdout.write('  Creating fiscal periods...')
+        start_month = settings.COMPANY_CONFIG.get('fiscal_year_start_month', 3)
+        today = date.today()
+        current_fy_start_year = today.year if today.month >= start_month else today.year - 1
+
+        years = periods = 0
+        for fy_year in range(2024, current_fy_start_year + 1):
+            fy_start = date(fy_year, start_month, 1)
+            end_year, end_month = (fy_year, 12) if start_month == 1 else (fy_year + 1, start_month - 1)
+            fy_end = date(end_year, end_month, monthrange(end_year, end_month)[1])
+            name = f'FY {fy_year}' if start_month == 1 else f'FY {fy_year}/{str(fy_year + 1)[-2:]}'
+            fy, _ = FiscalYear.objects.get_or_create(
+                name=name, defaults={'start_date': fy_start, 'end_date': fy_end}
             )
+            years += 1
+            for num in range(1, 13):
+                month_index = start_month - 1 + (num - 1)
+                y, m = fy_year + month_index // 12, month_index % 12 + 1
+                FiscalPeriod.objects.get_or_create(
+                    fiscal_year=fy, period_number=num,
+                    defaults={
+                        'name': date(y, m, 1).strftime('%B %Y'),
+                        'start_date': date(y, m, 1),
+                        'end_date': date(y, m, monthrange(y, m)[1]),
+                    },
+                )
+                periods += 1
 
         # Journals
         journals = [
@@ -231,7 +219,7 @@ class Command(BaseCommand):
         ]
         for code, name, auto in journals:
             Journal.objects.get_or_create(code=code, defaults={'name': name, 'auto_posting': auto})
-        self.stdout.write('    [OK] 2 fiscal years, 24 periods, 6 journals')
+        self.stdout.write(f'    [OK] {years} fiscal years, {periods} periods, 6 journals')
 
     def _create_property_types(self):
         self.stdout.write('  Creating property types...')

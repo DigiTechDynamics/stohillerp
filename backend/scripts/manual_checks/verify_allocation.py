@@ -5,7 +5,7 @@ from decimal import Decimal
 from datetime import date
 
 # Set up Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.development')
 django.setup()
 
 from apps.finance.models import ( # type: ignore

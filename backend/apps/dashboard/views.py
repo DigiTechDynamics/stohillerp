@@ -12,7 +12,8 @@ class ExecutiveDashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        today = date.today()
+        # Business-timezone date (TIME_ZONE), not the server clock.
+        today = timezone.localdate()
         month_start = today.replace(day=1)
         prev_month_end = month_start - timezone.timedelta(days=1)
         prev_month_start = prev_month_end.replace(day=1)
@@ -35,7 +36,7 @@ class ExecutiveDashboardView(APIView):
         
         # Trend: Portfolio Value (vs last month)
         prev_portfolio_value = Property.objects.filter(
-            created_at__lte=prev_month_end
+            created_at__date__lte=prev_month_end
         ).aggregate(total=Sum('current_valuation'))['total'] or Decimal('0')
         portfolio_trend = self._calc_trend(portfolio_value, prev_portfolio_value)
 
@@ -59,7 +60,7 @@ class ExecutiveDashboardView(APIView):
         
         # Trend: Rentals (vs last month)
         prev_monthly_income = Lease.objects.filter(
-            status='active', created_at__lte=prev_month_end
+            status='active', created_at__date__lte=prev_month_end
         ).aggregate(total=Sum('monthly_rental'))['total'] or Decimal('0')
         rentals_trend = self._calc_trend(monthly_income, prev_monthly_income)
 
@@ -123,7 +124,7 @@ class ExecutiveDashboardView(APIView):
                     'pending': str(commissions_ytd['pending'] or 0),
                 },
                 'crm': {'total_contacts': Contact.objects.filter(status='active').count(), 
-                        'new_leads_this_month': Contact.objects.filter(contact_type='lead', created_at__gte=month_start).count()},
+                        'new_leads_this_month': Contact.objects.filter(contact_type='lead', created_at__date__gte=month_start).count()},
             },
             'trends': {
                 'portfolio': portfolio_trend,

@@ -66,7 +66,9 @@ class ContactSerializer(serializers.ModelSerializer):
             return []
 
     def get_opportunity_count(self, obj):
-        return obj.opportunities.count()
+        # related_name is "contact_opportunities"; the old "opportunities"
+        # attribute raised AttributeError, crashing the whole contacts list.
+        return obj.contact_opportunities.count()
 
     def get_document_count(self, obj):
         return obj.documents.count()
@@ -122,6 +124,8 @@ class OpportunitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Opportunity
         fields = '__all__'
+        # Opportunity.save() generates the reference; clients shouldn't have to.
+        extra_kwargs = {'reference': {'required': False}}
 
     def get_contact_display(self, obj):
         if obj.contact:

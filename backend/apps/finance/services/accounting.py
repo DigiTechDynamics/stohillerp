@@ -363,14 +363,26 @@ class AccountingService:
 
         return entry
 
+    # Statuses from which an entry may be posted:
+    #   DRAFT    - single-entry posting (JournalEntryViewSet.post_entry)
+    #   APPROVED - batch posting after maker/checker approval
+    # Previously only DRAFT was accepted, so approved batches could never post.
+    POSTABLE_STATUSES = (JournalEntry.EntryStatus.DRAFT, JournalEntry.EntryStatus.APPROVED)
+
     @transaction.atomic
     def post_saved_entry(self, entry: JournalEntry) -> JournalEntry:
         """
-        Post a previously saved DRAFT journal entry.
+        Post a previously saved DRAFT or APPROVED journal entry.
         Validates the entry (balance, period) and updates account balances.
+
+        Atomic, and locks the entry row so two concurrent requests can't post
+        the same entry twice (which would double the account balances).
         """
-        if entry.status != JournalEntry.EntryStatus.DRAFT:
-            raise AccountingError('Only draft entries can be posted.')
+        entry = JournalEntry.objects.select_for_update().get(pk=entry.pk)
+        if entry.status not in self.POSTABLE_STATUSES:
+            raise AccountingError(
+                f'Entry {entry.reference} is {entry.status}; only draft or approved entries can be posted.'
+            )
 
         if not entry.is_balanced():
             raise AccountingError(
@@ -928,7 +940,11 @@ class AccountingService:
         Create a full reversal of a posted entry.
         Swaps all debits to credits and vice versa.
         Links back to the original entry.
+
+        Atomic, and locks the original row so it can't be reversed twice by
+        concurrent requests.
         """
+        entry = JournalEntry.objects.select_for_update().get(pk=entry.pk)
         if entry.status != JournalEntry.EntryStatus.POSTED:
             raise AccountingError('Only posted entries can be reversed.')
 
@@ -956,9 +972,13 @@ class AccountingService:
             })
 
         reversal = self.post_entry(posting, journal_code=entry.journal.code)
+        # Link via queryset.update(): the reversal is already POSTED, and
+        # JournalEntry.save() (correctly) refuses to modify posted entries, which
+        # made every reversal fail. These are linkage fields set in the same
+        # transaction that created the entry, not an edit of posted amounts.
+        JournalEntry.objects.filter(pk=reversal.pk).update(is_reversal=True, reversed_entry=entry)
         reversal.is_reversal = True
         reversal.reversed_entry = entry
-        reversal.save(update_fields=['is_reversal', 'reversed_entry'])
 
         # Mark original as reversed
         JournalEntry.objects.filter(pk=entry.pk).update(status=JournalEntry.EntryStatus.REVERSED)

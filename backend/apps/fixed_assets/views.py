@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -52,7 +54,13 @@ class FixedAssetViewSet(viewsets.ModelViewSet):
         """Action to dispose of an asset."""
         asset = self.get_object()
         disposal_date = request.data.get('disposal_date')
-        net_proceeds = Decimal(str(request.data.get('net_proceeds', '0.00')))
+        # Previously crashed with NameError: Decimal was never imported.
+        try:
+            net_proceeds = Decimal(str(request.data.get('net_proceeds', '0.00')))
+        except (InvalidOperation, ValueError):
+            return Response({'error': 'net_proceeds must be a number'}, status=status.HTTP_400_BAD_REQUEST)
+        if net_proceeds < 0:
+            return Response({'error': 'net_proceeds cannot be negative'}, status=status.HTTP_400_BAD_REQUEST)
         notes = request.data.get('notes', '')
         
         if not disposal_date:
