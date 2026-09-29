@@ -1,36 +1,37 @@
 // Stohill Properties - Root Application Component
 // Handles routing, auth guards, and global layout
 
-import { useEffect } from 'react'
+import { lazy, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore, useUIStore } from '@/stores/authStore'
 import AppLayout from '@/components/layout/AppLayout'
 import LoginPage from '@/pages/LoginPage'
 
-// Page imports
-import ExecutiveDashboard from '@/pages/dashboard/ExecutiveDashboard'
-import PropertiesPage from '@/pages/properties/PropertiesPage'
-import CRMPage from '@/pages/crm/CRMPage'
-import SalesPage from '@/pages/sales/SalesPage'
-import RentalsPage from '@/pages/rentals/RentalsPage'
-import FinancePage from '@/pages/finance/FinancePage'
-import JournalEntriesPage from '@/pages/finance/JournalEntriesPage'
-import ReportsPage from '@/pages/finance/ReportsPage'
-import AccountsPayablePage from '@/pages/finance/AccountsPayablePage'
-import AccountsReceivablePage from '@/pages/finance/AccountsReceivablePage'
-import BankingPage from '@/pages/banking/BankingPage'
-import TaxReportsPage from '@/pages/finance/TaxReportsPage'
-import CommissionsPage from '@/pages/commissions/CommissionsPage'
-import DocumentsPage from '@/pages/documents/DocumentsPage'
-import HRPage from '@/pages/hr/HRPage'
-import AgentsPage from '@/pages/hr/AgentsPage'
-import FiscalPeriodsPage from '@/pages/finance/FiscalPeriodsPage'
-import PostingProfilesPage from '@/pages/finance/PostingProfilesPage'
-import AssetsPage from '@/pages/finance/AssetsPage'
-import CreateJournalEntryPage from '@/pages/finance/CreateJournalEntryPage'
-import BatchApprovalPage from '@/pages/finance/BatchApprovalPage'
-import PayrollPage from '@/pages/payroll/PayrollPage'
-import UserAccessPage from '@/pages/admin/UserAccessPage'
+// Page imports: lazy-loaded so each module is its own chunk, downloaded on
+// first visit. LoginPage stays eager because it's the entry screen.
+const ExecutiveDashboard = lazy(() => import('@/pages/dashboard/ExecutiveDashboard'))
+const PropertiesPage = lazy(() => import('@/pages/properties/PropertiesPage'))
+const CRMPage = lazy(() => import('@/pages/crm/CRMPage'))
+const SalesPage = lazy(() => import('@/pages/sales/SalesPage'))
+const RentalsPage = lazy(() => import('@/pages/rentals/RentalsPage'))
+const FinancePage = lazy(() => import('@/pages/finance/FinancePage'))
+const JournalEntriesPage = lazy(() => import('@/pages/finance/JournalEntriesPage'))
+const ReportsPage = lazy(() => import('@/pages/finance/ReportsPage'))
+const AccountsPayablePage = lazy(() => import('@/pages/finance/AccountsPayablePage'))
+const AccountsReceivablePage = lazy(() => import('@/pages/finance/AccountsReceivablePage'))
+const BankingPage = lazy(() => import('@/pages/banking/BankingPage'))
+const TaxReportsPage = lazy(() => import('@/pages/finance/TaxReportsPage'))
+const CommissionsPage = lazy(() => import('@/pages/commissions/CommissionsPage'))
+const DocumentsPage = lazy(() => import('@/pages/documents/DocumentsPage'))
+const HRPage = lazy(() => import('@/pages/hr/HRPage'))
+const AgentsPage = lazy(() => import('@/pages/hr/AgentsPage'))
+const FiscalPeriodsPage = lazy(() => import('@/pages/finance/FiscalPeriodsPage'))
+const PostingProfilesPage = lazy(() => import('@/pages/finance/PostingProfilesPage'))
+const AssetsPage = lazy(() => import('@/pages/finance/AssetsPage'))
+const CreateJournalEntryPage = lazy(() => import('@/pages/finance/CreateJournalEntryPage'))
+const BatchApprovalPage = lazy(() => import('@/pages/finance/BatchApprovalPage'))
+const PayrollPage = lazy(() => import('@/pages/payroll/PayrollPage'))
+const UserAccessPage = lazy(() => import('@/pages/admin/UserAccessPage'))
 
 // Auth guard wrapper
 function PrivateRoute({ children }) {

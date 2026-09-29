@@ -1,5 +1,5 @@
 // Stohill Properties - Main Application Layout
-import React, { useState } from 'react'
+import React, { Suspense, useState } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -13,6 +13,7 @@ import SidePanelContainer from '@/components/common/SidePanelContainer'
 import ExecutiveModeToggle from '@/components/common/ExecutiveModeToggle'
 import ThemeToggle from '@/components/common/ThemeToggle'
 import BrandLogo from '@/components/common/BrandLogo'
+import PageLoader from '@/components/common/PageLoader'
 import { signOut } from '@/services/api'
 
 // Simple Error Boundary Fallback for robust UI
@@ -271,7 +272,10 @@ export default function AppLayout() {
         {/* Page View */}
         <main className="flex-1 overflow-y-auto custom-scrollbar">
           <ErrorBoundaryFallback>
-            <Outlet />
+            {/* Suspense catches lazily-loaded page chunks (see App.jsx). */}
+            <Suspense fallback={<PageLoader />}>
+              <Outlet />
+            </Suspense>
           </ErrorBoundaryFallback>
         </main>
       </div>

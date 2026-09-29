@@ -7,6 +7,22 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },
+  build: {
+    // Long-lived vendor chunks: they change far less often than app code, so
+    // browsers keep them cached across deploys.
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          query: ['@tanstack/react-query', 'axios', 'zustand'],
+          charts: ['recharts'],
+          motion: ['framer-motion'],
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select',
+               '@radix-ui/react-tabs', '@radix-ui/react-tooltip', 'cmdk', 'lucide-react'],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {
