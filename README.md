@@ -238,6 +238,8 @@ in a rolled-back transaction. It covers:
 
 Frontend: `cd frontend && npm test` (Vitest + Testing Library).
 
+User acceptance testing: [docs/uat/Stohill_ERP_UAT_Test_Scripts.pdf](docs/uat/Stohill_ERP_UAT_Test_Scripts.pdf) (31 scripts per department, a month-end walkthrough, defect log and sign-off). Edit and regenerate with `docs/uat/build_uat_pdf.py`.
+
 CI (`.github/workflows/ci.yml`) runs lint, the missing-migration check, the
 tests on PostgreSQL, a production `check --deploy`, the frontend tests and
 build, and the Docker builds.
