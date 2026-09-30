@@ -11,7 +11,7 @@ import {
 } from 'recharts'
 import { dashboardAPI } from '@/services/api'
 import { formatCurrency, formatNumber } from '@/utils/format'
-import { useAuthStore, useUIStore } from '@/stores/authStore'
+import { useAuthStore } from '@/stores/authStore'
 import { useNavigate } from 'react-router-dom'
 
 // ─── Animated KPI Card ────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ function KpiCard({ title, value, subtitle, icon, trend, trendLabel, accent = 'te
         <div className={`w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center ${accent}`}>
           {icon}
         </div>
-        {trend !== undefined && (
+        {trend !== undefined && trend !== null && (
           <div className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full
             ${trend >= 0
               ? 'bg-emerald-500/10 text-emerald-400'
@@ -69,7 +69,6 @@ function getGreeting() {
 export default function ExecutiveDashboard() {
   const executiveMode = useAuthStore((s) => s.executiveMode)
   const user = useAuthStore((s) => s.user)
-  const openPanel = useUIStore((s) => s.openSidePanel)
   const navigate = useNavigate()
 
   const { data, isLoading, error, refetch, dataUpdatedAt } = useQuery({
@@ -85,6 +84,7 @@ export default function ExecutiveDashboard() {
   if (error || !data) return <DashboardError onRetry={refetch} error={error} />
 
   const { kpis, charts, trends } = data
+  const currency = data.currency
   const revenueData = (charts?.revenue_trend || []).map((d) => ({
     month: d.month,
     revenue: d.revenue,
@@ -109,6 +109,7 @@ export default function ExecutiveDashboard() {
             {executiveMode ? 'Executive Command Center' : `${getGreeting()}, ${user?.first_name}`}
           </motion.h1>
           <p className="text-dark-400 text-sm mt-1">
+            {data?.missing_rates?.length > 0 && <span className="text-amber-300 mr-2">Sales in {data.missing_rates.join(', ')} are left out: add their exchange rates.</span>}
             {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
@@ -128,7 +129,7 @@ export default function ExecutiveDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           title="Portfolio Value"
-          value={formatCurrency(parseFloat(kpis?.properties?.portfolio_value || 0), 'USD')}
+          value={formatCurrency(parseFloat(kpis?.properties?.portfolio_value || 0), currency)}
           subtitle={`${kpis?.properties?.total || 0} properties`}
           icon={<Building2 size={20} />}
           trend={trends?.portfolio}
@@ -138,11 +139,12 @@ export default function ExecutiveDashboard() {
         />
         <KpiCard
           title="YTD Sales Revenue"
-          value={formatCurrency(parseFloat(kpis?.sales?.ytd_value || 0), 'USD')}
+          value={formatCurrency(parseFloat(kpis?.sales?.ytd_value || 0), currency)}
           subtitle={`${kpis?.sales?.ytd_count || 0} transactions`}
           icon={<TrendingUp size={20} />}
           accent="text-emerald-400"
           trend={trends?.sales}
+          trendLabel={trends?.sales !== null && trends?.sales !== undefined ? 'vs same period last year' : undefined}
           delay={0.05}
           onClick={() => navigate('/sales')}
         />
@@ -159,12 +161,12 @@ export default function ExecutiveDashboard() {
         />
         <KpiCard
           title="Pipeline Value"
-          value={formatCurrency(parseFloat(kpis?.sales?.pipeline_value || 0), 'USD')}
+          value={formatCurrency(parseFloat(kpis?.sales?.pipeline_value || 0), currency)}
           subtitle="Active opportunities"
           icon={<BarChart3 size={20} />}
           accent="text-purple-400"
           delay={0.15}
-          onClick={() => openPanel('add-sale')}
+          onClick={() => navigate('/crm')}
         />
       </div>
 
@@ -186,7 +188,7 @@ export default function ExecutiveDashboard() {
           icon={<Building2 size={20} />}
           accent="text-primary"
           delay={0.25}
-          onClick={() => openPanel('add-property')}
+          onClick={() => navigate('/properties')}
         />
         <KpiCard
           title="YTD Commissions Paid"
@@ -250,7 +252,7 @@ export default function ExecutiveDashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#777' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: '#777' }} axisLine={false} tickLine={false}
-                tickFormatter={(v) => formatCurrency(v, 'USD')} />
+                tickFormatter={(v) => formatCurrency(v, currency, 'compact')} />
               <Tooltip content={<ChartTooltip />} />
               <Area type="monotone" dataKey="revenue" stroke="#E5A645" strokeWidth={2}
                 fill="url(#revGrad)" dot={false} activeDot={{ r: 4, fill: '#E5A645' }} />

@@ -74,7 +74,7 @@ function PipelineFunnel({ stages }) {
             <div className="absolute inset-0 flex items-center justify-between px-3">
               <span className="text-[10px] font-bold text-white">{stage.count} deals</span>
               <span className="text-[10px] font-mono text-white/80">
-                {formatCurrency(stage.total_revenue, 'USD')}
+                {formatCurrency(stage.total_revenue)}
               </span>
             </div>
           </div>
@@ -124,7 +124,7 @@ function ForecastTable({ data }) {
                   <td key={m} className="py-3 px-4 text-right">
                     {d?.weighted > 0 ? (
                       <div>
-                        <p className="font-mono font-bold text-white">{formatCurrency(d.weighted, 'USD')}</p>
+                        <p className="font-mono font-bold text-white">{formatCurrency(d.weighted)}</p>
                         <p className="text-[9px] text-dark-600">{d.count} deal{d.count !== 1 ? 's' : ''}</p>
                       </div>
                     ) : (
@@ -336,14 +336,14 @@ export default function CrmReportingPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
             label="Total Pipeline"
-            value={formatCurrency(overview?.total_pipeline || 0, 'USD')}
+            value={formatCurrency(overview?.total_pipeline || 0)}
             sub={`${overview?.open_opportunities || 0} open deals`}
             icon={DollarSign}
             color="primary"
           />
           <KpiCard
             label="Weighted Forecast"
-            value={formatCurrency(overview?.weighted_forecast || 0, 'USD')}
+            value={formatCurrency(overview?.weighted_forecast || 0)}
             sub="Probability-adjusted"
             icon={Target}
             color="blue"
@@ -357,7 +357,7 @@ export default function CrmReportingPage() {
           />
           <KpiCard
             label="Avg Deal Size"
-            value={formatCurrency(overview?.avg_deal_size || 0, 'USD')}
+            value={formatCurrency(overview?.avg_deal_size || 0)}
             sub="Won deals"
             icon={Trophy}
             color="amber"

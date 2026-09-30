@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 vi.mock('@/services/api', () => {
   const ok = (data) => Promise.resolve({ data })
   return {
-    propertiesAPI: { properties: { list: vi.fn(() => ok({ results: [] })) } },
+    propertiesAPI: { list: vi.fn(() => ok({ results: [] })) },
     financeAPI: {
       periods: { list: vi.fn(() => ok({ results: [] })) },
       fiscalYears: { list: vi.fn(() => ok({ results: [] })) },

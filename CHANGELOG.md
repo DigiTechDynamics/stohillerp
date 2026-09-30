@@ -5,6 +5,47 @@
 Branch `chore/production-hardening`. Every bug below has a regression test in
 `backend/tests/`.
 
+### Real data instead of hardcoded values
+
+- **Company details** come from `COMPANY_*` settings (`core/company/`).
+  - Invoices, statements and payslips printed a made-up address and phone
+    ("Harare, Zimbabwe | +263 77 000 0000 | info@stohill.co.zw") and a
+    tagline. They now print the configured address, contact details and VAT
+    number/TIN.
+  - Invoice emails had the company name hardcoded (misspelled "Stohil").
+- **Currency.** The UI uses the base currency from Finance > Currencies
+  instead of `'USD'`, and records keep their own currency. Amounts now show
+  cents: they were rounded to whole units. Serializers no longer claim USD
+  for records without a currency. New bank accounts default to the base
+  currency.
+- **Sales page.** The four KPI cards were fixed figures ($12.5M, 24 deals,
+  $4.2M, 8, with invented trends). They now come from
+  `sales/transactions/stats/`: registered sales YTD in base currency with the
+  change vs the same period last year, active deals, deals pending
+  completion, and completions this month. Sales without an exchange rate are
+  flagged, not silently summed.
+- **Commissions page.** The cards were fixed ($2.1M, $450k, $62,500) and
+  named an invented top earner ("Jane Smith"). They now come from
+  `commissions/records/stats/`.
+- **Compliance audit.** The panel always showed invented checks, an "81%"
+  score and a made-up "32 units" recommendation, because
+  `documents/compliance/` was swallowed by the document detail route. The
+  route is fixed. A new `summary/` endpoint scores each requirement from the
+  records, with expiry dates applied as of today.
+- **Executive dashboard.**
+  - The sales trend was a fixed "12.8%". It is now the year-to-date change
+    vs last year, or none when there's no prior data (a missing baseline
+    showed as +100%).
+  - Revenue and expenses were all-time sums of both debits and credits. They
+    are now year-to-date net figures.
+  - The revenue chart nets credit notes. Sales are converted to the base
+    currency.
+  - Two cards opened panels that don't exist.
+- **Other fixes.**
+  - The Reports page property filter called a non-existent API.
+  - Bank account ordering used a removed field.
+  - The error screen claimed "our team has been notified".
+
 ### Production readiness: backups, monitoring, lint
 
 - **Backups.** A `backup` Compose service takes a daily database dump, verifies

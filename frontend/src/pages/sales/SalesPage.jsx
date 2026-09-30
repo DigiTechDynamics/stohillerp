@@ -26,6 +26,11 @@ export default function SalesPage() {
 
   const transactions = data?.data?.results || []
 
+  const { data: statsRes } = useQuery({ queryKey: ['sales-stats'], queryFn: () => salesAPI.stats() })
+  const stats = statsRes?.data
+  const money = (v) => (stats ? formatCurrency(v, stats.currency) : '—')
+  const count = (n) => (stats ? n : '—')
+
   return (
     <div className="p-4 lg:p-6 space-y-6">
       {/* Header */}
@@ -49,23 +54,34 @@ export default function SalesPage() {
       {/* Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'YTD Revenue', value: '$12.5M', trend: 15, icon: DollarSign, color: 'text-emerald-400' },
-          { label: 'Active Deals', value: '24', trend: 8, icon: Briefcase, color: 'text-primary' },
-          { label: 'Pending Completion', value: '$4.2M', trend: -2, icon: TrendingUp, color: 'text-amber-400' },
-          { label: 'Completed (MTD)', value: '8', trend: 12, icon: FileText, color: 'text-purple-400' },
+          { label: 'Registered sales (YTD)', value: money(stats?.ytd_value), sub: stats && `${stats.ytd_count} sales · ${money(stats.ytd_commission)} commission`,
+            trend: stats?.ytd_change_pct, icon: DollarSign, color: 'text-emerald-400' },
+          { label: 'Active deals', value: count(stats?.active_count), sub: stats && money(stats.active_value), icon: Briefcase, color: 'text-primary' },
+          { label: 'Pending completion', value: money(stats?.pending_completion_value), sub: stats && `${stats.pending_completion_count} bond approved / in transfer`,
+            icon: TrendingUp, color: 'text-amber-400' },
+          { label: 'Completed this month', value: count(stats?.completed_mtd_count), sub: stats && money(stats.completed_mtd_value), icon: FileText, color: 'text-purple-400' },
         ].map((stat, i) => (
           <div key={i} className="card p-4">
             <div className="flex items-center justify-between mb-2">
               <stat.icon size={18} className={stat.color} />
-              <div className={`flex items-center gap-0.5 text-[10px] font-bold ${stat.trend >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {stat.trend >= 0 ? '+' : ''}{stat.trend}%
-              </div>
+              {stat.trend !== undefined && stat.trend !== null && (
+                <div className={`flex items-center gap-0.5 text-[10px] font-bold ${stat.trend >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+                  title="vs the same period last year">
+                  {stat.trend >= 0 ? '+' : ''}{stat.trend}%
+                </div>
+              )}
             </div>
             <p className="text-lg font-semibold text-white">{stat.value}</p>
             <p className="text-xs text-dark-400">{stat.label}</p>
+            {stat.sub && <p className="text-[10px] text-dark-500 mt-0.5">{stat.sub}</p>}
           </div>
         ))}
       </div>
+      {stats?.missing_rates?.length > 0 && (
+        <p className="text-xs text-amber-300 -mt-2">
+          Sales in {stats.missing_rates.join(', ')} are not included: add exchange rates for their dates under Finance &gt; Currencies.
+        </p>
+      )}
 
       {/* Toolbar */}
       <div className="flex items-center gap-3">

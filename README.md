@@ -159,7 +159,8 @@ Backend settings come from environment variables (or `backend/.env`); see
 | `THROTTLE_LOGIN` / `THROTTLE_ANON` / `THROTTLE_USER` | 10/min, 60/min, 600/min | |
 | `LOG_LEVEL` / `LOG_FORMAT` | INFO / `verbose` (`json` in production) | |
 | `TIME_ZONE` | `Africa/Harare` | Business dates (dashboards, "today") |
-| `COMPANY_CURRENCY`, `COMPANY_FISCAL_START_MONTH`, ... | USD, 3 (March) | |
+| `COMPANY_CURRENCY`, `COMPANY_FISCAL_START_MONTH`, ... | USD, 3 (March) | The reporting currency shown in the UI is the currency marked *base* under Finance > Currencies |
+| `COMPANY_NAME`, `COMPANY_ADDRESS`, `COMPANY_PHONE`, `COMPANY_EMAIL`, `COMPANY_WEBSITE`, `COMPANY_VAT_NUMBER`, `COMPANY_TAX_NUMBER`, `COMPANY_TAGLINE` | name only | Printed on invoices, statements and payslips and used in emails; blank values are left out. Also served at `core/company/` |
 | `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL` | console backend | Set SMTP in production: portal invitations, payslips and statements are emailed |
 | `PORTAL_BASE_URL` | `http://localhost:5173` | Public URL of the SPA; activation and payment-return links point here |
 | `PAYMENT_GATEWAY` | `test` when `DEBUG`, else `paynow` | The test gateway is forced off in production |

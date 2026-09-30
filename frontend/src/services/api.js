@@ -86,6 +86,10 @@ export const authAPI = {
   },
 }
 
+export const companyAPI = {
+  profile: () => api.get('core/company/'),
+}
+
 export const propertiesAPI = {
   list: (params) => api.get('properties/', { params }),
   detail: (id) => api.get(`properties/${id}/`),
@@ -174,6 +178,7 @@ export const salesAPI = {
   update: (id, data) => api.patch(`sales/transactions/${id}/`, data),
   postToFinance: (id) => api.post(`sales/transactions/${id}/post_to_finance/`),
   confirmDeal: (id) => api.post(`sales/transactions/${id}/confirm_deal/`),
+  stats: () => api.get('sales/transactions/stats/'),
 }
 
 export const rentalsAPI = {
@@ -524,6 +529,7 @@ export const commissionsAPI = {
   list: (params) => api.get('commissions/records/', { params }),
   detail: (id) => api.get(`commissions/records/${id}/`),
   approve: (id) => api.post(`commissions/records/${id}/approve/`),
+  stats: () => api.get('commissions/records/stats/'),
   structures: {
     list: (params) => api.get('commissions/structures/', { params }),
     create: (data) => api.post('commissions/structures/', data),
@@ -535,7 +541,10 @@ export const documentsAPI = {
   list: (params) => api.get('documents/', { params }),
   detail: (id) => api.get(`documents/${id}/`),
   upload: (formData) => api.post('documents/', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  compliance: { list: (params) => api.get('documents/compliance/', { params }) },
+  compliance: {
+    list: (params) => api.get('documents/compliance/', { params }),
+    summary: () => api.get('documents/compliance/summary/'),
+  },
 }
 
 export const hrAPI = {

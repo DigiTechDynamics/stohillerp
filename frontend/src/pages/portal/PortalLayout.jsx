@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { Home, FileText, ScrollText, Wrench, LogOut } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
+import { useCompanyProfile } from '@/hooks/useCompanyProfile'
 import { signOut } from '@/services/api'
 import BrandLogo from '@/components/common/BrandLogo'
 import PageLoader from '@/components/common/PageLoader'
@@ -16,6 +17,7 @@ const NAV = [
 
 export default function PortalLayout() {
   const user = useAuthStore((s) => s.user)
+  const company = useCompanyProfile()
   const navigate = useNavigate()
   return (
     <div className="min-h-screen bg-dark-950 text-dark-100 font-body">
@@ -24,7 +26,7 @@ export default function PortalLayout() {
           <div className="flex items-center gap-3">
             <BrandLogo className="w-8 h-8" />
             <div>
-              <p className="font-display text-white leading-none">Stohill Properties</p>
+              <p className="font-display text-white leading-none">{company.data?.name || 'Tenant portal'}</p>
               <p className="text-[10px] text-primary/70 uppercase tracking-[0.15em]">Tenant portal</p>
             </div>
           </div>
@@ -47,7 +49,7 @@ export default function PortalLayout() {
       </header>
       <main className="max-w-5xl mx-auto px-4 py-6">
         <Suspense fallback={<PageLoader />}>
-          <Outlet />
+          {company.isLoading ? <PageLoader /> : <Outlet />}
         </Suspense>
       </main>
     </div>

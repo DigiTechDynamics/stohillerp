@@ -70,7 +70,7 @@ export default function OpportunityTable({ opportunities, isLoading }) {
                 <td className="px-4 py-4">
                   <div className="flex flex-col">
                     <span className="text-sm font-bold text-white font-mono tracking-tighter">
-                      {opp.expected_revenue ? formatCurrency(parseFloat(opp.expected_revenue), opp.currency_code || 'USD') : '—'}
+                      {opp.expected_revenue ? formatCurrency(parseFloat(opp.expected_revenue), opp.currency_code) : '—'}
                     </span>
                     <span className="text-[10px] text-dark-500 font-medium italic">at {opp.probability}% prob.</span>
                   </div>

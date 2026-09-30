@@ -48,7 +48,7 @@ function OpportunityRow({ opp, onClick }) {
       </div>
       <div className="flex items-center gap-2 flex-shrink-0 ml-2">
         <span className="text-xs font-mono font-bold text-white">
-          {formatCurrency(parseFloat(opp.expected_revenue || 0), 'USD')}
+          {formatCurrency(parseFloat(opp.expected_revenue || 0), opp.currency_code)}
         </span>
         <ChevronRight size={12} className="text-dark-600 group-hover:text-primary" />
       </div>
@@ -388,10 +388,10 @@ export default function ContactDetailPanel({ contactId, contact: contactProp }) 
             {(contact.budget_min || contact.budget_max || contact.annual_income) && (
               <section className="bg-dark-800/40 rounded-2xl border border-white/5 p-5 space-y-4">
                 <p className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Financial Profile</p>
-                {contact.budget_min && <InfoRow icon={DollarSign} label="Budget Min" value={formatCurrency(contact.budget_min, 'USD')} />}
-                {contact.budget_max && <InfoRow icon={DollarSign} label="Budget Max" value={formatCurrency(contact.budget_max, 'USD')} />}
-                {contact.annual_income && <InfoRow icon={DollarSign} label="Annual Income" value={formatCurrency(contact.annual_income, 'USD')} />}
-                {contact.affordability && <InfoRow icon={DollarSign} label="Affordability" value={formatCurrency(contact.affordability, 'USD')} />}
+                {contact.budget_min && <InfoRow icon={DollarSign} label="Budget Min" value={formatCurrency(contact.budget_min)} />}
+                {contact.budget_max && <InfoRow icon={DollarSign} label="Budget Max" value={formatCurrency(contact.budget_max)} />}
+                {contact.annual_income && <InfoRow icon={DollarSign} label="Annual Income" value={formatCurrency(contact.annual_income)} />}
+                {contact.affordability && <InfoRow icon={DollarSign} label="Affordability" value={formatCurrency(contact.affordability)} />}
               </section>
             )}
 

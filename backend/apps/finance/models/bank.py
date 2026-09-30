@@ -6,6 +6,12 @@ from django.db.models import Q, Sum
 from apps.core.models import AuditedModel
 
 
+def default_currency_code():
+    """New bank accounts default to the company's reporting currency."""
+    from apps.core.company import base_currency_code
+    return base_currency_code()
+
+
 class BankAccount(AuditedModel):
     """
     The one bank / cash account model. Linked 1-to-1 to its GL account.
@@ -32,7 +38,8 @@ class BankAccount(AuditedModel):
     branch_code = models.CharField(max_length=20, blank=True)
     iban = models.CharField(max_length=50, blank=True)
     swift_bic = models.CharField(max_length=20, blank=True)
-    currency = models.ForeignKey('core.Currency', to_field='code', db_column='currency', on_delete=models.PROTECT, default='USD')
+    currency = models.ForeignKey('core.Currency', to_field='code', db_column='currency', on_delete=models.PROTECT,
+                                 default=default_currency_code)
 
     account_type = models.CharField(max_length=20, choices=AccountType.choices, default=AccountType.CURRENT)
     gl_account = models.OneToOneField(

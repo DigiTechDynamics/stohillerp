@@ -6,6 +6,8 @@ from datetime import date
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
+from apps.core.company import base_currency_code
+
 
 class ExecutiveDashboardView(APIView):
 
@@ -38,16 +40,24 @@ class ExecutiveDashboardView(APIView):
         ).aggregate(total=Sum('current_valuation'))['total'] or Decimal('0')
         portfolio_trend = self._calc_trend(portfolio_value, prev_portfolio_value)
 
-        ytd_sales = SaleTransaction.objects.filter(status='registered', transfer_date__gte=year_start)
-        ytd_sales_count = ytd_sales.count()
-        ytd_sales_value = ytd_sales.aggregate(total=Sum('sale_price'))['total'] or Decimal('0')
+        from apps.sales.stats import base_totals
+        missing_rates = set()
+        registered = SaleTransaction.objects.filter(status='registered')
+        ytd_sales_count, ytd_sales_value, _c = base_totals(
+            registered.filter(transfer_date__gte=year_start, transfer_date__lte=today), missing_rates)
         
-        # Trend: Sales (vs last year same period - simplified to 12.8 placeholder if no data)
-        sales_trend = 12.8 # Default placeholder for UI richness if data is sparse
+        # Trend: YTD sales vs the same period last year.
+        try:
+            last_year_today = today.replace(year=today.year - 1)
+        except ValueError:                      # 29 February
+            last_year_today = today.replace(year=today.year - 1, day=28)
+        _n, prior_ytd_value, _c = base_totals(registered.filter(
+            transfer_date__gte=year_start.replace(year=today.year - 1), transfer_date__lte=last_year_today),
+            missing_rates)
+        sales_trend = self._calc_trend(ytd_sales_value, prior_ytd_value)
 
-        mtd_sales_value = SaleTransaction.objects.filter(
-            status='registered', transfer_date__gte=month_start
-        ).aggregate(total=Sum('sale_price'))['total'] or Decimal('0')
+        _n, mtd_sales_value, _c = base_totals(
+            registered.filter(transfer_date__gte=month_start, transfer_date__lte=today), missing_rates)
         pipeline_value = Opportunity.objects.filter(
             stage__is_terminal=False
         ).aggregate(total=Sum('expected_revenue'))['total'] or Decimal('0')
@@ -70,14 +80,18 @@ class ExecutiveDashboardView(APIView):
             account_sub_type='bank', is_active=True
         ).aggregate(total=Sum('current_balance'))['total'] or Decimal('0')
         
-        revenue = JournalLine.objects.filter(
-            entry__status__in=JournalEntry.LEDGER_STATUSES,
-            account__account_type='revenue'
-        ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
-        expenses = JournalLine.objects.filter(
-            entry__status__in=JournalEntry.LEDGER_STATUSES,
-            account__account_type='expense'
-        ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        # Year to date, net of debits/credits (credit notes and reversals reduce revenue).
+        def ytd_net(account_type, normal_side):
+            agg = JournalLine.objects.filter(
+                entry__status__in=JournalEntry.LEDGER_STATUSES,
+                entry__entry_date__gte=year_start, entry__entry_date__lte=today,
+                account__account_type=account_type,
+            ).aggregate(dr=Sum('amount', filter=Q(side='debit')), cr=Sum('amount', filter=Q(side='credit')))
+            dr, cr = agg['dr'] or Decimal('0'), agg['cr'] or Decimal('0')
+            return cr - dr if normal_side == 'credit' else dr - cr
+
+        revenue = ytd_net('revenue', 'credit')
+        expenses = ytd_net('expense', 'debit')
         
         operating_margin = 0
         if revenue > 0:
@@ -94,6 +108,9 @@ class ExecutiveDashboardView(APIView):
 
         return Response({
             'generated_at': timezone.now().isoformat(),
+            'currency': base_currency_code(),
+            'missing_rates': sorted(missing_rates),
+            'period': {'year_start': year_start, 'today': today},
             'kpis': {
                 'properties': {
                     'total': total_properties, 'available': available,
@@ -137,23 +154,25 @@ class ExecutiveDashboardView(APIView):
         })
 
     def _calc_trend(self, current, previous):
-        if not previous or previous == 0:
-            return 100.0 if current > 0 else 0.0
-        return round(((current - previous) / previous) * 100, 1)
+        # No earlier figure means there is nothing to compare with: no trend.
+        if not previous:
+            return None
+        return round(float((current - previous) / previous) * 100, 1)
 
     def _revenue_chart(self):
         from apps.finance.models import JournalLine, JournalEntry
         from django.db.models import Sum
         from django.db.models.functions import TruncMonth
-        from datetime import date, timedelta
-        start = (date.today() - timedelta(days=365)).replace(day=1)
+        from datetime import timedelta
+        from django.db.models import Q
+        start = (timezone.localdate() - timedelta(days=365)).replace(day=1)
         data = JournalLine.objects.filter(
             entry__status__in=JournalEntry.LEDGER_STATUSES,
             entry__entry_date__gte=start,
-            account__account_type='revenue', side='credit',
+            account__account_type='revenue',
         ).annotate(month=TruncMonth('entry__entry_date')).values('month').annotate(
-            total=Sum('amount')).order_by('month')
-        return [{'month': d['month'].strftime('%b %Y'), 'revenue': float(d['total'] or 0)} for d in data]
+            cr=Sum('amount', filter=Q(side='credit')), dr=Sum('amount', filter=Q(side='debit'))).order_by('month')
+        return [{'month': d['month'].strftime('%b %Y'), 'revenue': float((d['cr'] or 0) - (d['dr'] or 0))} for d in data]
 
     def _pipeline_stages(self):
         from apps.crm.models import PipelineStage
@@ -192,7 +211,7 @@ class AgentDashboardView(APIView):
         if not employee:
             return Response({'error': 'No employee profile found'}, status=404)
 
-        year_start = date.today().replace(month=1, day=1)
+        year_start = timezone.localdate().replace(month=1, day=1)
         ytd = CommissionRecord.objects.filter(
             agent=employee, status__in=['approved', 'paid'],
             created_at__date__gte=year_start

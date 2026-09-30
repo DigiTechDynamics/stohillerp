@@ -97,7 +97,7 @@ function PropertyCard({ property }) {
             )}
             {property.rental_rate && (
               <p className="text-xs text-dark-400">
-                {property.currency_code || '$'}{parseFloat(property.rental_rate).toLocaleString('en-US')}/mo rental
+                {formatCurrency(property.rental_rate, property.currency_code)}/mo rental
               </p>
             )}
           </div>

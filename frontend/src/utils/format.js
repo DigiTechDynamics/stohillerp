@@ -1,25 +1,30 @@
 // Stohill Properties - Formatting Utilities
 
-export function formatCurrency(amount, currencyCode = 'USD', style = 'full') {
-  if (isNaN(amount) || amount === null) return `${currencyCode} 0`
-  
-  if (style === 'compact') {
-    const symbol = currencyCode === 'USD' ? '$' : currencyCode + ' '
-    if (amount >= 1_000_000_000) return `${symbol}${(amount / 1_000_000_000).toFixed(1)}B`
-    if (amount >= 1_000_000) return `${symbol}${(amount / 1_000_000).toFixed(1)}M`
-    if (amount >= 1_000) return `${symbol}${(amount / 1_000).toFixed(0)}K`
-    return `${symbol}${amount.toFixed(0)}`
-  }
+// The company's reporting currency, loaded from core/company/ at start-up
+// (see useCompanyProfile). Used when an amount has no currency of its own.
+let defaultCurrency = 'USD'
 
+export function setDefaultCurrency(code) {
+  if (code) defaultCurrency = code
+}
+
+export function getDefaultCurrency() {
+  return defaultCurrency
+}
+
+// Money is shown to the cent; 'compact' (charts, axes) abbreviates to K/M/B.
+export function formatCurrency(amount, currencyCode, style = 'full') {
+  const code = currencyCode || defaultCurrency
+  const value = typeof amount === 'string' ? parseFloat(amount) : amount
+  if (value === null || value === undefined || isNaN(value)) return '—'
+  const options = style === 'compact'
+    ? { style: 'currency', currency: code, notation: 'compact', maximumFractionDigits: 1 }
+    : { style: 'currency', currency: code, minimumFractionDigits: 2, maximumFractionDigits: 2 }
   try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currencyCode,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount)
-  } catch (e) {
-    return `${currencyCode} ${new Intl.NumberFormat('en-US').format(amount)}`
+    return new Intl.NumberFormat('en-US', options).format(value)
+  } catch {
+    // Not an ISO currency code the browser knows: show the code instead.
+    return `${code} ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`
   }
 }
 

@@ -238,6 +238,15 @@ COMPANY_CONFIG = {
     "fiscal_year_start_month": env.int("COMPANY_FISCAL_START_MONTH", default=3),  # March, matches existing data
     "vat_rate": env.float("COMPANY_VAT_RATE", default=0.155),
     "country": env("COMPANY_COUNTRY", default="ZW"),
+    # Printed on invoices, statements and payslips; leave blank to omit.
+    # A VAT-registered supplier must show its VAT number on tax invoices.
+    "tagline": env("COMPANY_TAGLINE", default=""),
+    "address": env("COMPANY_ADDRESS", default=""),
+    "phone": env("COMPANY_PHONE", default=""),
+    "email": env("COMPANY_EMAIL", default=""),
+    "website": env("COMPANY_WEBSITE", default=""),
+    "vat_number": env("COMPANY_VAT_NUMBER", default=""),
+    "tax_number": env("COMPANY_TAX_NUMBER", default=""),
 }
 
 # Tenant portal and online payments (apps/portal). PORTAL_BASE_URL is where

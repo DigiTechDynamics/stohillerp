@@ -22,7 +22,7 @@ export default function ReportsPage() {
 
   const { data: propertiesData } = useQuery({
     queryKey: ['properties'],
-    queryFn: () => propertiesAPI.properties.list({ page_size: 1000 })
+    queryFn: () => propertiesAPI.list({ page_size: 200 })
   })
   const properties = propertiesData?.data?.results || []
 

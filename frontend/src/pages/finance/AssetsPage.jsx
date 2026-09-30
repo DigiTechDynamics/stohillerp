@@ -96,7 +96,7 @@ export default function AssetsPage() {
             <DollarSign size={80} className="text-emerald-500" />
           </div>
           <p className="text-sm font-medium text-dark-400 uppercase tracking-wider">Acquisition Cost</p>
-          <p className="text-4xl font-bold text-white mt-2">{formatCurrency(totalCost, 'USD')}</p>
+          <p className="text-4xl font-bold text-white mt-2">{formatCurrency(totalCost)}</p>
           <p className="text-xs text-emerald-400 mt-4 flex items-center gap-1">
              Original investment value
           </p>
@@ -112,7 +112,7 @@ export default function AssetsPage() {
             <TrendingUp size={80} className="text-primary" />
           </div>
           <p className="text-sm font-medium text-primary/80 uppercase tracking-wider">Net Book Value</p>
-          <p className="text-4xl font-bold text-white mt-2">{formatCurrency(totalNBV, 'USD')}</p>
+          <p className="text-4xl font-bold text-white mt-2">{formatCurrency(totalNBV)}</p>
           <p className="text-xs text-primary/60 mt-4 italic">
             Current balance sheet value
           </p>

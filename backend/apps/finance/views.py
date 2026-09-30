@@ -929,7 +929,7 @@ class BankAccountViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['is_active', 'account_type']
     search_fields = ['name', 'account_number', 'bank_name']
-    ordering_fields = ['name', 'account_number', 'current_balance']
+    ordering_fields = ['name', 'account_number', 'gl_account__current_balance']
     
     def get_serializer_class(self):
         from apps.finance.serializers import BankAccountSerializer  # type: ignore

@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Building2, Users, TrendingUp, Home, Award, FileText, UserCog, ChevronLeft, ChevronRight, Search, Bell, LogOut, Zap, Menu, X, Landmark, Briefcase, FileSearch, Box, ShoppingCart, HardHat, SlidersHorizontal
 } from 'lucide-react'
 import { useAuthStore, useUIStore } from '@/stores/authStore'
+import { useCompanyProfile } from '@/hooks/useCompanyProfile'
 import CommandPalette from '@/components/common/CommandPalette'
 import SidePanelContainer from '@/components/common/SidePanelContainer'
 import ExecutiveModeToggle from '@/components/common/ExecutiveModeToggle'
@@ -32,7 +33,7 @@ class ErrorBoundaryFallback extends React.Component {
           </div>
           <h2 className="text-xl font-display text-white">Something went wrong</h2>
           <p className="text-dark-400 max-w-md mx-auto">
-            The module failed to load due to a rendering error. Our team has been notified.
+            This page hit an error and could not be shown. Reload to try again; if it keeps happening, report it with the details below.
           </p>
           <button 
             onClick={() => window.location.reload()}
@@ -79,6 +80,8 @@ const navItems = [
 
 export default function AppLayout() {
   const { user } = useAuthStore()
+  // Pages format money in the company currency, so load it before they render.
+  const company = useCompanyProfile()
   const { sidebarCollapsed, toggleSidebar, openCommandPalette, theme } = useUIStore()
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -123,7 +126,7 @@ export default function AppLayout() {
                 exit={{ opacity: 0, width: 0 }}
                 className="overflow-hidden whitespace-nowrap"
               >
-                <span className="font-display text-white text-lg leading-none">Stohill Properties</span>
+                <span className="font-display text-white text-lg leading-none">{company.data?.name || 'ERP'}</span>
                 <span className="block text-[10px] text-primary/70 font-body tracking-[0.15em] uppercase">
                   ERP Platform
                 </span>
@@ -275,7 +278,7 @@ export default function AppLayout() {
           <ErrorBoundaryFallback>
             {/* Suspense catches lazily-loaded page chunks (see App.jsx). */}
             <Suspense fallback={<PageLoader />}>
-              <Outlet />
+              {company.isLoading ? <PageLoader /> : <Outlet />}
             </Suspense>
           </ErrorBoundaryFallback>
         </main>

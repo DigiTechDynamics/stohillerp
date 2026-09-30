@@ -35,6 +35,7 @@ POLICY = {
     "payments/": (ANY, ANY),   # gateway webhooks (views allow anonymous)
 
     "core/me/": (ANY, ANY),
+    "core/company/": (ANY, ANY),
     "core/currencies/": (ANY, ADMIN | GL),
     "core/data/template/": (ANY, ANY),
     "core/": (ADMIN, ADMIN),  # users, roles, modules, SoD rules, audit log, import/export
@@ -98,7 +99,7 @@ POLICY = {
 }
 
 # The only API paths a tenant (portal-only) login may use.
-PORTAL_PATHS = ('portal/', 'auth/', 'core/me/')
+PORTAL_PATHS = ('portal/', 'auth/', 'core/me/', 'core/company/')
 
 # Longest prefix first so specific entries win over their parents.
 _ORDERED = sorted(POLICY.items(), key=lambda kv: len(kv[0]), reverse=True)

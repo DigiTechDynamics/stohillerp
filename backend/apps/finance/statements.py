@@ -17,6 +17,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
+from apps.core.company import base_currency_code
 from apps.finance.models import JournalEntry, JournalLine
 from apps.finance.services.fx import base_currency
 
@@ -55,7 +56,7 @@ def build_statement(lines_qs, sign, from_date, to_date, party, aging):
     base = base_currency()
     return {
         'party': party,
-        'currency': base.code if base else 'USD',
+        'currency': base.code if base else base_currency_code(),
         'from_date': from_date.isoformat(), 'to_date': to_date.isoformat(),
         'opening_balance': str(opening_balance), 'lines': out, 'closing_balance': str(balance),
         'aging': aging,
