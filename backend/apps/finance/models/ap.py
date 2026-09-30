@@ -79,6 +79,11 @@ class SupplierInvoice(AuditedModel):
     original_invoice = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT,
                                          related_name='credit_notes')
     exchange_rate = models.DecimalField(max_digits=18, decimal_places=10, default=1)
+    # 3-way match exceptions (see apps/procurement/services.py) can be
+    # overridden by someone other than the creator, with a reason.
+    match_override_by = models.ForeignKey('core.User', null=True, blank=True, on_delete=models.PROTECT,
+                                          related_name='+')
+    match_override_reason = models.CharField(max_length=500, blank=True)
 
     invoice_number = models.CharField(max_length=100, db_index=True)
     reference = models.CharField(max_length=100, blank=True)
@@ -138,6 +143,10 @@ class SupplierInvoiceLine(AuditedModel):
     tax_code = models.ForeignKey('finance.TaxCode', null=True, blank=True, on_delete=models.PROTECT)
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     line_total = models.DecimalField(max_digits=15, decimal_places=2)
+
+    # Purchase order line this invoice line bills (3-way match).
+    po_line = models.ForeignKey('procurement.PurchaseOrderLine', null=True, blank=True, on_delete=models.PROTECT,
+                                related_name='invoice_lines')
 
     # Dimensions carried to the GL line (e.g. which property a repair was for).
     cost_center = models.ForeignKey('finance.CostCenter', null=True, blank=True, on_delete=models.PROTECT)

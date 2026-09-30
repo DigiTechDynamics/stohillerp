@@ -830,7 +830,10 @@ class AccountingService:
         Credit note: the same, sides reversed; input VAT reported negative.
         """
         from apps.finance.services.fx import currency_code
+        from apps.procurement.services import enforce_match, record_invoiced
 
+        if not invoice.is_credit_note:
+            enforce_match(invoice)   # PO-linked lines must agree with the PO and the goods received
         sign = Decimal('-1') if invoice.is_credit_note else Decimal('1')
         kind = 'Credit Note' if invoice.is_credit_note else 'Invoice'
         rate = self._fix_document_rate(invoice, invoice.currency, invoice.invoice_date)
@@ -858,6 +861,8 @@ class AccountingService:
 
         entry = self.post_entry(posting, journal_code='PJ')
         self._record_tax(lines, TaxTransaction.TransactionType.INPUT, invoice, entry, sign)
+        if not invoice.is_credit_note:
+            record_invoiced(invoice)
         return entry
 
     @transaction.atomic

@@ -39,6 +39,8 @@ MODULES = [
     {"name": "Agent Profiles", "code": "agents", "description": "Real estate agent specialized profiles", "icon": "Users"},
     {"name": "User Access Management", "code": "admin", "description": "Configure RBAC, module access and Segregation of Duties", "icon": "ShieldCheck"},
     {"name": "Payroll", "code": "payroll", "description": "Process employee salaries and agent commissions", "icon": "Banknote"},
+    {"name": "Purchasing", "code": "procurement", "description": "Purchase orders, goods receipts and 3-way match", "icon": "ShoppingCart"},
+    {"name": "Development Projects", "code": "projects", "description": "Project costs, WIP and capitalisation", "icon": "HardHat"},
 ]
 
 ROLES = [
@@ -60,10 +62,10 @@ FULL_ACCESS_ROLES = ["super_admin", "admin", "executive"]
 # UI afterwards; bootstrap only fills roles that have no modules yet, so it never
 # overwrites a customised configuration.
 DEFAULT_ROLE_MODULES = {
-    "finance_manager": ["dashboard", "finance_ap", "finance_ar", "banking", "finance_gl", "fixed_assets", "tax", "commissions"],
+    "finance_manager": ["dashboard", "finance_ap", "finance_ar", "banking", "finance_gl", "fixed_assets", "tax", "commissions", "procurement", "projects"],
     "sales_manager": ["dashboard", "crm", "properties", "sales", "agents"],
-    "rental_manager": ["dashboard", "properties", "rentals", "documents"],
-    "accountant": ["dashboard", "finance_ap", "finance_ar", "banking", "finance_gl", "tax"],
+    "rental_manager": ["dashboard", "properties", "rentals", "documents", "procurement"],
+    "accountant": ["dashboard", "finance_ap", "finance_ar", "banking", "finance_gl", "tax", "procurement", "projects"],
     "hr_manager": ["dashboard", "hr", "documents"],
     "agent": ["dashboard", "crm", "properties"],
 }
@@ -82,9 +84,21 @@ def seed_currencies() -> None:
 @transaction.atomic
 def seed_modules() -> None:
     for data in MODULES:
-        _, created = Module.objects.get_or_create(code=data["code"], defaults=data)
+        module, created = Module.objects.get_or_create(code=data["code"], defaults=data)
         if created:
             logger.info("Created module %s", data["code"])
+            _grant_new_module(module)
+
+
+def _grant_new_module(module) -> None:
+    """
+    A module added in a later release goes to the roles that would have had
+    it by default. Other role choices an admin made are left alone.
+    """
+    for role in Role.objects.all():
+        if role.role_type in FULL_ACCESS_ROLES or module.code in DEFAULT_ROLE_MODULES.get(role.role_type, []):
+            if role.modules.exists():   # untouched roles get their defaults in seed_roles
+                role.modules.add(module)
 
 
 @transaction.atomic

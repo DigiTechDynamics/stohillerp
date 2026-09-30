@@ -57,6 +57,8 @@ POLICY = {
     "hr/": ({"hr", "payroll", "agents", "crm", "sales", "rentals", "properties", "commissions"},
             {"hr", "agents"}),
     "payroll/": ({"payroll"}, {"payroll"}),
+    "procurement/": ({"procurement", "rentals", "properties", "projects"} | FINANCE, {"procurement", "finance_ap"}),
+    "projects/": ({"projects", "properties", "procurement"} | FINANCE, {"projects", "finance_gl"}),
     "banking/": ({"banking", "finance_gl"}, {"banking", "finance_gl"}),
     "fixed-assets/": ({"fixed_assets", "finance_gl"}, {"fixed_assets"}),
 

@@ -38,6 +38,8 @@ api_v1_patterns = [
     path('fixed-assets/', include('apps.fixed_assets.urls')),
     path('banking/', include('apps.banking.urls')),
     path('payroll/', include('apps.payroll.urls')),
+    path('procurement/', include('apps.procurement.urls')),
+    path('projects/', include('apps.projects.urls')),
     path('dashboard/', include('apps.dashboard.urls')),
 ]
 

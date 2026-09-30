@@ -16,6 +16,7 @@ class ApprovalRule(TimeStampedModel):
     class DocumentType(models.TextChoices):
         SUPPLIER_INVOICE = 'supplier_invoice', 'Supplier invoice / credit note'
         SUPPLIER_PAYMENT = 'supplier_payment', 'Supplier payment'
+        PURCHASE_ORDER = 'purchase_order', 'Purchase order'
 
     name = models.CharField(max_length=150)
     document_type = models.CharField(max_length=30, choices=DocumentType.choices)

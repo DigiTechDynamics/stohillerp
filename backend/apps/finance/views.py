@@ -32,6 +32,7 @@ from apps.finance.settlement_views import (  # type: ignore
 )
 from apps.finance.statements import CustomerStatementActions, SupplierStatementActions  # type: ignore
 from apps.finance.approval_views import ApprovalActions  # type: ignore
+from apps.procurement.match_views import InvoiceMatchActions  # type: ignore
 from apps.finance.services import approvals  # type: ignore
 
 logger = logging.getLogger('stohill.finance')
@@ -744,7 +745,7 @@ class SupplierViewSet(SupplierStatementActions, viewsets.ModelViewSet):
         supplier.save(update_fields=['is_active'])
         return Response({'is_active': supplier.is_active})
 
-class SupplierInvoiceViewSet(ApprovalActions, InvoiceSettlementActions, viewsets.ModelViewSet):
+class SupplierInvoiceViewSet(ApprovalActions, InvoiceMatchActions, InvoiceSettlementActions, viewsets.ModelViewSet):
     queryset = SupplierInvoice.objects.select_related('supplier').prefetch_related('lines__expense_account', 'lines__tax_code')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'supplier']

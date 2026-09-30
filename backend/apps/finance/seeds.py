@@ -34,6 +34,7 @@ STARTER_ACCOUNTS = [
     ("1510", "Property Portfolio", "asset", "fixed_asset", "1500", True),
     ("1520", "Office Equipment", "asset", "fixed_asset", "1500", True),
     ("1530", "Motor Vehicles", "asset", "fixed_asset", "1500", True),
+    ("1540", "Development Work in Progress", "asset", "fixed_asset", "1500", True),
     ("1590", "Accumulated Depreciation", "contra", "depreciation", "1500", True),
     # Liabilities
     ("2000", "Current Liabilities", "liability", "current_liability", None, False),

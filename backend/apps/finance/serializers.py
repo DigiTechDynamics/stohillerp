@@ -352,7 +352,7 @@ class SupplierInvoiceLineSerializer(serializers.ModelSerializer):
     class Meta:
         model = SupplierInvoiceLine
         fields = ['id', 'description', 'expense_account', 'expense_account_code', 'quantity', 'unit_price', 'tax_code', 'tax_amount', 'line_total',
-                  'cost_center', 'property_ref']
+                  'cost_center', 'property_ref', 'po_line']
 
 class SupplierInvoiceSerializer(serializers.ModelSerializer):
     lines = SupplierInvoiceLineSerializer(many=True)  # type: ignore
@@ -366,7 +366,8 @@ class SupplierInvoiceSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'supplier', 'supplier_name', 'document_type', 'original_invoice', 'invoice_number', 'reference',
             'invoice_date', 'due_date', 'currency', 'currency_code', 'exchange_rate', 'subtotal', 'tax_total', 'total_amount',
-            'amount_paid', 'status', 'journal_entry', 'journal_entry_details', 'balance_due', 'lines'
+            'amount_paid', 'status', 'journal_entry', 'journal_entry_details', 'balance_due', 'lines',
+            'match_override_reason'
         ]
         read_only_fields = ['status', 'total_amount', 'subtotal', 'tax_total', 'amount_paid', 'journal_entry', 'exchange_rate']
         extra_kwargs = {

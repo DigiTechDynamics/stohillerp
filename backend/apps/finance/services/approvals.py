@@ -13,19 +13,23 @@ from apps.finance.models import ApprovalRecord, ApprovalRule, SupplierInvoice, S
 from apps.finance.services.accounting import AccountingError
 from apps.finance.services.fx import get_rate, to_base
 
-DOC_TYPES = {
-    SupplierInvoice: ApprovalRule.DocumentType.SUPPLIER_INVOICE,
-    SupplierPayment: ApprovalRule.DocumentType.SUPPLIER_PAYMENT,
-}
-
-
 def _doc_type(doc):
-    return DOC_TYPES[type(doc)]
+    from apps.procurement.models import PurchaseOrder
+
+    return {
+        SupplierInvoice: ApprovalRule.DocumentType.SUPPLIER_INVOICE,
+        SupplierPayment: ApprovalRule.DocumentType.SUPPLIER_PAYMENT,
+        PurchaseOrder: ApprovalRule.DocumentType.PURCHASE_ORDER,
+    }[type(doc)]
 
 
 def base_amount(doc) -> Decimal:
-    amount = doc.total_amount if isinstance(doc, SupplierInvoice) else doc.amount
-    on = doc.invoice_date if isinstance(doc, SupplierInvoice) else doc.payment_date
+    if isinstance(doc, SupplierInvoice):
+        amount, on = doc.total_amount, doc.invoice_date
+    elif isinstance(doc, SupplierPayment):
+        amount, on = doc.amount, doc.payment_date
+    else:   # purchase order
+        amount, on = doc.total_amount, doc.order_date
     return to_base(amount, get_rate(doc.currency, on))
 
 

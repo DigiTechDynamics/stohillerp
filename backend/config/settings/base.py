@@ -60,6 +60,8 @@ STOHILL_APPS = [
     "apps.fixed_assets",
     "apps.banking",
     "apps.payroll",
+    "apps.projects",
+    "apps.procurement",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + STOHILL_APPS
@@ -236,6 +238,9 @@ COMPANY_CONFIG = {
     "vat_rate": env.float("COMPANY_VAT_RATE", default=0.155),
     "country": env("COMPANY_COUNTRY", default="ZW"),
 }
+
+# Purchasing: largest % difference between invoice and PO price that still matches.
+PO_PRICE_TOLERANCE_PCT = env.float("PO_PRICE_TOLERANCE_PCT", default=2.0)
 
 # Rental late fees (process_rental_overdue): share of the rent charged once
 # an invoice is this many days past due. Check against the lease terms.
