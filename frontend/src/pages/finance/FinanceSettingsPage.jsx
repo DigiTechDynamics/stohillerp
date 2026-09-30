@@ -1,5 +1,5 @@
 // Finance configuration: cost centres, recurring journals, approval rules and FX revaluation.
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Layers, Repeat, ShieldCheck, ArrowLeftRight, Plus, Trash2, Play } from 'lucide-react'
 import { toast } from 'react-hot-toast'
@@ -16,6 +16,13 @@ const TABS = [
 const DOC_TYPES = { supplier_invoice: 'Supplier invoice / credit note', supplier_payment: 'Supplier payment', purchase_order: 'Purchase order' }
 const today = () => new Date().toISOString().split('T')[0]
 const rows = (res) => res?.data?.results || res?.data || []
+
+// Returns true when nothing is missing; otherwise says what is.
+function complete(fields) {
+  const missing = Object.entries(fields).filter(([, ok]) => !ok).map(([label]) => label)
+  if (missing.length) toast.error(`Please fill in: ${missing.join(', ')}.`)
+  return missing.length === 0
+}
 
 // Runs a mutation with toast feedback and refreshes the given query.
 function useAction(queryKey) {
@@ -71,8 +78,11 @@ function CostCentres() {
           onChange={e => setForm({ ...form, code: e.target.value })} />
         <input className="form-input flex-1" placeholder="Name" aria-label="Cost centre name" value={form.name}
           onChange={e => setForm({ ...form, name: e.target.value })} />
-        <button className="btn-primary" disabled={busy || !form.code || !form.name}
-          onClick={async () => { if (await run(() => financeAPI.costCenters.create(form), 'Cost centre added.')) setForm({ code: '', name: '' }) }}>
+        <button className="btn-primary" disabled={busy}
+          onClick={async () => {
+            if (!complete({ Code: form.code.trim(), Name: form.name.trim() })) return
+            if (await run(() => financeAPI.costCenters.create(form), 'Cost centre added.')) setForm({ code: '', name: '' })
+          }}>
           <Plus size={16} /> Add
         </button>
       </div>
@@ -97,56 +107,28 @@ function RecurringJournals() {
   const setLine = (i, patch) => setForm({ ...form, lines: form.lines.map((ln, j) => (j === i ? { ...ln, ...patch } : ln)) })
   const total = side => (form?.lines || []).filter(l => l.side === side).reduce((s, l) => s + (parseFloat(l.amount) || 0), 0)
 
+  // Open the new-template form where the user can see it.
+  const formRef = useRef(null)
+  const formOpen = form !== null
+  useEffect(() => {
+    if (formOpen) formRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  }, [formOpen])
+
   const save = async () => {
-    const lines = form.lines.filter(l => l.account && l.amount).map(({ picked, ...ln }) => ln)
+    const lines = form.lines.filter(l => l.account && parseFloat(l.amount) > 0).map(({ picked: _picked, ...ln }) => ln)
+    if (!complete({ Name: form.name.trim(), 'Entry description': form.description.trim(), Journal: form.journal,
+      'at least two lines with an account and amount': lines.length >= 2 })) return
+    if (Math.abs(total('debit') - total('credit')) > 0.004) {
+      toast.error('Debits and credits must be equal.')
+      return
+    }
     const payload = { ...form, end_date: form.end_date || null, lines }
     if (await run(() => financeAPI.recurringJournals.create(payload), 'Recurring journal saved.')) setForm(null)
   }
 
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-end gap-2">
-        <button className="btn-secondary" disabled={busy}
-          onClick={() => run(() => financeAPI.recurringJournals.runDue(), d => `Generated: ${d.result}.`)}>
-          <Play size={16} /> Run due now
-        </button>
-        <button className="btn-primary" onClick={() => setForm(blankTemplate())}><Plus size={16} /> New template</button>
-      </div>
-      <div className="card overflow-hidden">
-        <table className="data-table">
-          <thead><tr><th>Name</th><th>Frequency</th><th>Next run</th><th>Last run</th><th>Mode</th><th className="text-right">Amount</th><th className="w-32"></th></tr></thead>
-          <tbody>
-            {templates.map(t => (
-              <tr key={t.id} className={t.is_active ? '' : 'opacity-50'}>
-                <td className="px-4 py-3 text-sm text-white">{t.name}<p className="text-xs text-dark-500">{t.description}</p></td>
-                <td className="px-4 py-3 text-xs capitalize">{t.frequency}</td>
-                <td className="px-4 py-3 text-xs">{formatDate(t.next_run_date)}</td>
-                <td className="px-4 py-3 text-xs text-dark-400">{t.last_run_date ? formatDate(t.last_run_date) : '—'}</td>
-                <td className="px-4 py-3 text-xs">{t.auto_post ? 'Auto-post' : 'Draft'}{t.reverse_next_period ? ', reverses' : ''}</td>
-                <td className="px-4 py-3 text-sm text-right font-mono">
-                  {formatCurrency(t.lines.filter(l => l.side === 'debit').reduce((s, l) => s + parseFloat(l.amount), 0))}
-                </td>
-                <td className="px-4 py-3 text-right whitespace-nowrap">
-                  <button className="btn-ghost text-xs" disabled={busy}
-                    onClick={() => run(() => financeAPI.recurringJournals.update(t.id, { is_active: !t.is_active }))}>
-                    {t.is_active ? 'Pause' : 'Resume'}
-                  </button>
-                  <button className="btn-ghost text-xs text-dark-500 hover:text-rose-400" aria-label={`Delete ${t.name}`} disabled={busy}
-                    onClick={() => window.confirm(`Delete "${t.name}"?`) && run(() => financeAPI.recurringJournals.remove(t.id), 'Deleted.')}>
-                    <Trash2 size={14} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {!isLoading && templates.length === 0 && (
-              <tr><td colSpan={7} className="text-center py-10 text-dark-400">No recurring journals. Use them for accruals, depreciation-style charges and fixed monthly costs.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {form && (
+  const templateForm = () => (
         <div className="card p-5 space-y-4">
+          <h3 className="text-white font-semibold">New recurring journal</h3>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <input className="form-input" placeholder="Name" aria-label="Template name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
             <input className="form-input" placeholder="Entry description" aria-label="Entry description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
@@ -188,11 +170,54 @@ function RecurringJournals() {
             </p>
             <div className="flex gap-2">
               <button className="btn-ghost" onClick={() => setForm(null)}>Cancel</button>
-              <button className="btn-primary" disabled={busy || !form.name || !form.description || !form.journal} onClick={save}>Save template</button>
+              <button className="btn-primary" disabled={busy} onClick={save}>Save template</button>
             </div>
           </div>
         </div>
-      )}
+  )
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end gap-2">
+        <button className="btn-secondary" disabled={busy}
+          onClick={() => run(() => financeAPI.recurringJournals.runDue(), d => `Generated: ${d.result}.`)}>
+          <Play size={16} /> Run due now
+        </button>
+        <button className="btn-primary" onClick={() => setForm(form || blankTemplate())}><Plus size={16} /> New template</button>
+      </div>
+      {form && <div ref={formRef}>{templateForm()}</div>}
+      <div className="card overflow-hidden">
+        <table className="data-table">
+          <thead><tr><th>Name</th><th>Frequency</th><th>Next run</th><th>Last run</th><th>Mode</th><th className="text-right">Amount</th><th className="w-32"></th></tr></thead>
+          <tbody>
+            {templates.map(t => (
+              <tr key={t.id} className={t.is_active ? '' : 'opacity-50'}>
+                <td className="px-4 py-3 text-sm text-white">{t.name}<p className="text-xs text-dark-500">{t.description}</p></td>
+                <td className="px-4 py-3 text-xs capitalize">{t.frequency}</td>
+                <td className="px-4 py-3 text-xs">{formatDate(t.next_run_date)}</td>
+                <td className="px-4 py-3 text-xs text-dark-400">{t.last_run_date ? formatDate(t.last_run_date) : '—'}</td>
+                <td className="px-4 py-3 text-xs">{t.auto_post ? 'Auto-post' : 'Draft'}{t.reverse_next_period ? ', reverses' : ''}</td>
+                <td className="px-4 py-3 text-sm text-right font-mono">
+                  {formatCurrency(t.lines.filter(l => l.side === 'debit').reduce((s, l) => s + parseFloat(l.amount), 0))}
+                </td>
+                <td className="px-4 py-3 text-right whitespace-nowrap">
+                  <button className="btn-ghost text-xs" disabled={busy}
+                    onClick={() => run(() => financeAPI.recurringJournals.update(t.id, { is_active: !t.is_active }))}>
+                    {t.is_active ? 'Pause' : 'Resume'}
+                  </button>
+                  <button className="btn-ghost text-xs text-dark-500 hover:text-rose-400" aria-label={`Delete ${t.name}`} disabled={busy}
+                    onClick={() => window.confirm(`Delete "${t.name}"?`) && run(() => financeAPI.recurringJournals.remove(t.id), 'Deleted.')}>
+                    <Trash2 size={14} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {!isLoading && templates.length === 0 && (
+              <tr><td colSpan={7} className="text-center py-10 text-dark-400">No recurring journals. Use them for accruals, depreciation-style charges and fixed monthly costs.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -251,9 +276,12 @@ function ApprovalRules() {
           </select>
           <div className="flex gap-2">
             <input type="number" className="form-input w-20" aria-label="Sequence" value={form.sequence} onChange={e => setForm({ ...form, sequence: e.target.value })} />
-            <button className="btn-primary" disabled={busy || !form.name || !form.role}
-              onClick={async () => { if (await run(() => financeAPI.approvalRules.create(form), 'Rule added.')) setForm(blank) }}>
-              <Plus size={16} />
+            <button className="btn-primary" disabled={busy} aria-label="Add rule"
+              onClick={async () => {
+                if (!complete({ 'Rule name': form.name.trim(), 'Approver role': form.role })) return
+                if (await run(() => financeAPI.approvalRules.create(form), 'Rule added.')) setForm(blank)
+              }}>
+              <Plus size={16} /> Add
             </button>
           </div>
         </div>
