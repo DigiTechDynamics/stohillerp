@@ -11,6 +11,7 @@ from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
 from apps.core.auth_views import LogoutView, ThrottledTokenObtainPairView
 from apps.core.health import health
+from apps.portal.views import PaynowResultView, PortalActivateView
 
 # ─── API v1 Routes ─────────────────────────────────────────────────────────────
 api_v1_patterns = [
@@ -22,6 +23,7 @@ api_v1_patterns = [
     path('auth/logout/', LogoutView.as_view(), name='token_logout'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/verify/', TokenVerifyView.as_view(), name='token_verify'),
+    path('auth/portal-activate/', PortalActivateView.as_view(), name='portal-activate'),
 
     # Core (users, roles, permissions)
     path('core/', include('apps.core.urls')),
@@ -40,6 +42,8 @@ api_v1_patterns = [
     path('payroll/', include('apps.payroll.urls')),
     path('procurement/', include('apps.procurement.urls')),
     path('projects/', include('apps.projects.urls')),
+    path('portal/', include('apps.portal.urls')),
+    path('payments/paynow/result/', PaynowResultView.as_view(), name='paynow-result'),
     path('dashboard/', include('apps.dashboard.urls')),
 ]
 

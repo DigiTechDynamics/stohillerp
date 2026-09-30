@@ -22,6 +22,7 @@ from apps.crm.serializers import (
     SalesTeamSerializer, ContactDocumentSerializer
 )
 from utils.private_media import private_file_response
+from apps.portal.views import InviteToPortalActions
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -38,7 +39,7 @@ class SalesTeamViewSet(viewsets.ModelViewSet):
 # Contact
 # ─────────────────────────────────────────────────────────────────────────────
 
-class ContactViewSet(viewsets.ModelViewSet):
+class ContactViewSet(InviteToPortalActions, viewsets.ModelViewSet):
     queryset = Contact.objects.select_related('assigned_agent', 'sales_team').order_by('last_name')
     serializer_class = ContactSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]

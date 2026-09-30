@@ -48,3 +48,6 @@ PRIVATE_MEDIA_ACCEL_PREFIX = env("PRIVATE_MEDIA_ACCEL_PREFIX", default="/protect
 
 # Structured logs are easier to ship to a log aggregator.
 LOGGING["handlers"]["console"]["formatter"] = env("LOG_FORMAT", default="json")  # noqa: F405
+
+# Never let the in-app test gateway mark payments as paid in production.
+PAYMENT_TEST_GATEWAY_ENABLED = False

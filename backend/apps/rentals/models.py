@@ -154,6 +154,7 @@ class RentalPayment(AuditedModel):
         CHEQUE = 'cheque', 'Cheque'
         DEBIT_ORDER = 'debit_order', 'Debit Order'
         CREDIT_CARD = 'credit_card', 'Credit Card'
+        ONLINE = 'online', 'Online (tenant portal)'
 
     invoice = models.ForeignKey(RentalInvoice, on_delete=models.PROTECT, related_name='payments')
     payment_date = models.DateField()

@@ -121,6 +121,7 @@ class Role(TimeStampedModel):
         COMPLIANCE_OFFICER = 'compliance_officer', 'Compliance Officer'
         EXECUTIVE = 'executive', 'Executive / Director'
         VIEWER = 'viewer', 'Read-Only Viewer'
+        TENANT = 'tenant', 'Tenant (self-service portal)'
 
     name = models.CharField(max_length=100)
     role_type = models.CharField(max_length=50, choices=RoleType.choices, unique=True)
@@ -189,6 +190,10 @@ class User(AbstractBaseUser, PermissionsMixin, UUIDModel):
     # RBAC
     roles = models.ManyToManyField(Role, blank=True, related_name='users')
 
+    # Tenant portal: the CRM contact this login belongs to.
+    contact = models.OneToOneField('crm.Contact', null=True, blank=True, on_delete=models.SET_NULL,
+                                   related_name='portal_user')
+
     # Metadata
     last_login_ip = models.GenericIPAddressField(null=True, blank=True)
     date_joined = models.DateTimeField(default=timezone.now)
@@ -229,6 +234,10 @@ class User(AbstractBaseUser, PermissionsMixin, UUIDModel):
         # 1. Superusers always get everything
         if self.is_superuser or self.has_role(Role.RoleType.SUPER_ADMIN):
             return list(Module.objects.values_list('code', flat=True))
+
+        # Tenants see only their self-service portal (not even the dashboard).
+        if self.is_portal_only:
+            return ['portal']
         
         # 2. Get all modules assigned to user's roles
         # Note: We removed the global 'admin' bypass here. 
@@ -240,6 +249,14 @@ class User(AbstractBaseUser, PermissionsMixin, UUIDModel):
         
         # 4. Enforce Critical SOD violations (blocking access)
         return self._enforce_critical_sod(assigned_modules)
+
+    @property
+    def is_portal_only(self):
+        """A tenant login with no staff role."""
+        if self.is_superuser:
+            return False
+        role_types = set(self.roles.values_list('role_type', flat=True))
+        return role_types == {Role.RoleType.TENANT}
 
     def _enforce_critical_sod(self, module_codes):
         """

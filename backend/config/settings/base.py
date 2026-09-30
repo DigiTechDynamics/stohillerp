@@ -62,6 +62,7 @@ STOHILL_APPS = [
     "apps.payroll",
     "apps.projects",
     "apps.procurement",
+    "apps.portal",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + STOHILL_APPS
@@ -238,6 +239,17 @@ COMPANY_CONFIG = {
     "vat_rate": env.float("COMPANY_VAT_RATE", default=0.155),
     "country": env("COMPANY_COUNTRY", default="ZW"),
 }
+
+# Tenant portal and online payments (apps/portal). PORTAL_BASE_URL is where
+# the SPA is served (activation and payment-return links point there).
+PORTAL_BASE_URL = env("PORTAL_BASE_URL", default="http://localhost:5173")
+PAYMENT_GATEWAY = env("PAYMENT_GATEWAY", default="test" if DEBUG else "paynow")
+PAYNOW_INTEGRATION_ID = env("PAYNOW_INTEGRATION_ID", default="")
+PAYNOW_INTEGRATION_KEY = env("PAYNOW_INTEGRATION_KEY", default="")
+# Bank account (code) that receives online payments; defaults to the first active one.
+ONLINE_PAYMENTS_BANK_ACCOUNT = env("ONLINE_PAYMENTS_BANK_ACCOUNT", default="")
+# The in-app test gateway completes payments without money moving: dev/tests only.
+PAYMENT_TEST_GATEWAY_ENABLED = env.bool("PAYMENT_TEST_GATEWAY_ENABLED", default=DEBUG)
 
 # Purchasing: largest % difference between invoice and PO price that still matches.
 PO_PRICE_TOLERANCE_PCT = env.float("PO_PRICE_TOLERANCE_PCT", default=2.0)

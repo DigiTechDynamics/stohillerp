@@ -18,3 +18,7 @@ STORAGES = {
 }
 LOGGING["root"]["level"] = "WARNING"  # noqa: F405
 LOGGING["loggers"]["stohill"]["level"] = "WARNING"  # noqa: F405
+
+# Online payments go through the in-app test gateway.
+PAYMENT_GATEWAY = "test"
+PAYMENT_TEST_GATEWAY_ENABLED = True

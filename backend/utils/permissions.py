@@ -30,6 +30,9 @@ POLICY = {
     "health/": (ANY, ANY),
 
     "dashboard/": (ANY, ANY),
+    # Tenant self-service: views only ever return the caller's own records.
+    "portal/": (ANY, ANY),
+    "payments/": (ANY, ANY),   # gateway webhooks (views allow anonymous)
 
     "core/me/": (ANY, ANY),
     "core/currencies/": (ANY, ADMIN | GL),
@@ -94,6 +97,9 @@ POLICY = {
     "finance/": (GL, GL),  # entries, batches, periods, fiscal years, posting profiles, reports, budgets
 }
 
+# The only API paths a tenant (portal-only) login may use.
+PORTAL_PATHS = ('portal/', 'auth/', 'core/me/')
+
 # Longest prefix first so specific entries win over their parents.
 _ORDERED = sorted(POLICY.items(), key=lambda kv: len(kv[0]), reverse=True)
 
@@ -127,6 +133,12 @@ class HasModuleAccess(BasePermission):
             return False
         if user.is_superuser:
             return True
+
+        # Tenant logins are fenced into the portal: every other endpoint
+        # (including the dashboard) is refused, whatever the policy says.
+        if user_modules(user) == {'portal'}:
+            rel = request.path[len(API_PREFIX):] if request.path.startswith(API_PREFIX) else ''
+            return rel.startswith(PORTAL_PATHS)
 
         rule = resolve_policy(request.path)
         if rule is None:

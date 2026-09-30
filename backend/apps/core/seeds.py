@@ -41,6 +41,7 @@ MODULES = [
     {"name": "Payroll", "code": "payroll", "description": "Process employee salaries and agent commissions", "icon": "Banknote"},
     {"name": "Purchasing", "code": "procurement", "description": "Purchase orders, goods receipts and 3-way match", "icon": "ShoppingCart"},
     {"name": "Development Projects", "code": "projects", "description": "Project costs, WIP and capitalisation", "icon": "HardHat"},
+    {"name": "Tenant Portal", "code": "portal", "description": "Tenant self-service: invoices, statements, payments, maintenance", "icon": "DoorOpen"},
 ]
 
 ROLES = [
@@ -53,6 +54,7 @@ ROLES = [
     {"name": "Property Agent", "role_type": "agent", "description": "Property listings and CRM access"},
     {"name": "HR Manager", "role_type": "hr_manager", "description": "Employee and department management"},
     {"name": "Accountant", "role_type": "accountant", "description": "General ledger and accounting access"},
+    {"name": "Tenant", "role_type": "tenant", "description": "Tenant self-service portal only"},
 ]
 
 # Roles that get every module.
@@ -68,6 +70,7 @@ DEFAULT_ROLE_MODULES = {
     "accountant": ["dashboard", "finance_ap", "finance_ar", "banking", "finance_gl", "tax", "procurement", "projects"],
     "hr_manager": ["dashboard", "hr", "documents"],
     "agent": ["dashboard", "crm", "properties"],
+    "tenant": ["portal"],
 }
 
 
