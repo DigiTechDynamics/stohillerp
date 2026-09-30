@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Building2, Users, TrendingUp, Home, DollarSign,
   Award, FileText, UserCog, ChevronLeft, ChevronRight, Search,
-  Bell, LogOut, Settings, Zap, Menu, X, Landmark, Briefcase, FileSearch, Box
+  Bell, LogOut, Settings, Zap, Menu, X, Landmark, Briefcase, FileSearch, Box, ShoppingCart, HardHat, SlidersHorizontal
 } from 'lucide-react'
 import { useAuthStore, useUIStore } from '@/stores/authStore'
 import CommandPalette from '@/components/common/CommandPalette'
@@ -60,6 +60,8 @@ const navItems = [
   { path: '/properties', label: 'Properties', icon: Building2, group: 'Operations', module: 'properties' },
   { path: '/rentals', label: 'Rental Management', icon: Home, group: 'Operations', module: 'rentals' },
   { path: '/sales', label: 'Sales & Deals', icon: TrendingUp, group: 'Operations', module: 'sales' },
+  { path: '/procurement', label: 'Purchasing', icon: ShoppingCart, group: 'Operations', module: 'procurement' },
+  { path: '/projects', label: 'Development Projects', icon: HardHat, group: 'Operations', module: 'projects' },
   // Finance
   { path: '/finance/ap', label: 'Accounts Payable', icon: Briefcase, group: 'Finance', module: 'finance_ap' },
   { path: '/finance/ar', label: 'Accounts Receivable', icon: FileSearch, group: 'Finance', module: 'finance_ar' },
@@ -69,6 +71,7 @@ const navItems = [
   { path: '/finance/assets', label: 'Fixed Assets', icon: Box, group: 'Finance', module: 'fixed_assets' },
   { path: '/finance/tax', label: 'Tax & VAT', icon: Zap, group: 'Finance', module: 'tax' },
   { path: '/payroll', label: 'Payroll', icon: Landmark, group: 'Finance', module: 'payroll' },
+  { path: '/finance/settings', label: 'Finance Settings', icon: SlidersHorizontal, group: 'Finance', module: 'finance_gl' },
   // Admin
   { path: '/documents', label: 'Documents', icon: FileText, group: 'Admin', module: 'documents' },
   { path: '/hr', label: 'HR Management', icon: UserCog, group: 'Admin', module: 'hr' },

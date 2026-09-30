@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Calendar, Hash, User, Clock, CheckCircle2, Building2, Send } from 'lucide-react'
-import { financeAPI } from '@/services/api'
+import { apiErrorMessage, financeAPI } from '@/services/api'
+import ApprovalBox from '@/components/common/ApprovalBox'
+import { CashDocumentActions } from './DocumentActions'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
@@ -26,7 +28,7 @@ export default function SupplierPaymentDetailPanel({ payment: initialPayment }) 
       closeSidePanel()
     },
     onError: (err) => {
-      toast.error(err.response?.data?.error || 'Failed to post payment')
+      toast.error(apiErrorMessage(err, 'Failed to post payment'))
     }
   })
 
@@ -97,6 +99,10 @@ export default function SupplierPaymentDetailPanel({ payment: initialPayment }) 
         )}
       </div>
 
+      {payment.status === 'draft' && (
+        <ApprovalBox api={financeAPI.ap.payments} id={payment.id} queryKey="supplier-payment" />
+      )}
+
       {/* Actions */}
       <div className="pt-6 flex gap-3">
         {payment.status === 'draft' && (
@@ -151,6 +157,7 @@ export default function SupplierPaymentDetailPanel({ payment: initialPayment }) 
                  </div>
                </div>
              )}
+             <CashDocumentActions side="ap" document={payment} />
            </div>
         )}
       </div>

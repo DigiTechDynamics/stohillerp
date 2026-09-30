@@ -5,13 +5,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search, Plus, Home, Key, Wrench, Calendar, Filter,
   AlertTriangle, FileText, Building2, DollarSign,
-  TrendingUp, MapPin, Users, Receipt, Edit2, Trash2
+  TrendingUp, MapPin, Users, Receipt, Edit2, Trash2, Landmark
 } from 'lucide-react'
 import { rentalsAPI, propertiesAPI, crmAPI } from '@/services/api'
 import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
 import Pagination from '@/components/common/Pagination'
+import { MaintenanceComplete, OwnersTab } from '@/components/modules/rentals/RentalsExtras'
 import { useQueryClient } from '@tanstack/react-query'
 
 const TABS = [
@@ -20,6 +21,7 @@ const TABS = [
   { id: 'leases', label: 'Leases', icon: Key },
   { id: 'invoices', label: 'Invoices', icon: Receipt },
   { id: 'maintenance', label: 'Maintenance', icon: Wrench },
+  { id: 'owners', label: 'Owners', icon: Landmark },
 ]
 
 export default function RentalsPage() {
@@ -86,7 +88,8 @@ export default function RentalsPage() {
     : activeTab === 'tenants' ? tenantsLoading
     : activeTab === 'leases' ? leasesLoading
     : activeTab === 'invoices' ? invoicesLoading
-    : maintLoading
+    : activeTab === 'maintenance' ? maintLoading
+    : false
 
   // ── KPI Cards ─────────────────────────────────────────────────────
   const kpis = [
@@ -216,7 +219,7 @@ export default function RentalsPage() {
       </div>
 
       {/* Search and Sort */}
-      <div className="flex items-center gap-3 w-full max-w-2xl">
+      {activeTab !== 'owners' && <div className="flex items-center gap-3 w-full max-w-2xl">
         <div className="relative flex-1">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-400" />
           <input
@@ -263,7 +266,7 @@ export default function RentalsPage() {
             </>
           )}
         </select>
-      </div>
+      </div>}
 
       {/* ── Properties Tab ────────────────────────────────────────────── */}
       {activeTab === 'properties' && (
@@ -541,7 +544,9 @@ export default function RentalsPage() {
                   <span className="uppercase font-bold">{ticket.priority}</span>
                   <span>{formatDate(ticket.created_at)}</span>
                   {ticket.estimated_cost && <span>Est: {formatCurrency(parseFloat(ticket.estimated_cost))}</span>}
+                  {ticket.actual_cost && <span>Actual: {formatCurrency(parseFloat(ticket.actual_cost))}</span>}
                 </div>
+                <MaintenanceComplete ticket={ticket} />
               </div>
             </div>
           ))}
@@ -554,7 +559,9 @@ export default function RentalsPage() {
         </div>
       )}
 
-      {activeTab !== 'stats' && (
+      {activeTab === 'owners' && <OwnersTab />}
+
+      {activeTab !== 'owners' && (
         <Pagination 
           currentPage={page}
           totalPages={

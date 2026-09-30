@@ -339,6 +339,10 @@ def test_payroll_approval_is_maker_checker_and_unlocks_outputs(auth_client, supe
     client = auth_client(superuser)                              # processed the run
     assert client.get(f'/api/v1/payroll/runs/{processed_run.id}/bank_file/').status_code == 400
     assert client.post(f'/api/v1/payroll/runs/{processed_run.id}/approve/').status_code == 400
+    # Nor can the maker approve by editing the status field directly.
+    client.patch(f'/api/v1/payroll/runs/{processed_run.id}/', {'status': 'approved', 'total_net': '1'}, format='json')
+    processed_run.refresh_from_db()
+    assert processed_run.status == 'processing' and processed_run.total_net != 1
 
     other = _make_user('payroll2@test.local', superuser=True)
     assert auth_client(other).post(f'/api/v1/payroll/runs/{processed_run.id}/approve/').status_code == 200

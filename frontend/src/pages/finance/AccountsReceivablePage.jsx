@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Plus, Search, FileText, Download, TrendingUp, DollarSign } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { financeAPI } from '@/services/api'
+import { apiErrorMessage, financeAPI, saveBlobResponse } from '@/services/api'
+import { toast } from 'react-hot-toast'
 import { formatCurrency } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
@@ -38,14 +39,31 @@ export default function AccountsReceivablePage() {
   const customers = customersData?.data?.results || customersData?.data || []
   const receipts = receiptsData?.data?.results || receiptsData?.data || []
 
-  // Mock PDF Downloader
-  const handleDownloadPDF = (e, invoiceId) => {
+  const { data: agingData } = useQuery({
+    queryKey: ['ar-aging-total'],
+    queryFn: () => financeAPI.reports.arAging(),
+  })
+  const totals = agingData?.data?.totals
+
+  const handleDownloadPDF = async (e, invoice) => {
     e.stopPropagation()
-    // In a real app, this would fetch a blob from the server
-    const link = document.createElement('a')
-    link.href = `data:text/plain;charset=utf-8,Mock PDF Content for Invoice ${invoiceId}`
-    link.download = `Invoice_${invoiceId}.pdf`
-    link.click()
+    try {
+      saveBlobResponse(await financeAPI.ar.invoices.pdf(invoice.id), `${invoice.invoice_number}.pdf`)
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Could not download the PDF.'))
+    }
+  }
+
+  const handleStatement = async (e, customer) => {
+    e.stopPropagation()
+    try {
+      const to = new Date().toISOString().split('T')[0]
+      const from = new Date(Date.now() - 90 * 864e5).toISOString().split('T')[0]
+      saveBlobResponse(await financeAPI.ar.customers.statementPdf(customer.id, { from_date: from, to_date: to }),
+        `Statement_${customer.name}.pdf`)
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Could not produce the statement.'))
+    }
   }
 
   return (
@@ -76,8 +94,10 @@ export default function AccountsReceivablePage() {
             </div>
             <span className="text-[10px] text-primary font-bold uppercase tracking-wider">Total AR</span>
           </div>
-          <p className="text-2xl font-semibold text-white">{formatCurrency(1245000, 'USD')}</p>
-          <p className="text-xs text-dark-400 mt-1">Outstanding customer balances</p>
+          <p className="text-2xl font-semibold text-white">{formatCurrency(totals?.total || 0)}</p>
+          <p className="text-xs text-dark-400 mt-1">
+            Outstanding customer balances{totals && parseFloat(totals.over_90) > 0 ? ` · ${formatCurrency(totals.over_90)} over 90 days` : ''}
+          </p>
         </div>
       </div>
 
@@ -189,7 +209,7 @@ export default function AccountsReceivablePage() {
                         </button>
                         <button 
                           className="btn-ghost p-1.5 text-dark-400 hover:text-white"
-                          onClick={(e) => handleDownloadPDF(e, inv.invoice_number)}
+                          onClick={(e) => handleDownloadPDF(e, inv)}
                           title="Download PDF"
                         >
                           <Download size={14} />
@@ -224,6 +244,7 @@ export default function AccountsReceivablePage() {
                   <th>AR Account</th>
                   <th className="text-right">Credit Limit</th>
                   <th className="text-right">Balance</th>
+                  <th className="w-24"></th>
                 </tr>
               </thead>
               <tbody>
@@ -236,11 +257,17 @@ export default function AccountsReceivablePage() {
                     <td className="px-4 py-3 text-xs text-dark-300">{c.ar_account_code} - {c.ar_account_name}</td>
                     <td className="px-4 py-3 text-sm text-dark-300 text-right">{formatCurrency(c.credit_limit, c.currency_code)}</td>
                     <td className="px-4 py-3 text-sm text-white font-semibold text-right">{formatCurrency(c.balance || 0, c.currency_code)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button className="btn-ghost p-1.5 text-dark-400 hover:text-white text-xs" title="Statement (last 90 days, PDF)"
+                        onClick={(e) => handleStatement(e, c)}>
+                        <Download size={14} /> Statement
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {customers.length === 0 && !loadingCustomers && (
                   <tr>
-                    <td colSpan={4} className="text-center py-16 text-dark-400">
+                    <td colSpan={5} className="text-center py-16 text-dark-400">
                       <div className="flex flex-col items-center">
                         <FileText size={48} className="text-dark-600 mb-4" />
                         <p>No customers found. Sync tenants or create a new AR customer.</p>

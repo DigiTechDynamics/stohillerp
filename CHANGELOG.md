@@ -5,6 +5,59 @@
 Branch `chore/production-hardening`. Every bug below has a regression test in
 `backend/tests/`.
 
+### ERP gap closure, pass 4: open items
+
+Tests are in `backend/tests/test_banking.py`, `test_procurement_projects.py`
+and `test_portal.py`, plus the Vitest suite. The details are in
+`docs/GAP_ANALYSIS.md`, under *Pass 4*.
+
+- **Banking.**
+  - One bank account model (`finance.BankAccount`). Migrations
+    `finance.0018`–`0019` and `banking.0003`–`0005` merge the corporate accounts
+    and move legacy statement lines.
+  - CSV statement import, matching against real ledger lines, rule-based
+    auto-match and auto-post, adjustments, and a reconciliation report.
+  - The old manual match did nothing, and the dashboard figures were fixed
+    values.
+- **Purchasing** (new `procurement` app).
+  - Purchase orders with approval rules, goods received notes, and supplier
+    invoices created from receipts.
+  - 3-way match enforced on posting, with a price tolerance and an override
+    audited against a second user.
+- **Development projects** (new `projects` app).
+  - A cost centre per project, costs held in 1540 Work in Progress, and a
+    cost report with PO commitments.
+  - Capitalisation to property inventory or to a new fixed asset.
+- **Tenant portal** (new `portal` app, SPA at `/portal`).
+  - Tenant role fenced to the portal API. Staff send invitations from CRM, and
+    the link goes to the tenant's email only.
+  - Tenants see leases, invoices (PDF), their statement and maintenance
+    requests.
+  - Paynow online payment with hash-verified callbacks and idempotent
+    receipting.
+- **Screens for features that were API-only.**
+  - Settlement, credit notes, write-offs and refunds.
+  - AP approvals and 3-way match override.
+  - Lease billing, deposits, charges, renewal and termination.
+  - Maintenance completion, and an Owners tab (balances, statements, payouts).
+  - Payroll statutory summary, bank file and payslip email.
+  - Finance Settings (cost centres, recurring journals, approval rules, FX
+    revaluation).
+  - Purchasing and Projects pages.
+  - Customer invoices gained a server-side PDF endpoint (`pdf/`).
+- **Configuration.** SMTP settings (`EMAIL_HOST` and related) and the
+  portal/Paynow variables are read from the environment and forwarded by
+  Compose. Before this, emails could only go to the console.
+- **Fixed along the way:**
+  - The AR and AP pages showed hardcoded totals, and the AR invoice PDF button
+    downloaded a fake text file.
+  - The lease panel showed an invented 7.5% commission.
+  - Payroll approval patched the run status directly, bypassing the
+    maker/checker endpoint. The API also accepted that edit, so the run's
+    status and totals are now read-only and move only through processing and
+    approval.
+  - A failed invoice email returned 200.
+
 ### ERP gap closure, passes 2-3
 
 Tests are in `backend/tests/test_gap_closure_2.py` and `test_gap_closure_3.py`,

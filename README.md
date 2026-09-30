@@ -1,9 +1,11 @@
 # Stohill Properties ERP
 
 Full-stack ERP for real-estate companies: property operations, CRM pipeline,
-sales, rentals, double-entry finance (AP/AR/GL, maker/checker batches, bank
-reconciliation), fixed assets, commissions, documents/KYC, HR and Zimbabwe
-payroll (PAYE, AIDS levy, NSSA in USD and ZWG).
+sales, rentals and owner trust accounting, double-entry finance (AP/AR/GL,
+settlement, FX, approvals, bank reconciliation), purchasing with 3-way match,
+development projects, fixed assets, commissions, documents/KYC, HR, Zimbabwe
+payroll (PAYE, AIDS levy, NSSA in USD and ZWG), and a tenant self-service
+portal with online payment (Paynow).
 
 | Layer    | Stack |
 |----------|-------|
@@ -11,7 +13,7 @@ payroll (PAYE, AIDS levy, NSSA in USD and ZWG).
 | Database | PostgreSQL 16 (the only supported engine) |
 | Web      | React 18 (JSX), Vite 5, Tailwind CSS, TanStack Query, Zustand, Radix UI |
 | Runtime  | gunicorn + WhiteNoise, nginx (SPA + reverse proxy), Docker Compose |
-| Quality  | pytest + pytest-django (394 tests), Vitest, ruff, GitHub Actions |
+| Quality  | pytest + pytest-django (444 tests), Vitest (11 tests), ruff, GitHub Actions |
 
 ---
 
@@ -44,6 +46,9 @@ stohillerp/
 │   │   ├── finance/            # GL, AP/AR, batches; services/accounting.py = posting engine
 │   │   ├── banking/  crm/  sales/  rentals/  properties/  commissions/
 │   │   ├── documents/  hr/  payroll/  fixed_assets/  dashboard/
+│   │   ├── procurement/        # purchase orders, goods receipts, 3-way match
+│   │   ├── projects/           # development projects, WIP capitalisation
+│   │   ├── portal/             # tenant portal API, online payments (Paynow)
 │   │   └── */seeds.py          # idempotent reference data per app
 │   ├── utils/                  # middleware (request id, logging), errors, pagination
 │   ├── tests/                  # pytest suite
@@ -155,6 +160,12 @@ Backend settings come from environment variables (or `backend/.env`); see
 | `LOG_LEVEL` / `LOG_FORMAT` | INFO / `verbose` (`json` in production) | |
 | `TIME_ZONE` | `Africa/Harare` | Business dates (dashboards, "today") |
 | `COMPANY_CURRENCY`, `COMPANY_FISCAL_START_MONTH`, ... | USD, 3 (March) | |
+| `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL` | console backend | Set SMTP in production: portal invitations, payslips and statements are emailed |
+| `PORTAL_BASE_URL` | `http://localhost:5173` | Public URL of the SPA; activation and payment-return links point here |
+| `PAYMENT_GATEWAY` | `test` when `DEBUG`, else `paynow` | The test gateway is forced off in production |
+| `PAYNOW_INTEGRATION_ID` / `PAYNOW_INTEGRATION_KEY` | empty | Paynow must reach `/api/v1/payments/paynow/result/` |
+| `ONLINE_PAYMENTS_BANK_ACCOUNT` | first active bank account | Bank account code that online payments are receipted to |
+| `PO_PRICE_TOLERANCE_PCT` | 2 | Invoice vs PO price difference still accepted by the 3-way match |
 
 Production (`config.settings.production`) refuses to start without a strong
 secret key and a database URL. It enables HTTPS redirect, HSTS, secure cookies
@@ -231,9 +242,7 @@ These are ordered by risk. See `CHANGELOG.md` for what is already fixed.
 
 1. **JWTs are stored in `localStorage`**, so any XSS flaw could steal them.
    Plan: httpOnly refresh cookie plus an in-memory access token.
-2. **Several features are API-only**: settlement, credit notes, FX
-   revaluation, owner trust accounts, approvals, lease charges and
-   renewal/termination, maintenance completion, recurring journals. See
+2. **Not built: multi-company and ZIMRA fiscalisation (FDMS).** See
    GAP_ANALYSIS.md.
 3. **N+1 queries in some list serializers** (e.g. counts per contact). Annotate
    counts in the queryset.

@@ -8,7 +8,9 @@ import {
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useUIStore } from '@/stores/authStore'
-import { payrollAPI } from '@/services/api'
+import { apiErrorMessage, payrollAPI } from '@/services/api'
+import { toast } from 'react-hot-toast'
+import PayrollRunTools from '@/components/modules/payroll/PayrollRunTools'
 import PayrollRunForm from '@/components/modules/payroll/PayrollRunForm'
 import PayslipModal from '@/components/modules/payroll/PayslipModal'
 import DeductionSettingsView from '@/components/modules/payroll/DeductionSettingsView'
@@ -83,7 +85,18 @@ export default function PayrollPage() {
         setSelectedRun(data)
       }
     } catch (err) {
-      alert('Processing failed. Please check backend logs.')
+      toast.error(apiErrorMessage(err, 'Processing failed.'))
+    }
+  }
+
+  const handleApprove = async (runId) => {
+    try {
+      const { data } = await payrollAPI.runs.approve(runId)
+      setSelectedRun(data)
+      fetchRuns(pagination.page)
+      toast.success('Payroll run approved.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Approval failed.'))
     }
   }
 
@@ -97,7 +110,7 @@ export default function PayrollPage() {
         setSelectedRun(data)
       }
     } catch (err) {
-      alert('Payment execution failed.')
+      toast.error(apiErrorMessage(err, 'Payment execution failed.'))
     }
   }
 
@@ -249,7 +262,7 @@ export default function PayrollPage() {
                         )}
                         {selectedRun.status === 'processing' && (
                           <button
-                             onClick={() => payrollAPI.runs.update(selectedRun.id, { status: 'approved' }).then(() => fetchRuns(pagination.page))}
+                             onClick={() => handleApprove(selectedRun.id)}
                              className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-blue-600 transition-all"
                           >
                              <CheckCircle size={16} /> Approve
@@ -263,12 +276,14 @@ export default function PayrollPage() {
                              <DollarSign size={16} /> Pay All
                           </button>
                         )}
-                         <button
-                          onClick={() => handleProcess(selectedRun.id)}
-                          className="btn-secondary"
-                        >
-                          <RefreshCcw size={16} /> Recalculate
-                        </button>
+                        {['draft', 'processing'].includes(selectedRun.status) && (
+                          <button
+                            onClick={() => handleProcess(selectedRun.id)}
+                            className="btn-secondary"
+                          >
+                            <RefreshCcw size={16} /> Recalculate
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -286,6 +301,8 @@ export default function PayrollPage() {
                         <p className="stat-value text-primary">{formatCurrency(selectedRun.total_net, selectedRun.currency_code)}</p>
                       </div>
                     </div>
+
+                    <PayrollRunTools run={selectedRun} />
 
                     {selectedRun.invoice_number && (
                       <div className="mt-6 p-4 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-between">

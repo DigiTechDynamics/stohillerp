@@ -9,7 +9,7 @@ import {
   ChevronRight, MapPin, DollarSign, Flame, Snowflake, Thermometer,
   FileText, ShieldCheck, Download, Trash2, Plus, Upload, CheckCircle2
 } from 'lucide-react'
-import { crmAPI, downloadPrivateFile } from '@/services/api'
+import { apiErrorMessage, crmAPI, downloadPrivateFile } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
@@ -246,6 +246,12 @@ export default function ContactDetailPanel({ contactId, contact: contactProp }) 
     }
   })
 
+  const inviteMutation = useMutation({
+    mutationFn: (id) => crmAPI.contacts.inviteToPortal(id),
+    onSuccess: (res) => toast.success(`Portal invitation emailed to ${res.data.email}.`),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Could not send the invitation.')),
+  })
+
   const contact = contactRes?.data
   const opportunities = oppsRes?.data?.results || []
   const activities = activitiesRes?.data?.results || []
@@ -311,6 +317,16 @@ export default function ContactDetailPanel({ contactId, contact: contactProp }) 
                 <ScoreIcon size={9} />
                 {scoreData.label} • {contact.lead_score}
               </button>
+              {contact.contact_type === 'tenant' && (
+                <button
+                  onClick={() => inviteMutation.mutate(contact.id)}
+                  disabled={inviteMutation.isPending || !contact.email}
+                  className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest border border-primary/30 text-primary hover:bg-primary/10 transition-all disabled:opacity-40"
+                  title={contact.email ? 'Email the tenant a link to set up their portal login (re-sends if already invited)' : 'Add an email address first'}
+                >
+                  {inviteMutation.isPending ? 'Sending...' : 'Invite to portal'}
+                </button>
+              )}
             </div>
           </div>
           <button

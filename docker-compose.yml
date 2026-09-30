@@ -43,6 +43,17 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-json}
       TIME_ZONE: ${TIME_ZONE:-Africa/Harare}
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-no-reply@stohill.local}
+      EMAIL_HOST: ${EMAIL_HOST:-localhost}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-True}
+      PORTAL_BASE_URL: ${PORTAL_BASE_URL:-http://localhost:8080}
+      PAYNOW_INTEGRATION_ID: ${PAYNOW_INTEGRATION_ID:-}
+      PAYNOW_INTEGRATION_KEY: ${PAYNOW_INTEGRATION_KEY:-}
+      ONLINE_PAYMENTS_BANK_ACCOUNT: ${ONLINE_PAYMENTS_BANK_ACCOUNT:-}
     volumes:
       - media:/app/media
 
@@ -64,6 +75,17 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-json}
       TIME_ZONE: ${TIME_ZONE:-Africa/Harare}
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-no-reply@stohill.local}
+      EMAIL_HOST: ${EMAIL_HOST:-localhost}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-True}
+      PORTAL_BASE_URL: ${PORTAL_BASE_URL:-http://localhost:8080}
+      PAYNOW_INTEGRATION_ID: ${PAYNOW_INTEGRATION_ID:-}
+      PAYNOW_INTEGRATION_KEY: ${PAYNOW_INTEGRATION_KEY:-}
+      ONLINE_PAYMENTS_BANK_ACCOUNT: ${ONLINE_PAYMENTS_BANK_ACCOUNT:-}
     volumes:
       - media:/app/media
 

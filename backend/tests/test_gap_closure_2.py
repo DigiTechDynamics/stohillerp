@@ -485,3 +485,17 @@ def test_statement_and_invoice_email(auth_client, superuser, customer, mailoutbo
     assert client.post(f'/api/v1/finance/customer-invoices/{inv.id}/email_invoice/').status_code == 200
     assert client.post(f'/api/v1/finance/customers/{customer.id}/email_statement/', {}).status_code == 200
     assert [m.to for m in mailoutbox] == [['cara@test.local'], ['cara@test.local']]
+
+
+def test_invoice_pdf_download_and_email_without_address(auth_client, superuser, customer, mailoutbox):
+    inv = _customer_invoice(customer, D('75'))
+    client = auth_client(superuser)
+    pdf = client.get(f'/api/v1/finance/customer-invoices/{inv.id}/pdf/')
+    assert pdf.status_code == 200 and pdf.content.startswith(b'%PDF')
+    assert inv.invoice_number in pdf['Content-Disposition']
+
+    customer.contact_link.email = ''
+    customer.contact_link.save(update_fields=['email'])
+    response = client.post(f'/api/v1/finance/customer-invoices/{inv.id}/email_invoice/')
+    assert response.status_code == 400
+    assert mailoutbox == []

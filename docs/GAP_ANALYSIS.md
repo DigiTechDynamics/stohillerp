@@ -6,11 +6,12 @@ _Assessed and closed 2026-09-30 on branch `chore/production-hardening`._
 
 Stohill is a **vertical real-estate ERP** (property, CRM, sales, leasing,
 commissions, trust accounting) on a double-entry core with maker/checker
-controls. After three gap-closure passes it covers the finance and
-property-management scope that BC, Odoo or Sage Evolution would cover for a
-single-company agency or landlord. The gaps that remain are listed at the
-end: multi-company, ZIMRA fiscalisation, a tenant portal, and front-end
-screens for several features that are currently API-only.
+controls. After four gap-closure passes it covers the finance,
+purchasing and property-management scope that BC, Odoo or Sage Evolution
+would cover for a single-company agency, landlord or developer, and adds a
+tenant portal with online payment. Two gaps remain, both needing decisions
+or credentials from outside the codebase: multi-company and ZIMRA
+fiscalisation (see the end of this document).
 
 The review found three kinds of gap, and closed them in order:
 
@@ -25,8 +26,9 @@ The review found three kinds of gap, and closed them in order:
    lease charges, and more.
 
 Every fix and feature has a regression test in `backend/tests/test_gap_closure.py`,
-`test_gap_closure_2.py` and `test_gap_closure_3.py`. The suite has 394 backend
-tests, plus the first 5 frontend tests (Vitest).
+`test_gap_closure_2.py`, `test_gap_closure_3.py`, `test_banking.py`,
+`test_procurement_projects.py` and `test_portal.py`. The suite has 444 backend
+tests and 11 frontend tests (Vitest).
 
 ---
 
@@ -51,9 +53,10 @@ Legend: ✅ present · 🟡 partial · ❌ missing · **→** changed in the gap
 | Customer / supplier statements (PDF, email) | ❌ **→ ✅** | ✅ | ✅ | ✅ | ✅ |
 | **AR/AP settlement** — apply to chosen invoices | ❌ FIFO only (AP never settled) **→ ✅** | ✅ | ✅ | ✅ | ✅ |
 | Credit notes, unapplied cash, refunds, write-offs | ❌ **→ ✅** | ✅ | ✅ | ✅ | ✅ |
-| Approval workflows (thresholds, roles, sequence) | ❌ **→ ✅** AP invoices and payments | ✅ | ✅ | 🟡 | 🟡 |
-| Purchase orders / 3-way match | ❌ | ✅ | ✅ | ✅ | ✅ |
-| **Bank** — statement import, rules, auto-match | ✅ (two parallel models, see gaps) | ✅ | ✅ | ✅ | ✅ |
+| Approval workflows (thresholds, roles, sequence) | ❌ **→ ✅** AP invoices, payments, purchase orders | ✅ | ✅ | 🟡 | 🟡 |
+| Purchase orders / 3-way match | ❌ **→ ✅** with price tolerance and audited override | ✅ | ✅ | ✅ | ✅ |
+| Project accounting, WIP capitalisation | ❌ **→ ✅** development projects | ✅ | ✅ | ✅ | 🟡 |
+| **Bank** — statement import, rules, auto-match | 🟡 two parallel models, stubbed matching **→ ✅** one model, real reconciliation | ✅ | ✅ | ✅ | ✅ |
 | **Tax** — VAT codes, VAT return incl. credit notes | 🟡 **→ ✅** | ✅ | ✅ | ✅ | ✅ |
 | ZIMRA fiscalised tax invoices (FDMS) | ❌ | partner | partner | partner | ✅ |
 | **Fixed assets** — books, depreciation, disposal | ✅ (tax book double-posted **→ fixed**) | ✅ | ✅ | ✅ | ✅ |
@@ -71,7 +74,7 @@ Legend: ✅ present · 🟡 partial · ❌ missing · **→** changed in the gap
 | Owner trust accounting, fees, statements, payouts | ❌ **→ ✅** | ISV | ISV | ❌ | ❌ |
 | Maintenance to contractor bill and tenant recharge | ❌ **→ ✅** | ISV | ISV | 🟡 | ❌ |
 | Brokered (agency) vs principal sales | ❌ **→ ✅** | ISV | ISV | ❌ | ❌ |
-| Tenant self-service portal, online payments | ❌ | ISV | ISV | ✅ portal | ❌ |
+| Tenant self-service portal, online payments | ❌ **→ ✅** Paynow | ISV | ISV | ✅ portal | ❌ |
 
 ---
 
@@ -185,6 +188,62 @@ Legend: ✅ present · 🟡 partial · ❌ missing · **→** changed in the gap
   - Authenticated file downloads.
   - Vitest and Testing Library, run in CI.
 
+### Pass 4: open items (bank, purchasing, projects, portal, screens)
+- **One bank module.**
+  - `finance.BankAccount` is the only bank account model. Migrations moved the
+    corporate accounts and the legacy statement lines into it, and removed
+    `CorporateBankAccount`, `BankTransaction` and `BankReconciliation`.
+  - Statements import from CSV (single amount or debit/credit columns, ISO or
+    DD/MM/YYYY dates, duplicates skipped).
+  - Lines match to real unreconciled ledger lines. Each ledger line can match
+    only one statement line (database constraint).
+  - Rules auto-match or auto-post (keyword or regex).
+  - Differences post as adjustments, and there is a reconciliation report.
+  - The previous matching was a stub: manual match did nothing and the
+    dashboard figures were fixed.
+- **Purchasing** (`procurement/`).
+  - Purchase orders, with approval rules of type `purchase_order`.
+  - Goods received notes, and supplier invoices created from receipts.
+  - Posting a PO-linked invoice enforces a 3-way match: quantity invoiced
+    against received, and price within `PO_PRICE_TOLERANCE_PCT` (default 2%).
+  - A match exception can be overridden, with a reason, only by someone other
+    than the invoice's creator.
+- **Development projects** (`projects/`).
+  - Each project gets its own cost centre. Costs build up in 1540 Development
+    Work in Progress, and open POs show as commitments.
+  - The cost report shows budget, cost to date by account, and commitments.
+  - Capitalisation moves WIP into property inventory (raising the property's
+    cost) or into a new fixed asset with a statutory book.
+- **Tenant portal** (`portal/`, SPA at `/portal`).
+  - Tenants get their own role and log in with the portal module only. They
+    can reach nothing but `portal/`, their own profile, and their own data.
+  - Staff invite a tenant from the CRM contact. The activation link goes only
+    to the tenant's email.
+  - Tenants see their leases, invoices (PDF), statement and maintenance
+    requests.
+  - Online payment runs through Paynow (SHA512-hashed, verified callbacks, and
+    polling on return). Receipting is idempotent: rent is paid through the
+    rental payment flow, other invoices through a customer receipt and
+    allocation.
+  - A test gateway exists for development and is forced off in production.
+- **Screens for the API-only features.**
+  - Settlement: allocation, credit notes, write-offs, refunds and allocation
+    history on AR/AP invoices, receipts and payments.
+  - AP: approval panels, 3-way match status with override, and a document-type
+    selector for credit notes.
+  - AR/AP pages show real aging totals (they were hardcoded), and invoice and
+    statement PDFs come from the server (the invoice PDF was a fake data URL).
+  - Leases: billing, deposits, charges, renewal and termination. The fake
+    7.5% commission panel was removed.
+  - Rentals: maintenance completion, plus an Owners tab with trust balances,
+    statements and payouts.
+  - Payroll: approval now goes through the maker/checker endpoint (it
+    previously patched the status directly). The run shows the statutory
+    summary, bank file and payslip email.
+  - A Finance Settings page for cost centres, recurring journals, approval
+    rules and FX revaluation.
+  - Purchasing and Development Projects pages, and the tenant portal.
+
 ---
 
 ## Review before go-live
@@ -202,27 +261,25 @@ Legend: ✅ present · 🟡 partial · ❌ missing · **→** changed in the gap
 - **Access policy.** Review the table in `utils/permissions.py`. In
   particular, agents can read leases (through Properties), and CSV
   import/export is admin-only.
+- **Online payments.** Set `PAYNOW_INTEGRATION_ID`, `PAYNOW_INTEGRATION_KEY`,
+  `PORTAL_BASE_URL` (the public URL tenants use) and
+  `ONLINE_PAYMENTS_BANK_ACCOUNT` (the bank account code receipts land in).
+  Paynow must be able to reach `/api/v1/payments/paynow/result/`. Make a
+  small live payment and check the receipt before inviting tenants.
+- **Bank merge.** After migrating, check that each bank account shows the
+  expected GL account and that old statements appear under it.
+- **Purchase-order tolerance.** `PO_PRICE_TOLERANCE_PCT` is 2% by default.
 
 ## Remaining gaps
 
-1. **Screens for API-only features.** Settlement and allocations, credit
-   notes, write-offs and refunds, FX revaluation, owner statements and payouts,
-   approvals, lease charges and renewal/termination, maintenance completion,
-   recurring journals, cost centres and statements all work through the API
-   (documented in each module's docstring) but have no dedicated UI yet.
-2. **One bank module.** `finance.BankAccount` (used by postings) and
-   `banking.CorporateBankAccount` (statements and reconciliation) are parallel
-   models linked only by GL account. Merge them.
-3. **Purchasing.** Purchase orders and 3-way match are missing. AP starts at
-   the supplier invoice.
-4. **ZIMRA fiscalisation (FDMS).** This needs ZIMRA device/API accreditation and
+Items 1–3, 6 and 7 of the previous list (screens, one bank module,
+purchasing, project accounting, tenant portal) were closed in pass 4. Two
+remain:
+
+1. **ZIMRA fiscalisation (FDMS).** This needs ZIMRA device/API accreditation and
    credentials, so it can't be built or tested here. When you have them, add a
    fiscalisation step to invoice posting and store the fiscal signature and QR
    on `CustomerInvoice`.
-5. **Multi-company, intercompany and consolidation.** This is an architectural
+2. **Multi-company, intercompany and consolidation.** This is an architectural
    change: a company on every ledger record, and per-company sequences and
    periods.
-6. **Development / project accounting.** Cost centres give a project
-   dimension, but there is no WIP capitalisation workflow.
-7. **Tenant portal and online payments.** These need a payment gateway (e.g.
-   Paynow) and an external-user auth model.

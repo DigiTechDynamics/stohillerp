@@ -262,6 +262,13 @@ RENT_LATE_FEE_GRACE_DAYS = env.int("RENT_LATE_FEE_GRACE_DAYS", default=7)
 # ─── Email ───────────────────────────────────────────────────────────────────
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@stohill.local")
+# SMTP (with EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend). Portal
+# invitations, payslips, statements and rent reminders go out this way.
+EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 
 # ─── Logging ─────────────────────────────────────────────────────────────────
 # Console-only: containers and process managers collect stdout. Writing to a

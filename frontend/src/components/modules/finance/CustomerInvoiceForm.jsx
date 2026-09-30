@@ -15,6 +15,7 @@ export default function CustomerInvoiceForm() {
   
   const [formData, setFormData] = useState({
     customer: invoice?.customer || sidePanelData?.customer?.id || '',
+    document_type: invoice?.document_type || 'invoice',
     invoice_date: invoice?.invoice_date || new Date().toISOString().split('T')[0],
     due_date: invoice?.due_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     reference: invoice?.reference || '',
@@ -211,6 +212,15 @@ export default function CustomerInvoiceForm() {
               onChange={(val) => setFormData(prev => ({ ...prev, currency: val }))}
               label="Invoice Currency"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Document Type</label>
+            <select name="document_type" value={formData.document_type} onChange={handleChange} className="form-input w-full"
+              disabled={!!invoice?.id}>
+              <option value="invoice">Invoice</option>
+              <option value="credit_note">Credit note (reverses revenue/expense; apply it to invoices after posting)</option>
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

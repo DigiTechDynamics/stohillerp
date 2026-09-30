@@ -8,6 +8,7 @@ import {
 import { rentalsAPI } from '@/services/api'
 import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
+import LeaseActions from './LeaseActions'
 
 function InfoRow({ label, value, accent }) {
   return (
@@ -46,8 +47,6 @@ export default function LeaseDetailPanel() {
   if (!lease) return null
 
   const escalatedAmount = parseFloat(lease.monthly_rental) * (1 + parseFloat(lease.rental_escalation_rate || 0) / 100)
-  const commissionRate = 7.5 // Default management commission rate
-  const commissionAmount = parseFloat(lease.monthly_rental) * (commissionRate / 100)
 
   return (
     <div className="flex flex-col h-full bg-dark-900 overflow-y-auto scrollbar-hide">
@@ -124,17 +123,6 @@ export default function LeaseDetailPanel() {
           )}
         </div>
 
-        {/* Commission */}
-        <div className="space-y-1">
-          <h4 className="text-[10px] font-bold text-primary uppercase tracking-widest border-b border-white/5 pb-2 mb-2">
-            Commission
-          </h4>
-          <InfoRow label="Commission Rate" value={`${commissionRate}%`} />
-          <InfoRow label="Monthly Commission" value={formatCurrency(commissionAmount)} accent="text-emerald-400" />
-          <InfoRow label="Annual Commission" value={formatCurrency(commissionAmount * 12)} accent="text-emerald-400" />
-          {lease.agent_name && <InfoRow label="Managing Agent" value={lease.agent_name} />}
-        </div>
-
         {/* Lease Terms */}
         <div className="space-y-1">
           <h4 className="text-[10px] font-bold text-primary uppercase tracking-widest border-b border-white/5 pb-2 mb-2">
@@ -175,6 +163,8 @@ export default function LeaseDetailPanel() {
           )}
         </div>
 
+        <LeaseActions lease={lease} />
+
         {/* Notes */}
         {lease.notes && (
           <div className="space-y-1">
@@ -196,7 +186,7 @@ export default function LeaseDetailPanel() {
           onClick={() => openSidePanel('rental-invoice-form', { lease })}
           className="flex-1 btn-secondary py-3 flex items-center justify-center gap-2"
         >
-          <FileText size={16} /> Generate Invoice
+          <FileText size={16} /> Manual Invoice
         </button>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { authAPI } from '@/services/api'
 import { useAuthStore } from '@/stores/authStore'
+import { homePathFor, isPortalUser } from '@/utils/portal'
 import toast from 'react-hot-toast'
 import { AlertCircle, Eye, EyeOff } from 'lucide-react'
 import BrandLogo from '@/components/common/BrandLogo'
@@ -36,8 +37,8 @@ export default function LoginPage() {
       // 4. Save full auth state
       setAuth(userData, access, refresh)
       
-      toast.success(`Welcome back, ${userData.first_name || 'Admin'}!`)
-      navigate('/dashboard')
+      toast.success(`Welcome${isPortalUser(userData) ? '' : ' back'}, ${userData.first_name || 'Admin'}!`)
+      navigate(homePathFor(userData))
     } catch (err) {
       const resp = err?.response?.data
       const msg = resp?.error?.message?.detail || resp?.error?.message || resp?.detail || 'Invalid credentials. Please try again.'

@@ -880,7 +880,16 @@ class CustomerInvoiceViewSet(InvoiceSettlementActions, viewsets.ModelViewSet):
         if success:
             return Response({'status': 'sent', 'message': f'Invoice emailed to {invoice.customer.email}'})
         else:
-            return Response({'error': 'Failed to send email. Ensure customer has an email address and PDF generation works.'}, status=500)
+            return Response({'error': 'Failed to send email. Check that the customer has an email address.'}, status=400)
+
+    @action(detail=True, methods=['get'])
+    def pdf(self, request, pk=None):
+        from apps.finance.services.pdf_service import generate_invoice_pdf  # type: ignore
+
+        invoice = self.get_object()
+        response = HttpResponse(generate_invoice_pdf(invoice), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{invoice.invoice_number}.pdf"'
+        return response
 
 class CustomerReceiptViewSet(ReceiptSettlementActions, viewsets.ModelViewSet):
     queryset = CustomerReceipt.objects.select_related('customer', 'bank_account')

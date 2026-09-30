@@ -1,11 +1,13 @@
 // Stohill Properties - Root Application Component
 // Handles routing, auth guards, and global layout
 
-import { lazy, useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore, useUIStore } from '@/stores/authStore'
 import AppLayout from '@/components/layout/AppLayout'
+import PageLoader from '@/components/common/PageLoader'
 import LoginPage from '@/pages/LoginPage'
+import { isPortalUser } from '@/utils/portal'
 
 // Page imports: lazy-loaded so each module is its own chunk, downloaded on
 // first visit. LoginPage stays eager because it's the entry screen.
@@ -32,9 +34,28 @@ const CreateJournalEntryPage = lazy(() => import('@/pages/finance/CreateJournalE
 const BatchApprovalPage = lazy(() => import('@/pages/finance/BatchApprovalPage'))
 const PayrollPage = lazy(() => import('@/pages/payroll/PayrollPage'))
 const UserAccessPage = lazy(() => import('@/pages/admin/UserAccessPage'))
+const FinanceSettingsPage = lazy(() => import('@/pages/finance/FinanceSettingsPage'))
+const PurchasingPage = lazy(() => import('@/pages/procurement/PurchasingPage'))
+const ProjectsPage = lazy(() => import('@/pages/projects/ProjectsPage'))
+const PortalLayout = lazy(() => import('@/pages/portal/PortalLayout'))
+const PortalActivatePage = lazy(() => import('@/pages/portal/PortalActivatePage'))
+const PortalHome = lazy(() => import('@/pages/portal/PortalPages').then(m => ({ default: m.PortalHome })))
+const PortalInvoices = lazy(() => import('@/pages/portal/PortalPages').then(m => ({ default: m.PortalInvoices })))
+const PortalStatement = lazy(() => import('@/pages/portal/PortalPages').then(m => ({ default: m.PortalStatement })))
+const PortalMaintenance = lazy(() => import('@/pages/portal/PortalPages').then(m => ({ default: m.PortalMaintenance })))
+const PortalPaymentReturn = lazy(() => import('@/pages/portal/PortalPages').then(m => ({ default: m.PortalPaymentReturn })))
 
-// Auth guard wrapper
+// Auth guard for the ERP. Tenant (portal-only) logins are sent to the portal.
 function PrivateRoute({ children }) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const user = useAuthStore((s) => s.user)
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (isPortalUser(user)) return <Navigate to="/portal" replace />
+  return <>{children}</>
+}
+
+// Auth guard for the tenant portal.
+function PortalRoute({ children }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />
 }
@@ -53,6 +74,21 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/portal/activate" element={<Suspense fallback={<PageLoader />}><PortalActivatePage /></Suspense>} />
+      <Route
+        path="/portal"
+        element={
+          <PortalRoute>
+            <Suspense fallback={<PageLoader />}><PortalLayout /></Suspense>
+          </PortalRoute>
+        }
+      >
+        <Route index element={<PortalHome />} />
+        <Route path="invoices" element={<PortalInvoices />} />
+        <Route path="statement" element={<PortalStatement />} />
+        <Route path="maintenance" element={<PortalMaintenance />} />
+        <Route path="payments/:reference" element={<PortalPaymentReturn />} />
+      </Route>
       <Route
         path="/"
         element={
@@ -80,6 +116,9 @@ export default function App() {
         <Route path="finance/periods" element={<FiscalPeriodsPage />} />
         <Route path="finance/posting-profiles" element={<PostingProfilesPage />} />
         <Route path="finance/assets" element={<AssetsPage />} />
+        <Route path="finance/settings" element={<FinanceSettingsPage />} />
+        <Route path="procurement" element={<PurchasingPage />} />
+        <Route path="projects" element={<ProjectsPage />} />
         <Route path="commissions" element={<CommissionsPage />} />
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="hr" element={<HRPage />} />
