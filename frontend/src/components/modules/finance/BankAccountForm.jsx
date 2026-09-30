@@ -41,8 +41,10 @@ export default function BankAccountForm() {
       closeSidePanel()
     },
     onError: (err) => {
-      const resp = err.response?.data
-      setError(resp?.detail || resp?.message || 'Failed to save bank account.')
+      const message = err.response?.data?.error?.message
+      setError(typeof message === 'string' ? message
+        : message ? Object.entries(message).map(([k, v]) => `: `).join('; ')
+        : 'Failed to save bank account.')
     }
   })
 
@@ -155,6 +157,7 @@ export default function BankAccountForm() {
                 value={formData.currency}
                 onChange={(val) => setFormData(prev => ({ ...prev, currency: val }))}
                 label="Account Currency"
+                valueKey="code"
               />
             </div>
 

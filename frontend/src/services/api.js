@@ -378,17 +378,22 @@ export const bankingAPI = {
     create: (data) => api.post('banking/accounts/', data),
     update: (id, data) => api.patch(`banking/accounts/${id}/`, data),
     stats: (id) => api.get(`banking/accounts/${id}/stats/`),
+    unmatchedLedger: (id) => api.get(`banking/accounts/${id}/unmatched_ledger/`),
+    reconciliation: (id, asOf) => api.get(`banking/accounts/${id}/reconciliation/`, { params: { as_of: asOf } }),
   },
   statements: {
     list: (params) => api.get('banking/statements/', { params }),
     detail: (id) => api.get(`banking/statements/${id}/`),
-    create: (data) => api.post('banking/statements/', data),
+    import: (formData) => api.post('banking/statements/import/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
     auto_match: (id) => api.post(`banking/statements/${id}/auto_match/`),
-    process_statement: (id) => api.post(`banking/statements/${id}/process_statement/`),
   },
   lines: {
     list: (params) => api.get('banking/lines/', { params }),
     reconcile: (id, data) => api.post(`banking/lines/${id}/reconcile_manually/`, data),
+    unreconcile: (id) => api.post(`banking/lines/${id}/unreconcile/`),
+    postAdjustment: (id, data) => api.post(`banking/lines/${id}/post_adjustment/`, data),
   },
   rules: {
     list: (params) => api.get('banking/reconciliation-rules/', { params }),

@@ -8,7 +8,7 @@ from .models import (  # type: ignore
     FiscalPeriod, FiscalYear, ExchangeRate, PostingProfile,
     Supplier, SupplierInvoice, SupplierInvoiceLine, SupplierPayment,
     CustomerProfile, CustomerInvoice, CustomerInvoiceLine, CustomerReceipt,
-    BankAccount, BankTransaction, BankReconciliation,
+    BankAccount,
     TaxCode, TaxTransaction
 )
 
@@ -557,16 +557,6 @@ class BankAccountSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = BankAccount
-        fields = '__all__'
-
-class BankTransactionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BankTransaction
-        fields = '__all__'
-
-class BankReconciliationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BankReconciliation
         fields = '__all__'
 
 # ─── Tax Serializers ─────────────────────────────────────────────────────────

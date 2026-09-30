@@ -8,6 +8,8 @@ the same rules as the screens. The file is all-or-nothing: if any row fails,
 nothing is saved and every error is reported with its row number. Rows whose
 natural key already exists are skipped, so re-running an import is safe.
 
+Bank statements are imported per account through banking/statements/import/.
+
 Access: templates for everyone; export and import need the admin module
 (utils/permissions.py policy for core/).
 """
@@ -101,14 +103,6 @@ def _employee(row):
         'first_name': row['first_name'], 'last_name': row['last_name'], 'email': row['email'],
         'phone': row.get('phone', ''), 'employee_number': row['employee_number'],
         'start_date': row['start_date'], 'employment_type': row.get('employment_type') or 'full_time',
-    }
-
-
-def _statement(row):
-    return {
-        'bank_account': _get('finance.BankAccount', account_number=row['bank_account_number']),
-        'date': row['date'], 'description': row['description'],
-        'reference': row.get('reference', ''), 'amount': row['amount'],
     }
 
 
@@ -222,11 +216,6 @@ SPECS = {
         _s('apps.hr.serializers:EmployeeSerializer'), _employee,
         lambda r: _exists('hr.Employee', employee_number=r['employee_number']), _qs('hr.Employee'),
         ['employee_number', 'first_name', 'last_name', 'email', 'status']),
-    'statements': ImportSpec(
-        ['bank_account_number', 'date', 'description', 'reference', 'amount'],
-        ['000111', '2026-03-01', 'Rent received', 'INV-123', '850.00'],
-        _s('apps.finance.serializers:BankTransactionSerializer'), _statement, lambda r: False,
-        _qs('finance.BankTransaction'), ['date', 'description', 'reference', 'amount', 'is_reconciled']),
     'suppliers': ImportSpec(
         ['name', 'email', 'phone', 'tax_number', 'payment_terms_days'],
         ['Global Supplies Ltd', 'info@example.com', '+263242000000', 'TAX999', '30'],

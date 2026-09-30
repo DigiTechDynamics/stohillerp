@@ -11,7 +11,7 @@ export default function BankTransactionView() {
 
   const { data: linesData, isLoading } = useQuery({
     queryKey: ['bank-transactions', account?.id, search],
-    queryFn: () => bankingAPI.lines.list({ bank_account: account?.id, search }),
+    queryFn: () => bankingAPI.lines.list({ statement__bank_account: account?.id, search, page_size: 200 }),
     enabled: !!account?.id
   })
 
