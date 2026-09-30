@@ -11,7 +11,7 @@ payroll (PAYE, AIDS levy, NSSA in USD and ZWG).
 | Database | PostgreSQL 16 (the only supported engine) |
 | Web      | React 18 (JSX), Vite 5, Tailwind CSS, TanStack Query, Zustand, Radix UI |
 | Runtime  | gunicorn + WhiteNoise, nginx (SPA + reverse proxy), Docker Compose |
-| Quality  | pytest + pytest-django (247 tests), ruff, GitHub Actions |
+| Quality  | pytest + pytest-django (394 tests), Vitest, ruff, GitHub Actions |
 
 ---
 
@@ -167,9 +167,12 @@ proxy in front of nginx that sets `X-Forwarded-Proto`.
 
 | Command | Safe in prod | Purpose |
 |---|---|---|
-| `bootstrap_system` | ✅ | Currencies (USD, ZWG, ZAR), access modules, roles and default module access, number sequences, ZW payroll tables, default CRM pipeline. Idempotent; never overwrites admin customisations. |
+| `bootstrap_system` | ✅ | Currencies (USD, ZWG, ZAR), access modules, roles and default module access, number sequences, starter chart of accounts, journals, default posting profile, VAT codes, current fiscal year, ZW payroll tables and GL mapping, default CRM pipeline. Idempotent; never overwrites admin customisations. |
 | `seed_demo [--force]` | ❌ | Bootstrap plus demo properties, CRM, leases, sales, HR, banking. Refuses when `DEBUG=False` unless `--force`. |
-| `process_rental_overdue` | ✅ | Flags overdue rental invoices (schedule daily). |
+| `generate_rental_invoices [--as-of]` | ✅ | Bills active leases up to a date, applies annual escalation, posts to AR/GL. Idempotent (schedule daily, before the overdue job). |
+| `process_rental_overdue` | ✅ | Rent reminders; applies and posts late fees on overdue rental invoices (schedule daily). |
+| `run_daily_jobs` | ✅ | Billing, overdue processing, depreciation to last month-end, recurring and auto-reversing journals. Idempotent. |
+| `run_scheduler [--at HH:MM]` | ✅ | Runs `run_daily_jobs` once a day; the `scheduler` service in `docker-compose.yml` uses it. |
 
 ---
 
@@ -196,9 +199,11 @@ in a rolled-back transaction. It covers:
 - A regression test for every bug fixed in the hardening pass (see `CHANGELOG.md`).
 - A sweep asserting that every API endpoint neither crashes nor allows anonymous access.
 
+Frontend: `cd frontend && npm test` (Vitest + Testing Library).
+
 CI (`.github/workflows/ci.yml`) runs lint, the missing-migration check, the
-tests on PostgreSQL, a production `check --deploy`, the frontend build and the
-Docker builds.
+tests on PostgreSQL, a production `check --deploy`, the frontend tests and
+build, and the Docker builds.
 
 ---
 
@@ -219,21 +224,19 @@ Per-module endpoints are documented in [docs/MODULES.md](docs/MODULES.md).
 
 ## Known limitations & roadmap
 
+The full comparison against Business Central, D365 F&O, Odoo and Sage
+Evolution, with a prioritised gap list, is in [docs/GAP_ANALYSIS.md](docs/GAP_ANALYSIS.md).
+
 These are ordered by risk. See `CHANGELOG.md` for what is already fixed.
 
-1. **Uploaded documents are publicly readable by URL.** nginx serves `/media/`
-   without authentication, and it includes KYC documents. Before storing real
-   customer IDs, serve files through an authenticated Django view (with
-   nginx `X-Accel-Redirect`) or private object storage with signed URLs.
-2. **JWTs are stored in `localStorage`**, so any XSS flaw could steal them.
+1. **JWTs are stored in `localStorage`**, so any XSS flaw could steal them.
    Plan: httpOnly refresh cookie plus an in-memory access token.
-3. **Silent finance-sync failures.** Some model `save()` hooks catch and log
-   errors when syncing to AR. Move these to explicit service calls or a task
-   queue with retries. That's also a prerequisite for enabling `ATOMIC_REQUESTS`.
-4. **N+1 queries in some list serializers** (e.g. counts per contact). Annotate
+2. **Several features are API-only**: settlement, credit notes, FX
+   revaluation, owner trust accounts, approvals, lease charges and
+   renewal/termination, maintenance completion, recurring journals. See
+   GAP_ANALYSIS.md.
+3. **N+1 queries in some list serializers** (e.g. counts per contact). Annotate
    counts in the queryset.
-5. **Six legacy check scripts** in `backend/scripts/manual_checks/` still need
+4. **Six legacy check scripts** in `backend/scripts/manual_checks/` still need
    porting to pytest (depreciation, payment allocation, per-role dashboards).
-6. **No background worker yet.** Scheduled jobs (overdue rentals, depreciation
-   runs) need cron or Celery beat in production.
-7. The frontend has no automated tests yet (Vitest + Testing Library suggested).
+5. **Frontend test coverage is a starter set** (Vitest; `npm test`).

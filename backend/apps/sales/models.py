@@ -23,8 +23,16 @@ class SaleTransaction(AuditedModel):
         REGISTERED = 'registered', 'Registered / Complete'
         CANCELLED = 'cancelled', 'Cancelled / Fallen Through'
 
+    class SaleType(models.TextChoices):
+        # The company sells its own stock: sale price is revenue, cost of sale applies.
+        PRINCIPAL = 'principal', 'Company-owned (principal)'
+        # The company brokers someone else's property: only its commission is revenue.
+        AGENCY = 'agency', 'Brokered (agency)'
+
     # References
     sale_reference = models.CharField(max_length=50, unique=True, db_index=True)
+    sale_type = models.CharField(max_length=20, choices=SaleType.choices, blank=True,
+                                 help_text='Blank: agency unless the property is company owned')
     property = models.ForeignKey('properties.Property', on_delete=models.PROTECT, related_name='sales')
     buyer = models.ForeignKey('crm.Contact', on_delete=models.PROTECT, related_name='purchases')
     seller = models.ForeignKey('crm.Contact', null=True, blank=True, on_delete=models.SET_NULL, related_name='sales')
@@ -75,6 +83,13 @@ class SaleTransaction(AuditedModel):
 
     def __str__(self):
         return f'{self.sale_reference} - {self.property.reference_number}'
+
+    # A method, not @property: the `property` field shadows the builtin here.
+    def get_effective_sale_type(self):
+        if self.sale_type:
+            return self.sale_type
+        owned = self.property.ownership_type == 'owned'
+        return self.SaleType.PRINCIPAL if owned else self.SaleType.AGENCY
 
     def calculate_commission(self):
         """Calculate commission based on rate."""

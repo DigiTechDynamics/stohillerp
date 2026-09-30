@@ -5,11 +5,9 @@ from django.utils import timezone
 from datetime import date
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 
 
 class ExecutiveDashboardView(APIView):
-    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         # Business-timezone date (TIME_ZONE), not the server clock.
@@ -73,11 +71,11 @@ class ExecutiveDashboardView(APIView):
         ).aggregate(total=Sum('current_balance'))['total'] or Decimal('0')
         
         revenue = JournalLine.objects.filter(
-            entry__status=JournalEntry.EntryStatus.POSTED,
+            entry__status__in=JournalEntry.LEDGER_STATUSES,
             account__account_type='revenue'
         ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
         expenses = JournalLine.objects.filter(
-            entry__status=JournalEntry.EntryStatus.POSTED,
+            entry__status__in=JournalEntry.LEDGER_STATUSES,
             account__account_type='expense'
         ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
         
@@ -150,7 +148,7 @@ class ExecutiveDashboardView(APIView):
         from datetime import date, timedelta
         start = (date.today() - timedelta(days=365)).replace(day=1)
         data = JournalLine.objects.filter(
-            entry__status=JournalEntry.EntryStatus.POSTED,
+            entry__status__in=JournalEntry.LEDGER_STATUSES,
             entry__entry_date__gte=start,
             account__account_type='revenue', side='credit',
         ).annotate(month=TruncMonth('entry__entry_date')).values('month').annotate(
@@ -182,7 +180,6 @@ class ExecutiveDashboardView(APIView):
 
 
 class AgentDashboardView(APIView):
-    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         from apps.hr.models import Employee

@@ -91,6 +91,10 @@ class ChartOfAccount(AuditedModel):
         default=True,
         help_text='Whether this account can be used in manual journal entries'
     )
+    requires_cost_center = models.BooleanField(
+        default=False,
+        help_text='Postings to this account must carry a cost center (dimension).'
+    )
     allowed_transaction_types = models.JSONField(
         default=list,
         blank=True,
@@ -307,6 +311,11 @@ class JournalEntry(AuditedModel):
         REVERSAL = 'reversal', 'Reversal Entry'
         OPENING_BALANCE = 'opening_balance', 'Opening Balance'
 
+    # Statuses whose lines are in the ledger. A reversed entry stays in the
+    # books next to its (posted) reversal so the two net to zero; reporting on
+    # POSTED alone dropped the original and left only the reversal.
+    LEDGER_STATUSES = (EntryStatus.POSTED, EntryStatus.REVERSED)
+
     # Reference
     reference = models.CharField(max_length=50, unique=True, db_index=True)
     batch = models.ForeignKey(JournalBatch, null=True, blank=True, on_delete=models.PROTECT, related_name='entries')
@@ -334,6 +343,10 @@ class JournalEntry(AuditedModel):
         on_delete=models.SET_NULL,
         related_name='posted_entries'
     )
+
+    # Accruals and unrealised FX revaluations reverse themselves on this date
+    # (processed by the daily job).
+    auto_reverse_date = models.DateField(null=True, blank=True, db_index=True)
 
     # Reversal tracking
     is_reversal = models.BooleanField(default=False)
@@ -406,6 +419,9 @@ class JournalLine(models.Model):
     contact_ref = models.ForeignKey('crm.Contact', null=True, blank=True, on_delete=models.SET_NULL)
     supplier_ref = models.ForeignKey('finance.Supplier', null=True, blank=True, on_delete=models.SET_NULL)
     employee_ref = models.ForeignKey('hr.Employee', null=True, blank=True, on_delete=models.SET_NULL)
+    # Analytical dimension (business unit, branch, development project...).
+    cost_center = models.ForeignKey('finance.CostCenter', null=True, blank=True, on_delete=models.PROTECT,
+                                    related_name='journal_lines')
 
     # VAT tracking
     vat_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))

@@ -265,7 +265,7 @@ def generate_payslip_pdf(payslip) -> bytes:
     ei_data = [
         [
             _info_table([
-                ('Full Name:', emp.name),
+                ('Full Name:', emp.full_name),
                 ('Staff ID:', emp.employee_number or '—'),
                 ('Department:', str(emp.department) if emp.department else '—'),
                 ('Job Title:', str(contract.job_position) if contract else '—'),
@@ -273,7 +273,8 @@ def generate_payslip_pdf(payslip) -> bytes:
             _info_table([
                 ('Pay Period:', f"{payslip.date_from.strftime('%d %b %Y')} – {payslip.date_to.strftime('%d %b %Y')}"),
                 ('Bank:', emp.bank_name or '—'),
-                ('Account:', emp.bank_account_number or '—'),
+                # Payslips are emailed: show only the last digits of the account.
+                ('Account:', f'****{emp.bank_account_number[-4:]}' if emp.bank_account_number else '—'),
                 ('Currency:', currency),
             ], s),
         ]
@@ -420,3 +421,78 @@ def generate_statement_pdf(statement_data: dict) -> bytes:
 
     doc.build(story)
     return buf.getvalue()
+
+
+# ─── Account Statement PDF (customer / owner) ───────────────────────────────
+
+def generate_account_statement_pdf(statement: dict, title: str = 'STATEMENT OF ACCOUNT') -> bytes:
+    """
+    A customer (or landlord) statement: opening balance, transactions with a
+    running balance, closing balance and an aging summary. `statement` is the
+    dict returned by the statement endpoints (finance.statements).
+    """
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=MARGIN, bottomMargin=MARGIN, leftMargin=MARGIN,
+                            rightMargin=MARGIN)
+    s = _base_styles()
+    story = []
+    party = statement.get('party', {})
+    currency = statement.get('currency') or 'USD'
+
+    _header_block(story, s, title, ref_label='Account', ref_value=party.get('reference', ''),
+                  date_label='Period', date_value=f"{statement.get('from_date')} to {statement.get('to_date')}")
+    story.append(Paragraph('ACCOUNT', s['section']))
+    story.append(_info_table([('Name:', party.get('name', '—')), ('Email:', party.get('email') or '—')], s))
+    story.append(Spacer(1, 6 * mm))
+
+    usable_w = PAGE_W - 2 * MARGIN
+    widths = [usable_w * w for w in (0.13, 0.17, 0.34, 0.12, 0.12, 0.12)]
+    rows = [[Paragraph(statement.get('from_date', ''), s['body']), Paragraph('', s['mono']),
+             Paragraph('<i>Balance brought forward</i>', s['body']), '', '',
+             Paragraph(_fmt(statement.get('opening_balance', 0), currency), s['right_bold'])]]
+    for line in statement.get('lines', []):
+        rows.append([
+            Paragraph(line['date'], s['body']),
+            Paragraph(line.get('reference') or '—', s['mono']),
+            Paragraph(line.get('description', ''), s['body']),
+            Paragraph(_fmt(line['debit'], currency) if Decimal(line['debit']) else '', s['right']),
+            Paragraph(_fmt(line['credit'], currency) if Decimal(line['credit']) else '', s['right']),
+            Paragraph(_fmt(line['balance'], currency), s['right']),
+        ])
+    story.append(_line_items_table(['Date', 'Reference', 'Description', 'Debit', 'Credit', 'Balance'],
+                                   rows, widths, s))
+    story.append(Spacer(1, 6 * mm))
+
+    aging = statement.get('aging', {})
+    if aging:
+        labels = [('current', 'Current'), ('1_30', '1-30'), ('31_60', '31-60'), ('61_90', '61-90'),
+                  ('over_90', '90+')]
+        story.append(Paragraph('AMOUNT DUE BY AGE', s['section']))
+        t = Table([[Paragraph(label, s['right_bold']) for _k, label in labels],
+                   [Paragraph(_fmt(aging.get(k, 0), currency), s['right']) for k, _l in labels]],
+                  colWidths=[usable_w / len(labels)] * len(labels))
+        t.setStyle(TableStyle([('LINEBELOW', (0, 0), (-1, 0), 0.5, BRAND_GOLD)]))
+        story.append(t)
+
+    story.append(Spacer(1, 6 * mm))
+    closing = Table([[Paragraph('CLOSING BALANCE', s['body_bold']),
+                      Paragraph(_fmt(statement.get('closing_balance', 0), currency), s['net_pay'])]],
+                    colWidths=[usable_w * 0.6, usable_w * 0.4])
+    closing.setStyle(TableStyle([('LINEABOVE', (0, 0), (-1, 0), 1.5, BRAND_GOLD),
+                                 ('BACKGROUND', (0, 0), (-1, -1), BRAND_LIGHT),
+                                 ('TOPPADDING', (0, 0), (-1, -1), 7), ('BOTTOMPADDING', (0, 0), (-1, -1), 7)]))
+    story.append(closing)
+    story.extend(_footer_paragraph(s, 'Statement'))
+    doc.build(story)
+    return buf.getvalue()
+
+
+class PDFService:
+    """
+    Facade over the generators. Rental invoice downloads and invoice emails
+    import `PDFService`, which previously didn't exist, so both always failed.
+    """
+    generate_invoice_pdf = staticmethod(generate_invoice_pdf)
+    generate_payslip_pdf = staticmethod(generate_payslip_pdf)
+    generate_statement_pdf = staticmethod(generate_statement_pdf)
+    generate_account_statement_pdf = staticmethod(generate_account_statement_pdf)

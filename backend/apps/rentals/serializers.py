@@ -68,3 +68,13 @@ class MaintenanceRequestSerializer(serializers.ModelSerializer):
         if obj.lease and obj.lease.property:
             return obj.lease.property.name
         return None
+
+
+class LeaseChargeSerializer(serializers.ModelSerializer):
+    account_code = serializers.CharField(source='account.code', read_only=True, default=None)
+
+    class Meta:
+        from apps.rentals.models import LeaseCharge
+        model = LeaseCharge
+        fields = ['id', 'lease', 'charge_type', 'description', 'monthly_amount', 'account', 'account_code',
+                  'vat_applicable', 'start_date', 'end_date', 'is_active']

@@ -43,5 +43,8 @@ STORAGES = {
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 
+# Private uploads: nginx streams them from its internal /protected-media/ location.
+PRIVATE_MEDIA_ACCEL_PREFIX = env("PRIVATE_MEDIA_ACCEL_PREFIX", default="/protected-media/")
+
 # Structured logs are easier to ship to a log aggregator.
 LOGGING["handlers"]["console"]["formatter"] = env("LOG_FORMAT", default="json")  # noqa: F405

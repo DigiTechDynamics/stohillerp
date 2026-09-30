@@ -5,6 +5,8 @@ Properties are the central entity linking all other modules.
 """
 
 import uuid
+from decimal import Decimal
+
 from django.db import models  # type: ignore
 from apps.core.models import AuditedModel, TimeStampedModel  # type: ignore
 
@@ -89,6 +91,17 @@ class Property(AuditedModel):
 
     # Finance linkage (GL account for this property's income/expenses)
     gl_account_code = models.CharField(max_length=20, blank=True, help_text='Chart of accounts reference')
+
+    # Managed (third-party) properties: rent collected belongs to the owner
+    # (held in trust) less the agency's management fee.
+    owner = models.ForeignKey('crm.Contact', null=True, blank=True, on_delete=models.PROTECT,
+                              related_name='owned_properties', help_text='Landlord, for managed properties')
+    management_fee_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('10.00'),
+                                              help_text='% of rent retained as management fee (managed properties)')
+
+    @property
+    def is_managed(self):
+        return self.ownership_type == self.OwnershipType.MANAGED and self.owner_id is not None
 
     # Rich description
     description = models.TextField(blank=True)

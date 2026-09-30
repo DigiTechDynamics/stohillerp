@@ -64,3 +64,24 @@ class ZimbabweTaxService:
             
         pensionable_earnings = min(salary, ceiling)
         return (pensionable_earnings * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+    @staticmethod
+    def _setting(key, default):
+        setting = PayrollSetting.objects.filter(key=key).first()
+        return setting.value if setting else Decimal(default)
+
+    @classmethod
+    def calculate_employer_nssa(cls, basic_salary, currency_code="USD"):
+        """Employer's NSSA share: same pensionable-earnings ceiling, employer rate."""
+        employee_share = cls.calculate_nssa(basic_salary, currency_code)
+        employee_rate = cls._setting('nssa_rate', '0.045')
+        employer_rate = cls._setting('employer_nssa_rate', '0.045')
+        if not employee_rate:
+            return Decimal('0.00')
+        return (employee_share / employee_rate * employer_rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+    @classmethod
+    def calculate_zimdef(cls, gross_pay):
+        """ZIMDEF (Zimbabwe Manpower Development Fund) levy on gross pay, employer cost."""
+        rate = cls._setting('zimdef_rate', '0.01')
+        return (Decimal(str(gross_pay)) * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)

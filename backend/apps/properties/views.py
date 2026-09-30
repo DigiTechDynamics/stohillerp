@@ -2,20 +2,18 @@
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count
 
 from apps.properties.models import Property, PropertyUnit, PropertyType, PropertyInspection
 from apps.properties.serializers import (
     PropertyListSerializer, PropertyDetailSerializer,
-    PropertyTypeSerializer, PropertyUnitSerializer
+    PropertyTypeSerializer
 )
 
 
 class PropertyViewSet(viewsets.ModelViewSet):
     queryset = Property.objects.select_related('property_type', 'primary_agent').prefetch_related('images', 'units')
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'property_type', 'city', 'suburb', 'ownership_type']
     search_fields = ['reference_number', 'name', 'address_line1', 'suburb', 'city']
@@ -55,5 +53,4 @@ class PropertyViewSet(viewsets.ModelViewSet):
 class PropertyTypeViewSet(viewsets.ModelViewSet):
     queryset = PropertyType.objects.all()
     serializer_class = PropertyTypeSerializer
-    permission_classes = [IsAuthenticated]
     pagination_class = None

@@ -1,7 +1,7 @@
 // Stohill Properties - Financial Reports Page
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { 
   FileText, Download, Eye, Calendar, Building2, 
   TrendingUp, PieChart, Landmark, ArrowLeft,
@@ -17,7 +17,9 @@ export default function ReportsPage() {
     from_date: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
     to_date: new Date().toISOString().split('T')[0],
     as_at_date: new Date().toISOString().split('T')[0],
-    property_id: ''
+    property_id: '',
+    account: '',
+    fiscal_year_id: ''
   })
 
   const { data: propertiesData } = useQuery({
@@ -32,6 +34,12 @@ export default function ReportsPage() {
   })
   const periods = periodsData?.data?.results || periodsData?.data || []
 
+  const { data: fiscalYearsData } = useQuery({
+    queryKey: ['fiscal-years'],
+    queryFn: () => financeAPI.fiscalYears.list()
+  })
+  const fiscalYears = fiscalYearsData?.data?.results || fiscalYearsData?.data || []
+
   const reportGroups = [
     {
       title: 'Standard Financials',
@@ -39,12 +47,15 @@ export default function ReportsPage() {
         { id: 'trial-balance', name: 'Trial Balance', description: 'Listing of all GL account balances', icon: Landmark },
         { id: 'balance-sheet', name: 'Balance Sheet', description: 'Snapshot of assets, liabilities and equity', icon: Building2 },
         { id: 'income-statement', name: 'Income Statement (P&L)', description: 'Revenue and expenses over time', icon: TrendingUp },
+        { id: 'cash-flow', name: 'Cash Flow Statement', description: 'Operating, investing and financing cash flows', icon: Landmark },
       ]
     },
     {
       title: 'Management Reports',
       reports: [
-        { id: 'accounts-receivable', name: 'Accounts Receivable Aging', description: 'Unpaid customer invoices over time', icon: FileText },
+        { id: 'ar-aging', name: 'Accounts Receivable Aging', description: 'Unpaid customer invoices by days past due', icon: FileText },
+        { id: 'ap-aging', name: 'Accounts Payable Aging', description: 'Unpaid supplier invoices by days past due', icon: FileText },
+        { id: 'general-ledger', name: 'General Ledger Detail', description: 'Account transactions with running balance', icon: Landmark },
         { id: 'budget-vs-actual', name: 'Budget vs Actual', description: 'Comparison of planned vs actual spending', icon: PieChart },
       ]
     }
@@ -57,6 +68,7 @@ export default function ReportsPage() {
         params={params} 
         setParams={setParams}
         periods={periods}
+        fiscalYears={fiscalYears}
         properties={properties}
         onBack={() => setSelectedReport(null)} 
       />
@@ -108,7 +120,7 @@ export default function ReportsPage() {
   )
 }
 
-function ReportViewer({ report, params, setParams, periods, properties, onBack }) {
+function ReportViewer({ report, params, setParams, periods, fiscalYears, properties, onBack }) {
   const [isPreviewing, setIsPreviewing] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
 
@@ -120,7 +132,10 @@ function ReportViewer({ report, params, setParams, periods, properties, onBack }
         from_date: params.from_date,
         to_date: params.to_date,
         as_at_date: params.as_at_date,
-        property_id: params.property_id
+        property_id: params.property_id,
+        account: params.account,
+        fiscal_year: params.fiscal_year_id,
+        period: report.id === 'budget-vs-actual' ? params.period_id : undefined
       }
       const response = await financeAPI.reports.export(report.id, format, reportParams)
       
@@ -144,7 +159,12 @@ function ReportViewer({ report, params, setParams, periods, properties, onBack }
     queryFn: () => {
       if (report.id === 'trial-balance') return financeAPI.reports.trialBalance(params.period_id, params.property_id)
       if (report.id === 'income-statement') return financeAPI.reports.incomeStatement(params.from_date, params.to_date, params.property_id)
+      if (report.id === 'cash-flow') return financeAPI.reports.cashFlow(params.from_date, params.to_date)
       if (report.id === 'balance-sheet') return financeAPI.reports.balanceSheet(params.as_at_date)
+      if (report.id === 'ar-aging') return financeAPI.reports.arAging(params.as_at_date)
+      if (report.id === 'ap-aging') return financeAPI.reports.apAging(params.as_at_date)
+      if (report.id === 'general-ledger') return financeAPI.reports.generalLedger(params.account, params.from_date, params.to_date)
+      if (report.id === 'budget-vs-actual') return financeAPI.reports.budgetVsActual(params.fiscal_year_id, params.period_id)
       return Promise.reject('Report not implemented')
     },
     enabled: isPreviewing
@@ -186,7 +206,53 @@ function ReportViewer({ report, params, setParams, periods, properties, onBack }
               </div>
             )}
 
-            {(report.id === 'income-statement' || report.id === 'accounts-receivable') && (
+            {report.id === 'general-ledger' && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-dark-400 uppercase">Account Code</label>
+                <input
+                  type="text"
+                  className="form-input text-xs"
+                  placeholder="e.g. 1010"
+                  value={params.account}
+                  onChange={e => setParams({...params, account: e.target.value.trim()})}
+                />
+              </div>
+            )}
+
+            {report.id === 'budget-vs-actual' && (
+              <>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-dark-400 uppercase">Fiscal Year</label>
+                  <select
+                    className="form-input text-xs"
+                    value={params.fiscal_year_id}
+                    onChange={e => setParams({...params, fiscal_year_id: e.target.value, period_id: ''})}
+                  >
+                    <option value="">Current fiscal year</option>
+                    {fiscalYears.map(fy => (
+                      <option key={fy.id} value={fy.id}>{fy.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-dark-400 uppercase">Period (Optional)</label>
+                  <select
+                    className="form-input text-xs"
+                    value={params.period_id}
+                    onChange={e => setParams({...params, period_id: e.target.value})}
+                  >
+                    <option value="">Whole year</option>
+                    {periods
+                      .filter(p => !params.fiscal_year_id || String(p.fiscal_year) === String(params.fiscal_year_id))
+                      .map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                  </select>
+                </div>
+              </>
+            )}
+
+            {['income-statement', 'general-ledger', 'cash-flow'].includes(report.id) && (
               <>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-dark-400 uppercase">From Date</label>
@@ -225,7 +291,7 @@ function ReportViewer({ report, params, setParams, periods, properties, onBack }
               </div>
             )}
 
-            {report.id === 'balance-sheet' && (
+            {['balance-sheet', 'ar-aging', 'ap-aging'].includes(report.id) && (
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-dark-400 uppercase">As At Date</label>
                 <input 
@@ -240,7 +306,7 @@ function ReportViewer({ report, params, setParams, periods, properties, onBack }
             <button 
               className="btn-primary w-full h-10 mt-4"
               onClick={() => setIsPreviewing(true)}
-              disabled={isLoading || (report.id === 'trial-balance' && !params.period_id)}
+              disabled={isLoading || (report.id === 'trial-balance' && !params.period_id) || (report.id === 'general-ledger' && !params.account)}
             >
               {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Eye size={16} />}
               Preview Report
@@ -302,6 +368,10 @@ function ReportViewer({ report, params, setParams, periods, properties, onBack }
               {report.id === 'trial-balance' && <TrialBalanceResult data={results} />}
               {report.id === 'income-statement' && <IncomeStatementResult data={results} />}
               {report.id === 'balance-sheet' && <BalanceSheetResult data={results} />}
+              {(report.id === 'ar-aging' || report.id === 'ap-aging') && <AgingResult data={results} />}
+              {report.id === 'general-ledger' && <GeneralLedgerResult data={results} />}
+              {report.id === 'budget-vs-actual' && <BudgetVsActualResult data={results} />}
+              {report.id === 'cash-flow' && <CashFlowResult data={results} />}
               
               {!results && (
                  <div className="card p-12 text-center text-dark-500 italic">
@@ -309,6 +379,9 @@ function ReportViewer({ report, params, setParams, periods, properties, onBack }
                  </div>
               )}
             </motion.div>
+          )}
+          {report.id === 'budget-vs-actual' && (
+            <BudgetEditor periodId={params.period_id} onSaved={() => isPreviewing && refetch()} />
           )}
         </div>
       </div>
@@ -486,6 +559,332 @@ function BalanceSheetResult({ data }) {
            </div>
          </div>
        </div>
+    </div>
+  )
+}
+
+function AgingResult({ data }) {
+  if (!data) return null
+  const buckets = data.buckets || []
+  return (
+    <div className="card overflow-hidden">
+      <div className="bg-dark-900 border-b border-white/5 p-4 flex items-center justify-between">
+        <h3 className="text-sm font-bold text-white uppercase tracking-widest">As at {data.as_at_date}</h3>
+        <span className="text-xs text-dark-400">{data.rows?.length || 0} open accounts</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="data-table">
+          <thead>
+            <tr className="bg-white/[0.02]">
+              <th>Name</th>
+              {buckets.map(b => <th key={b.key} className="text-right">{b.label}</th>)}
+              <th className="text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.rows?.map(row => (
+              <tr key={row.id} className="hover:bg-white/5">
+                <td className="text-xs text-white">{row.name}</td>
+                {buckets.map(b => (
+                  <td key={b.key} className="text-right text-xs text-white font-mono">
+                    {parseFloat(row[b.key]) ? formatCurrency(row[b.key]) : '—'}
+                  </td>
+                ))}
+                <td className="text-right text-xs text-white font-mono font-bold">{formatCurrency(row.total)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="bg-dark-900 border-t-2 border-primary/20">
+              <td className="font-bold text-white">TOTAL</td>
+              {buckets.map(b => (
+                <td key={b.key} className="text-right font-bold text-primary font-mono">{formatCurrency(data.totals?.[b.key])}</td>
+              ))}
+              <td className="text-right font-bold text-primary font-mono">{formatCurrency(data.totals?.total)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function GeneralLedgerResult({ data }) {
+  if (!data) return null
+  return (
+    <div className="card overflow-hidden">
+      <div className="bg-dark-900 border-b border-white/5 p-4 flex items-center justify-between">
+        <h3 className="text-sm font-bold text-white uppercase tracking-widest">
+          {data.account?.code} {data.account?.name}
+        </h3>
+        <span className="text-xs text-dark-400">{data.from_date} to {data.to_date}</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="data-table">
+          <thead>
+            <tr className="bg-white/[0.02]">
+              <th>Date</th>
+              <th>Reference</th>
+              <th>Description</th>
+              <th className="text-right">Debit</th>
+              <th className="text-right">Credit</th>
+              <th className="text-right">Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="bg-white/[0.02]">
+              <td colSpan={5} className="text-xs text-dark-400 italic">Opening balance</td>
+              <td className="text-right text-xs text-white font-mono">{formatCurrency(data.opening_balance)}</td>
+            </tr>
+            {data.lines?.map((line, i) => (
+              <tr key={`${line.reference}-${i}`} className="hover:bg-white/5">
+                <td className="text-xs text-dark-300 whitespace-nowrap">{line.date}</td>
+                <td className="text-[11px] text-primary font-mono whitespace-nowrap">{line.reference}</td>
+                <td className="text-xs text-white">{line.description}</td>
+                <td className="text-right text-xs text-white font-mono">{parseFloat(line.debit) ? formatCurrency(line.debit) : '—'}</td>
+                <td className="text-right text-xs text-white font-mono">{parseFloat(line.credit) ? formatCurrency(line.credit) : '—'}</td>
+                <td className="text-right text-xs text-white font-mono">{formatCurrency(line.balance)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="bg-dark-900 border-t-2 border-primary/20">
+              <td colSpan={3} className="font-bold text-white">Closing balance</td>
+              <td className="text-right font-bold text-primary font-mono">{formatCurrency(data.total_debit)}</td>
+              <td className="text-right font-bold text-primary font-mono">{formatCurrency(data.total_credit)}</td>
+              <td className="text-right font-bold text-primary font-mono">{formatCurrency(data.closing_balance)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function BudgetVsActualResult({ data }) {
+  if (!data) return null
+  if (!data.rows?.length) {
+    return (
+      <div className="card p-12 text-center text-dark-500 italic">
+        No budget lines or P&amp;L activity for {data.fiscal_year?.name}.
+      </div>
+    )
+  }
+  const overBudget = (row) => {
+    const v = parseFloat(row.variance)
+    return row.type === 'expense' ? v > 0 : v < 0
+  }
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="card p-4">
+          <p className="text-[10px] text-dark-400 font-bold uppercase mb-1">Budgeted net profit</p>
+          <p className="text-xl font-bold text-white font-mono">{formatCurrency(data.net_profit?.budget)}</p>
+        </div>
+        <div className="card p-4 border-primary/30">
+          <p className="text-[10px] text-primary font-bold uppercase mb-1">Actual net profit</p>
+          <p className="text-xl font-bold text-white font-mono">{formatCurrency(data.net_profit?.actual)}</p>
+        </div>
+      </div>
+      <div className="card overflow-hidden">
+        <table className="data-table">
+          <thead>
+            <tr className="bg-white/[0.02]">
+              <th>Account</th>
+              <th className="text-right">Budget</th>
+              <th className="text-right">Actual</th>
+              <th className="text-right">Variance</th>
+              <th className="text-right">%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.rows.map(row => (
+              <tr key={row.code} className="hover:bg-white/5">
+                <td>
+                  <span className="text-primary font-mono text-[11px] mr-3">{row.code}</span>
+                  <span className="text-xs text-white">{row.name}</span>
+                </td>
+                <td className="text-right text-xs text-white font-mono">{formatCurrency(row.budget)}</td>
+                <td className="text-right text-xs text-white font-mono">{formatCurrency(row.actual)}</td>
+                <td className={`text-right text-xs font-mono ${overBudget(row) ? 'text-rose-400' : 'text-emerald-400'}`}>
+                  {formatCurrency(row.variance)}
+                </td>
+                <td className="text-right text-xs text-dark-400 font-mono">{row.variance_pct != null ? `${row.variance_pct}%` : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+function CashFlowResult({ data }) {
+  if (!data) return null
+  const sections = [
+    { key: 'operating', label: 'Operating activities', total: data.net_cash_from_operating, lead: { name: 'Net profit', amount: data.net_profit } },
+    { key: 'investing', label: 'Investing activities', total: data.net_cash_from_investing },
+    { key: 'financing', label: 'Financing activities', total: data.net_cash_from_financing },
+  ]
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="card p-4">
+          <p className="text-[10px] text-dark-400 font-bold uppercase mb-1">Opening cash</p>
+          <p className="text-xl font-bold text-white font-mono">{formatCurrency(data.opening_cash)}</p>
+        </div>
+        <div className="card p-4 border-primary/30">
+          <p className="text-[10px] text-primary font-bold uppercase mb-1">Net change in cash</p>
+          <p className="text-xl font-bold text-white font-mono">{formatCurrency(data.net_change_in_cash)}</p>
+        </div>
+        <div className="card p-4">
+          <p className="text-[10px] text-dark-400 font-bold uppercase mb-1">Closing cash</p>
+          <p className="text-xl font-bold text-white font-mono">{formatCurrency(data.closing_cash)}</p>
+        </div>
+      </div>
+      {!data.reconciles && (
+        <div className="card p-4 border-rose-500/30 text-sm text-rose-400">
+          The cash flow does not reconcile to the bank accounts. Check for bank accounts not marked as Bank / Cash.
+        </div>
+      )}
+      <div className="card overflow-hidden">
+        <table className="data-table">
+          <tbody>
+            {sections.map(section => (
+              <SectionRows key={section.key} section={section} rows={data[section.key] || []} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function SectionRows({ section, rows }) {
+  return (
+    <>
+      <tr className="bg-white/[0.03]">
+        <td colSpan={2} className="text-[10px] font-bold text-primary uppercase tracking-widest">{section.label}</td>
+      </tr>
+      {section.lead && (
+        <tr>
+          <td className="text-xs text-white">{section.lead.name}</td>
+          <td className="text-right text-xs text-white font-mono">{formatCurrency(section.lead.amount)}</td>
+        </tr>
+      )}
+      {rows.map(row => (
+        <tr key={row.code}>
+          <td>
+            <span className="text-primary font-mono text-[11px] mr-3">{row.code}</span>
+            <span className="text-xs text-white">{row.name}</span>
+          </td>
+          <td className="text-right text-xs text-white font-mono">{formatCurrency(row.amount)}</td>
+        </tr>
+      ))}
+      <tr className="border-t border-white/10">
+        <td className="text-xs font-bold text-white">Net cash from {section.label.toLowerCase()}</td>
+        <td className="text-right text-xs font-bold text-primary font-mono">{formatCurrency(section.total)}</td>
+      </tr>
+    </>
+  )
+}
+
+// Budget entry for one period: revenue and expense accounts with their budget.
+export function BudgetEditor({ periodId, onSaved }) {
+  const queryClient = useQueryClient()
+  const [drafts, setDrafts] = useState({})
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+
+  const { data: accountsData } = useQuery({
+    queryKey: ['coa', 'pnl'],
+    queryFn: () => financeAPI.accounts.list({ page_size: 200 }),
+    enabled: Boolean(periodId),
+  })
+  const { data: budgetsData } = useQuery({
+    queryKey: ['budgets', periodId],
+    queryFn: () => financeAPI.budgets.list({ fiscal_period: periodId, page_size: 200 }),
+    enabled: Boolean(periodId),
+  })
+
+  if (!periodId) {
+    return (
+      <div className="card p-4 mt-6 text-xs text-dark-400">
+        Select a period to enter or edit its budget.
+      </div>
+    )
+  }
+
+  const accounts = (accountsData?.data?.results || accountsData?.data || [])
+    .filter(a => ['revenue', 'expense'].includes(a.account_type) && a.allow_direct_posting)
+  const budgets = budgetsData?.data?.results || budgetsData?.data || []
+  const byAccount = Object.fromEntries(budgets.map(b => [String(b.account), b]))
+
+  const save = async () => {
+    setSaving(true)
+    setMessage('')
+    try {
+      for (const [accountId, value] of Object.entries(drafts)) {
+        const existing = byAccount[accountId]
+        if (existing) {
+          await financeAPI.budgets.update(existing.id, { budgeted_amount: value || '0' })
+        } else if (value !== '' && Number(value) !== 0) {
+          await financeAPI.budgets.create({ fiscal_period: periodId, account: accountId, budgeted_amount: value })
+        }
+      }
+      setDrafts({})
+      await queryClient.invalidateQueries({ queryKey: ['budgets', periodId] })
+      setMessage('Budget saved.')
+      onSaved?.()
+    } catch (err) {
+      setMessage('Could not save the budget. Check the amounts and try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="card mt-6 overflow-hidden">
+      <div className="bg-dark-900 border-b border-white/5 p-4 flex items-center justify-between">
+        <h3 className="text-sm font-bold text-white uppercase tracking-widest">Budget for period</h3>
+        <div className="flex items-center gap-3">
+          {message && <span className="text-xs text-dark-400">{message}</span>}
+          <button className="btn-primary h-8 px-4 text-xs" onClick={save} disabled={saving || !Object.keys(drafts).length}>
+            {saving ? <Loader2 size={14} className="animate-spin" /> : 'Save budget'}
+          </button>
+        </div>
+      </div>
+      <table className="data-table">
+        <thead>
+          <tr className="bg-white/[0.02]">
+            <th>Account</th>
+            <th className="text-right w-40">Budget</th>
+          </tr>
+        </thead>
+        <tbody>
+          {accounts.map(account => {
+            const id = String(account.id)
+            const value = drafts[id] ?? byAccount[id]?.budgeted_amount ?? ''
+            return (
+              <tr key={id}>
+                <td>
+                  <span className="text-primary font-mono text-[11px] mr-3">{account.code}</span>
+                  <span className="text-xs text-white">{account.name}</span>
+                </td>
+                <td className="text-right">
+                  <input
+                    type="number"
+                    step="0.01"
+                    aria-label={`Budget for ${account.code}`}
+                    className="form-input text-xs text-right w-36"
+                    value={value}
+                    onChange={e => setDrafts({ ...drafts, [id]: e.target.value })}
+                  />
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }

@@ -21,7 +21,22 @@ from .logging import request_id_var
 logger = logging.getLogger("stohill.errors")
 
 
+def _as_api_error(exc):
+    """Business-rule failures raised below the view layer become 400s."""
+    from django.core.exceptions import ValidationError as DjangoValidationError
+    from rest_framework.exceptions import ValidationError
+
+    from apps.finance.services.accounting import AccountingError
+
+    if isinstance(exc, AccountingError):
+        return ValidationError({"detail": str(exc)})
+    if isinstance(exc, DjangoValidationError):
+        return ValidationError({"detail": exc.messages})
+    return exc
+
+
 def custom_exception_handler(exc, context):
+    exc = _as_api_error(exc)
     response = exception_handler(exc, context)
     request_id = request_id_var.get()
 

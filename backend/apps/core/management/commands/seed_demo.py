@@ -63,7 +63,6 @@ class Command(BaseCommand):
         # Reference data first: roles, currencies, modules, sequences...
         call_command("bootstrap_system", stdout=self.stdout)
         self._create_users()
-        self._create_coa()
         self._create_fiscal_periods()
         self._create_property_types()
         self._create_departments()
@@ -107,69 +106,6 @@ class Command(BaseCommand):
             status="active", executive_mode=True,
         )
 
-    def _create_coa(self):
-        self.stdout.write('  Creating Chart of Accounts...')
-        accounts = [
-            # Assets
-            ('1000', 'Current Assets', 'asset', 'current_asset', None, False),
-            ('1010', 'First National Bank - Main', 'asset', 'bank', '1000', True),
-            ('1020', 'ABSA - Trust Account', 'asset', 'bank', '1000', True),
-            ('1100', 'Accounts Receivable', 'asset', 'receivable', '1000', True),
-            ('1110', 'Commission Receivable', 'asset', 'receivable', '1000', True),
-            ('1200', 'Prepaid Expenses', 'asset', 'current_asset', '1000', True),
-            ('1500', 'Fixed Assets', 'asset', 'fixed_asset', None, False),
-            ('1510', 'Property Portfolio', 'asset', 'fixed_asset', '1500', True),
-            ('1520', 'Office Equipment', 'asset', 'fixed_asset', '1500', True),
-            ('1530', 'Motor Vehicles', 'asset', 'fixed_asset', '1500', True),
-            ('1590', 'Accumulated Depreciation', 'contra', 'depreciation', '1500', True),
-            # Liabilities
-            ('2000', 'Current Liabilities', 'liability', 'current_liability', None, False),
-            ('2100', 'VAT Payable', 'liability', 'tax_liability', '2000', True),
-            ('2110', 'VAT Receivable', 'asset', 'current_asset', '1000', True),
-            ('2200', 'Tenant Deposits Held', 'liability', 'current_liability', '2000', True),
-            ('2300', 'Deferred Rental Revenue', 'liability', 'current_liability', '2000', True),
-            ('2400', 'Commission Payable', 'liability', 'payable', '2000', True),
-            ('2500', 'Long-Term Liabilities', 'liability', 'long_term_liability', None, False),
-            ('2510', 'Bond - Property Portfolio', 'liability', 'long_term_liability', '2500', True),
-            # Equity
-            ('3000', 'Equity', 'equity', 'retained_earnings', None, False),
-            ('3100', 'Share Capital', 'equity', 'share_capital', '3000', True),
-            ('3200', 'Retained Earnings', 'equity', 'retained_earnings', '3000', True),
-            # Revenue
-            ('4000', 'Revenue', 'revenue', 'operating_revenue', None, False),
-            ('4100', 'Rental Income', 'revenue', 'operating_revenue', '4000', True),
-            ('4200', 'Commission Income', 'revenue', 'operating_revenue', '4000', True),
-            ('4300', 'Property Management Fees', 'revenue', 'operating_revenue', '4000', True),
-            ('4400', 'Sale Proceeds', 'revenue', 'operating_revenue', '4000', True),
-            ('4900', 'Other Income', 'revenue', 'other_income', '4000', True),
-            # Expenses
-            ('5000', 'Cost of Sales', 'expense', 'cost_of_sales', None, False),
-            ('5100', 'Commission Expense', 'expense', 'cost_of_sales', '5000', True),
-            ('5200', 'Property Operating Expenses', 'expense', 'operating_expense', None, False),
-            ('5300', 'Maintenance & Repairs', 'expense', 'operating_expense', '5200', True),
-            ('5400', 'Rates & Levies', 'expense', 'operating_expense', '5200', True),
-            ('5500', 'Insurance', 'expense', 'operating_expense', '5200', True),
-            ('5600', 'Bond Interest', 'expense', 'operating_expense', '5200', True),
-            ('5700', 'Depreciation', 'expense', 'depreciation', '5200', True),
-            ('5800', 'Administrative Expenses', 'expense', 'admin_expense', None, False),
-            ('5900', 'Salaries & Wages', 'expense', 'admin_expense', '5800', True),
-            ('5910', 'Marketing & Advertising', 'expense', 'admin_expense', '5800', True),
-            ('5920', 'Office Expenses', 'expense', 'admin_expense', '5800', True),
-        ]
-        parent_map = {}
-        for code, name, acct_type, sub_type, parent_code, allow_direct in accounts:
-            parent = parent_map.get(parent_code) if parent_code else None
-            obj, _ = ChartOfAccount.objects.get_or_create(
-                code=code,
-                defaults={
-                    'name': name, 'account_type': acct_type,
-                    'account_sub_type': sub_type, 'parent': parent,
-                    'allow_direct_posting': allow_direct, 'is_system': True,
-                }
-            )
-            parent_map[code] = obj
-        self.stdout.write(f'    [OK] {len(accounts)} accounts')
-
     def _create_fiscal_periods(self):
         """
         Fiscal years from FY2024 up to and including the one containing today.
@@ -208,18 +144,7 @@ class Command(BaseCommand):
                 )
                 periods += 1
 
-        # Journals
-        journals = [
-            ('GJ', 'General Journal', False),
-            ('SJ', 'Sales Journal', True),
-            ('RJ', 'Rentals Journal', True),
-            ('CJ', 'Commission Journal', True),
-            ('PJ', 'Payroll Journal', True),
-            ('AJ', 'Adjustment Journal', False),
-        ]
-        for code, name, auto in journals:
-            Journal.objects.get_or_create(code=code, defaults={'name': name, 'auto_posting': auto})
-        self.stdout.write(f'    [OK] {years} fiscal years, {periods} periods, 6 journals')
+        self.stdout.write(f'    [OK] {years} fiscal years, {periods} periods')
 
     def _create_property_types(self):
         self.stdout.write('  Creating property types...')

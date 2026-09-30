@@ -3,13 +3,11 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from decimal import Decimal
-from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from apps.hr.models import Employee, Department, LeaveRequest, JobPosition, EmployeeContract, Attendance, LeaveAllocation
 
 class EmployeeViewSet(viewsets.ModelViewSet):
     queryset = Employee.objects.select_related('department', 'reports_to')
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'employment_type', 'department']
     search_fields = ['first_name', 'last_name', 'employee_number', 'email']
@@ -77,7 +75,6 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all()
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name']
     ordering_fields = ['name']
@@ -87,7 +84,6 @@ class DepartmentViewSet(viewsets.ModelViewSet):
 
 class LeaveRequestViewSet(viewsets.ModelViewSet):
     queryset = LeaveRequest.objects.select_related('employee')
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['status', 'leave_type', 'employee']
     ordering_fields = ['start_date', 'created_at']
@@ -104,7 +100,6 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
 
 class JobPositionViewSet(viewsets.ModelViewSet):
     queryset = JobPosition.objects.select_related('department')
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['department']
     search_fields = ['name']
@@ -115,7 +110,6 @@ class JobPositionViewSet(viewsets.ModelViewSet):
 
 class EmployeeContractViewSet(viewsets.ModelViewSet):
     queryset = EmployeeContract.objects.select_related('employee', 'job_position', 'department')
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['employee', 'status']
     ordering_fields = ['start_date']
@@ -126,7 +120,6 @@ class EmployeeContractViewSet(viewsets.ModelViewSet):
 
 class AttendanceViewSet(viewsets.ModelViewSet):
     queryset = Attendance.objects.select_related('employee')
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['employee']
     ordering_fields = ['check_in']
@@ -137,7 +130,6 @@ class AttendanceViewSet(viewsets.ModelViewSet):
 
 class LeaveAllocationViewSet(viewsets.ModelViewSet):
     queryset = LeaveAllocation.objects.select_related('employee')
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['employee', 'leave_type']
     def get_serializer_class(self):

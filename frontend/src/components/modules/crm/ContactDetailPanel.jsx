@@ -9,7 +9,7 @@ import {
   ChevronRight, MapPin, DollarSign, Flame, Snowflake, Thermometer,
   FileText, ShieldCheck, Download, Trash2, Plus, Upload, CheckCircle2
 } from 'lucide-react'
-import { crmAPI } from '@/services/api'
+import { crmAPI, downloadPrivateFile } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
@@ -191,14 +191,14 @@ function DocumentList({ contactId }) {
                   <ShieldCheck size={14} />
                 </button>
               )}
-              <a
-                href={doc.file}
-                target="_blank"
-                rel="noreferrer"
+              <button
+                onClick={() => downloadPrivateFile(doc.download_url, doc.name).catch(() => alert('Download failed.'))}
+                disabled={!doc.download_url}
                 className="p-2 text-dark-400 hover:text-primary hover:bg-white/5 rounded-lg transition-colors"
+                title="Download"
               >
                 <Download size={14} />
-              </a>
+              </button>
               <button
                 onClick={() => window.confirm('Delete document?') && deleteMutation.mutate(doc.id)}
                 className="p-2 text-dark-400 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors"

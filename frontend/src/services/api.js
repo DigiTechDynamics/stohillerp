@@ -231,6 +231,12 @@ export const financeAPI = {
     post: (id) => api.post(`finance/entries/${id}/post_entry/`),
     reverse: (id) => api.post(`finance/entries/${id}/reverse/`),
   },
+  budgets: {
+    list: (params) => api.get('finance/budgets/', { params }),
+    create: (data) => api.post('finance/budgets/', data),
+    update: (id, data) => api.patch(`finance/budgets/${id}/`, data),
+    remove: (id) => api.delete(`finance/budgets/${id}/`),
+  },
   fiscalYears: {
     list: (params) => api.get('finance/fiscal-years/', { params }),
     create: (data) => api.post('finance/fiscal-years/', data),
@@ -265,6 +271,14 @@ export const financeAPI = {
       api.get('finance/reports/balance-sheet/', { params: { as_at_date: asAtDate } }),
     vatReturn: (fromDate, toDate) =>
       api.get('finance/reports/vat-return/', { params: { from_date: fromDate, to_date: toDate } }),
+    arAging: (asAtDate) => api.get('finance/reports/ar-aging/', { params: { as_at_date: asAtDate } }),
+    apAging: (asAtDate) => api.get('finance/reports/ap-aging/', { params: { as_at_date: asAtDate } }),
+    generalLedger: (account, fromDate, toDate) =>
+      api.get('finance/reports/general-ledger/', { params: { account, from_date: fromDate, to_date: toDate } }),
+    cashFlow: (fromDate, toDate) =>
+      api.get('finance/reports/cash-flow/', { params: { from_date: fromDate, to_date: toDate } }),
+    budgetVsActual: (fiscalYearId, periodId) =>
+      api.get('finance/reports/budget-vs-actual/', { params: { fiscal_year: fiscalYearId || undefined, period: periodId || undefined } }),
     export: (reportId, format, params) => 
       api.get(`finance/reports/export/${reportId}/`, { 
         params: { ...params, export_format: format },
@@ -507,6 +521,25 @@ export const dataManagementAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+}
+
+// Private files (KYC, contracts, attachments) are only served to an
+// authenticated API request, so a plain <a href> can't fetch them: download
+// through axios (which adds the bearer token) and save the blob.
+export async function downloadPrivateFile(url, fallbackName = 'download') {
+  const path = url.replace(/^\/api\/v1\//, '')
+  const response = await api.get(path, { responseType: 'blob' })
+  const disposition = response.headers?.['content-disposition'] || ''
+  const match = /filename\*=UTF-8''([^;]+)/.exec(disposition)
+  const filename = match ? decodeURIComponent(match[1]) : fallbackName
+  const href = window.URL.createObjectURL(response.data)
+  const link = document.createElement('a')
+  link.href = href
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(href)
 }
 
 export default api

@@ -12,6 +12,7 @@ from decimal import Decimal as D
 from django.db import transaction
 
 from apps.core.models import Currency
+from apps.finance.models import ChartOfAccount
 from apps.payroll.models import PayrollSetting, SalaryRule, SalaryStructure, TaxBracket
 
 logger = logging.getLogger("stohill.seeds")
@@ -41,6 +42,8 @@ SETTINGS = [
     ("nssa_rate", "NSSA Rate", D("0.045"), "Percentage of Basic Salary"),
     ("nssa_ceiling_usd", "NSSA Ceiling (USD)", D("700.00"), ""),
     ("nssa_ceiling_zwg", "NSSA Ceiling (ZWG)", D("24763.00"), ""),
+    ("employer_nssa_rate", "Employer NSSA Rate", D("0.045"), "Employer share, on the same capped earnings"),
+    ("zimdef_rate", "ZIMDEF Levy Rate", D("0.01"), "Manpower Development Fund levy on gross pay (employer)"),
 ]
 
 SALARY_RULES = [
@@ -50,7 +53,24 @@ SALARY_RULES = [
     {"code": "AIDS", "name": "AIDS Levy", "category": "deduction", "sequence": 40},
     {"code": "NSSA", "name": "NSSA Pension", "category": "deduction", "sequence": 50},
     {"code": "NET", "name": "Net Pay", "category": "net", "sequence": 100},
+    {"code": "NSSA_ER", "name": "NSSA (Employer)", "category": "employer", "sequence": 110},
+    {"code": "ZIMDEF", "name": "ZIMDEF Levy (Employer)", "category": "employer", "sequence": 120},
 ]
+
+# Default GL mapping per rule: (debit account, credit account). Gross pay is
+# debited (wages expense; commissions clear the payable accrued at approval)
+# and every deduction plus net pay is credited to its liability, so a payroll
+# run always balances.
+RULE_ACCOUNTS = {
+    "BASIC": ("5900", None),
+    "COMM": ("2400", None),
+    "PAYE": (None, "2600"),
+    "AIDS": (None, "2610"),
+    "NSSA": (None, "2620"),
+    "NET": (None, "2630"),
+    "NSSA_ER": ("5905", "2620"),
+    "ZIMDEF": ("5905", "2640"),
+}
 
 
 @transaction.atomic
@@ -76,11 +96,29 @@ def seed_payroll_config() -> None:
             key=key, defaults={"name": name, "value": value, "description": description}
         )
 
-    rules = [
-        SalaryRule.objects.get_or_create(code=r["code"], defaults=r)[0] for r in SALARY_RULES
-    ]
+    rules, new_rules = [], []
+    for r in SALARY_RULES:
+        rule, rule_created = SalaryRule.objects.get_or_create(code=r["code"], defaults=r)
+        rules.append(rule)
+        if rule_created:
+            new_rules.append(rule)
     structure, created = SalaryStructure.objects.get_or_create(
         code="ZW_MONTHLY", defaults={"name": "Zimbabwe Standard Monthly"}
     )
     if created:
         structure.rules.set(rules)
+    elif new_rules:
+        # Newly introduced statutory rules (e.g. employer contributions) join
+        # the standard structure; existing rule choices are left alone.
+        structure.rules.add(*new_rules)
+
+    # Fill GL accounts only on rules that have none, so admin choices stand.
+    accounts = {a.code: a for a in ChartOfAccount.objects.filter(
+        code__in=[c for pair in RULE_ACCOUNTS.values() for c in pair if c])}
+    for rule in rules:
+        if rule.debit_account_id or rule.credit_account_id or rule.code not in RULE_ACCOUNTS:
+            continue
+        debit, credit = RULE_ACCOUNTS[rule.code]
+        rule.debit_account = accounts.get(debit)
+        rule.credit_account = accounts.get(credit)
+        rule.save(update_fields=["debit_account", "credit_account"])

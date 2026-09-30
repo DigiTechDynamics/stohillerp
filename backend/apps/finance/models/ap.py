@@ -44,7 +44,7 @@ class Supplier(AuditedModel):
         ap_lines = JournalLine.objects.filter(
             supplier_ref=self,
             account=self.ap_account,
-            entry__status=JournalEntry.EntryStatus.POSTED
+            entry__status__in=JournalEntry.LEDGER_STATUSES
         )
         
         dr_sum = ap_lines.filter(side='debit').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
@@ -67,9 +67,19 @@ class SupplierInvoice(AuditedModel):
         PAID = 'paid', 'Paid in Full'
         CANCELLED = 'cancelled', 'Cancelled'
 
+    class DocumentType(models.TextChoices):
+        INVOICE = 'invoice', 'Invoice'
+        CREDIT_NOTE = 'credit_note', 'Credit Note'
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT, related_name='invoices')
-    
+    # A supplier credit note posts reversed (Dr AP / Cr expense) and is applied
+    # to invoices; amount_paid tracks how much has been applied.
+    document_type = models.CharField(max_length=20, choices=DocumentType.choices, default=DocumentType.INVOICE)
+    original_invoice = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT,
+                                         related_name='credit_notes')
+    exchange_rate = models.DecimalField(max_digits=18, decimal_places=10, default=1)
+
     invoice_number = models.CharField(max_length=100, db_index=True)
     reference = models.CharField(max_length=100, blank=True)
     currency = models.ForeignKey('core.Currency', on_delete=models.PROTECT, related_name='supplier_invoices', null=True, blank=True)
@@ -107,6 +117,10 @@ class SupplierInvoice(AuditedModel):
     def balance_due(self):
         return self.total_amount - self.amount_paid
 
+    @property
+    def is_credit_note(self):
+        return self.document_type == self.DocumentType.CREDIT_NOTE
+
 
 class SupplierInvoiceLine(AuditedModel):
     """
@@ -124,6 +138,10 @@ class SupplierInvoiceLine(AuditedModel):
     tax_code = models.ForeignKey('finance.TaxCode', null=True, blank=True, on_delete=models.PROTECT)
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     line_total = models.DecimalField(max_digits=15, decimal_places=2)
+
+    # Dimensions carried to the GL line (e.g. which property a repair was for).
+    cost_center = models.ForeignKey('finance.CostCenter', null=True, blank=True, on_delete=models.PROTECT)
+    property_ref = models.ForeignKey('properties.Property', null=True, blank=True, on_delete=models.SET_NULL)
 
     class Meta:
         db_table = 'finance_supplier_invoice_lines'
@@ -148,6 +166,9 @@ class SupplierPayment(AuditedModel):
     payment_reference = models.CharField(max_length=100)
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     currency = models.ForeignKey('core.Currency', on_delete=models.PROTECT, related_name='supplier_payments', null=True, blank=True)
+    exchange_rate = models.DecimalField(max_digits=18, decimal_places=10, default=1)
+    # Paid but not yet applied to invoices (prepayment / debit balance).
+    unapplied_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     
     bank_account = models.ForeignKey('finance.BankAccount', on_delete=models.PROTECT)
     

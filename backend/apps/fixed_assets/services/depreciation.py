@@ -107,31 +107,12 @@ class DepreciationService:
             if amount <= 0:
                 continue
 
-            # 3. Create GL Entry
+            # 3. Create GL Entry (statutory book only; memo books just track NBV)
             from apps.finance.services.accounting import PostingData
             category = book.asset.category
-            
-            posting = PostingData(
-                description=f"Auto-depreciation for {book.asset.name}",
-                entry_date=end_date,
-                source_module='fixed_assets',
-                source_id=book.id,
-                source_reference=f"DEPR-{book.asset.code}-{end_date.strftime('%Y%m')}"
-            )
-            
-            posting.add_debit(
-                category.depr_expense_account.code,
-                amount,
-                f"Depreciation for {book.asset.name} ({book.book_type})"
-            )
-            
-            posting.add_credit(
-                category.accum_depr_account.code,
-                amount,
-                f"Accumulated Depreciation for {book.asset.name}"
-            )
-            
-            entry = accounting_service.post_entry(posting, journal_code='GJ')
+            entry = None
+            if book.posts_to_gl:
+                entry = self._post_depreciation(accounting_service, PostingData, book, category, amount, end_date)
 
             # 4. Update Book
             book.current_nbv -= amount
@@ -149,14 +130,36 @@ class DepreciationService:
                 journal_entry=entry,
                 created_by=self.user
             )
-            
+
             results.append({
                 'asset_code': book.asset.code,
+                'book_type': book.book_type,
                 'amount': amount,
-                'status': 'Posted'
+                'status': 'Posted' if entry else 'Recorded (memo book)'
             })
-            
+
         return results
+
+    @staticmethod
+    def _post_depreciation(accounting_service, PostingData, book, category, amount, end_date):
+        posting = PostingData(
+            description=f"Auto-depreciation for {book.asset.name}",
+            entry_date=end_date,
+            source_module='fixed_assets',
+            source_id=book.id,
+            source_reference=f"DEPR-{book.asset.code}-{end_date.strftime('%Y%m')}"
+        )
+        posting.add_debit(
+            category.depr_expense_account.code,
+            amount,
+            f"Depreciation for {book.asset.name} ({book.book_type})"
+        )
+        posting.add_credit(
+            category.accum_depr_account.code,
+            amount,
+            f"Accumulated Depreciation for {book.asset.name}"
+        )
+        return accounting_service.post_entry(posting, journal_code='GJ')
 
     @transaction.atomic
     def post_asset_disposal(self, asset_id, disposal_date, net_proceeds, notes=""):
@@ -176,8 +179,10 @@ class DepreciationService:
         category = asset.category
         accounting_service = AccountingService(user=self.user)
         
-        # We handle the main (Statutory) book for GL posting
-        book = asset.books.get(book_type='Statutory')
+        # The GL is driven by the book that posts (normally 'Statutory').
+        book = asset.books.filter(posts_to_gl=True).order_by('created_at').first()
+        if book is None:
+            raise ValueError("Asset has no book that posts to the GL.")
         
         # Calculate final Gain/Loss
         # Gain/Loss = Proceeds - (Cost - AccDepr)

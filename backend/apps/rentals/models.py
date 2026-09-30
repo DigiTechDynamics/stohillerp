@@ -4,7 +4,7 @@ Lease management, tenant tracking, invoicing, and maintenance.
 """
 import uuid
 from decimal import Decimal
-from django.db import models  # type: ignore
+from django.db import models, transaction  # type: ignore
 from apps.core.models import AuditedModel, TimeStampedModel  # type: ignore
 
 
@@ -44,6 +44,10 @@ class Lease(AuditedModel):
     # Financial terms
     monthly_rental = models.DecimalField(max_digits=10, decimal_places=2)
     rental_escalation_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('8.00'), help_text='Annual escalation %')
+    last_escalation_date = models.DateField(
+        null=True, blank=True,
+        help_text='Anniversary at which the escalation was last applied (set by billing)',
+    )
     deposit_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     deposit_paid = models.BooleanField(default=False)
     deposit_paid_date = models.DateField(null=True, blank=True)
@@ -69,21 +73,20 @@ class Lease(AuditedModel):
         indexes = [models.Index(fields=['status', 'next_invoice_date'])]
 
     def __str__(self):
-        return f'{self.lease_number} - {self.tenant.full_name}'
+        return f'{self.lease_number} - {self.tenant.full_name if self.tenant else "no tenant"}'
 
+    # Finance sync used to run in try/except that only logged, so the user saw
+    # "saved" while nothing reached AR/GL. Each save and its sync are now one
+    # atomic unit and a failure is raised to the caller (400 via the API).
     def save(self, *args, **kwargs):
         if not self.lease_number:
             from apps.core.services.number_sequence import NumberSequenceService  # type: ignore
             self.lease_number = NumberSequenceService.get_next_number("Lease Agreement", prefix="LSE-", padding=5)
-        super().save(*args, **kwargs)
-
-        # Sync tenant to AR Customers
-        try:
-            from apps.rentals.services.finance_sync import RentalFinanceSyncService  # type: ignore
-            RentalFinanceSyncService.sync_tenant_to_customer(self.tenant)
-        except Exception as e:
-            import logging
-            logging.getLogger('stohill.rentals.models').error(f"Failed to sync tenant to AR for Lease {self.lease_number}: {e}")
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            if self.tenant_id:
+                from apps.rentals.services.finance_sync import RentalFinanceSyncService  # type: ignore
+                RentalFinanceSyncService.sync_tenant_to_customer(self.tenant)
 
 
 class RentalInvoice(AuditedModel):
@@ -109,6 +112,14 @@ class RentalInvoice(AuditedModel):
     rental_amount = models.DecimalField(max_digits=10, decimal_places=2)
     vat_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     late_payment_fee = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0.00'))
+    # Recurring lease charges billed with the rent (service charge, utilities,
+    # parking...): [{"description", "account_code", "amount", "vat"}], VAT
+    # included in total_amount.
+    charges = models.JSONField(default=list, blank=True)
+    other_charges = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'),
+                                        help_text='Total of `charges`, including their VAT')
+    # Credit notes issued against this invoice (termination, disputes).
+    credited_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     balance_due = models.DecimalField(max_digits=10, decimal_places=2)
@@ -125,16 +136,13 @@ class RentalInvoice(AuditedModel):
         if not self.invoice_number:
             from apps.core.services.number_sequence import NumberSequenceService  # type: ignore
             self.invoice_number = NumberSequenceService.get_next_number("Rental Invoice", prefix="RINV-", padding=5)
-        super().save(*args, **kwargs)
-
-        # Sync to Finance AR if invoice is finalized and not already posted
-        if self.status != self.InvoiceStatus.DRAFT and not self.is_posted_to_finance:
-            try:
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            # Post to AR/GL once the invoice leaves draft.
+            if self.status not in (self.InvoiceStatus.DRAFT, self.InvoiceStatus.CANCELLED) \
+                    and not self.is_posted_to_finance:
                 from apps.rentals.services.finance_sync import RentalFinanceSyncService  # type: ignore
                 RentalFinanceSyncService.sync_rental_invoice_to_ar(self)
-            except Exception as e:
-                import logging
-                logging.getLogger('stohill.rentals.models').error(f"Finance AR sync failed for invoice {self.invoice_number}: {e}")
 
 
 class RentalPayment(AuditedModel):
@@ -162,16 +170,12 @@ class RentalPayment(AuditedModel):
         ordering = ['-payment_date']
 
     def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        
-        # Sync to Finance AR to generate receipt and hit GL
-        if not self.journal_entry:
-            try:
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            # Receipt the payment in AR and the GL.
+            if not self.journal_entry_id:
                 from apps.rentals.services.finance_sync import RentalFinanceSyncService  # type: ignore
                 RentalFinanceSyncService.sync_rental_payment_to_ar(self)
-            except Exception as e:
-                import logging
-                logging.getLogger('stohill.rentals.models').error(f"Finance AR sync failed for payment {self.reference}: {e}")
 
 
 class MaintenanceRequest(AuditedModel):
@@ -204,10 +208,17 @@ class MaintenanceRequest(AuditedModel):
     estimated_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     actual_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     assigned_contractor = models.CharField(max_length=200, blank=True)
+    # The contractor as an AP supplier: completing the job raises their bill.
+    contractor = models.ForeignKey('finance.Supplier', null=True, blank=True, on_delete=models.PROTECT,
+                                   related_name='maintenance_jobs')
     scheduled_date = models.DateTimeField(null=True, blank=True)
     completed_date = models.DateTimeField(null=True, blank=True)
     resolution_notes = models.TextField(blank=True)
     billed_to_tenant = models.BooleanField(default=False)
+    supplier_invoice = models.ForeignKey('finance.SupplierInvoice', null=True, blank=True, on_delete=models.SET_NULL,
+                                         related_name='maintenance_jobs')
+    recharge_invoice = models.ForeignKey('finance.CustomerInvoice', null=True, blank=True, on_delete=models.SET_NULL,
+                                         related_name='maintenance_recharges')
 
     class Meta:
         db_table = 'rentals_maintenance'
@@ -218,3 +229,33 @@ class MaintenanceRequest(AuditedModel):
             from apps.core.services.number_sequence import NumberSequenceService  # type: ignore
             self.reference = NumberSequenceService.get_next_number("Maintenance Request", prefix="MNT-", padding=4)
         super().save(*args, **kwargs)
+
+
+class LeaseCharge(AuditedModel):
+    """A recurring charge billed with the rent (service charge, utilities, parking...)."""
+
+    class ChargeType(models.TextChoices):
+        SERVICE_CHARGE = 'service_charge', 'Service Charge / Levy'
+        UTILITIES = 'utilities', 'Utilities Recovery'
+        PARKING = 'parking', 'Parking'
+        INSURANCE = 'insurance', 'Insurance Recovery'
+        OTHER = 'other', 'Other'
+
+    lease = models.ForeignKey(Lease, on_delete=models.CASCADE, related_name='charges')
+    charge_type = models.CharField(max_length=20, choices=ChargeType.choices, default=ChargeType.SERVICE_CHARGE)
+    description = models.CharField(max_length=200)
+    monthly_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    # Income account; defaults to 4920 Recoveries & Recharges when blank.
+    account = models.ForeignKey('finance.ChartOfAccount', null=True, blank=True, on_delete=models.PROTECT)
+    vat_applicable = models.BooleanField(default=False)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'rentals_lease_charges'
+        ordering = ['lease', 'charge_type']
+
+    def applies_to(self, period_start):
+        return self.is_active and (self.start_date is None or self.start_date <= period_start) \
+            and (self.end_date is None or self.end_date >= period_start)

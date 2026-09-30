@@ -114,9 +114,11 @@ DATABASES = {
 # Reuse connections between requests (seconds). 0 = close after each request.
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
 DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
-# NOTE: ATOMIC_REQUESTS is intentionally left off. Services already wrap
-# multi-step writes in transaction.atomic(), and some model save() hooks catch
-# DB errors, which would abort a request-wide transaction on PostgreSQL.
+# Each API request is one transaction: a failure anywhere (e.g. a GL posting
+# triggered by a sub-ledger save) rolls the whole request back instead of
+# leaving half-written records. The save() hooks no longer swallow errors,
+# which previously made this unsafe.
+DATABASES["default"]["ATOMIC_REQUESTS"] = True
 
 # ─── Authentication ──────────────────────────────────────────────────────────
 AUTH_USER_MODEL = "core.User"
@@ -136,6 +138,8 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
+        # Role -> module access enforced server-side (see utils/permissions.py).
+        "utils.permissions.HasModuleAccess",
     ],
     "DEFAULT_PAGINATION_CLASS": "utils.pagination.StandardResultsPagination",
     "PAGE_SIZE": 20,
@@ -209,6 +213,11 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = Path(env("MEDIA_ROOT", default=str(BASE_DIR / "media")))
 
+# Private uploads (utils/private_media.py) are served by the API. When set,
+# the API hands the transfer to nginx via X-Accel-Redirect to this internal
+# location (see frontend/nginx/default.conf); empty means Django streams them.
+PRIVATE_MEDIA_ACCEL_PREFIX = env("PRIVATE_MEDIA_ACCEL_PREFIX", default="")
+
 # Uploads (KYC documents etc.): cap request size to limit abuse.
 DATA_UPLOAD_MAX_MEMORY_SIZE = env.int("UPLOAD_MAX_BYTES", default=10 * 1024 * 1024)
 FILE_UPLOAD_MAX_MEMORY_SIZE = DATA_UPLOAD_MAX_MEMORY_SIZE
@@ -227,6 +236,11 @@ COMPANY_CONFIG = {
     "vat_rate": env.float("COMPANY_VAT_RATE", default=0.155),
     "country": env("COMPANY_COUNTRY", default="ZW"),
 }
+
+# Rental late fees (process_rental_overdue): share of the rent charged once
+# an invoice is this many days past due. Check against the lease terms.
+RENT_LATE_FEE_RATE = env.float("RENT_LATE_FEE_RATE", default=0.10)
+RENT_LATE_FEE_GRACE_DAYS = env.int("RENT_LATE_FEE_GRACE_DAYS", default=7)
 
 # ─── Email ───────────────────────────────────────────────────────────────────
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")

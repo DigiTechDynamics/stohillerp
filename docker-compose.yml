@@ -46,6 +46,27 @@ services:
     volumes:
       - media:/app/media
 
+  # Daily jobs: rental billing, late fees, depreciation, recurring journals.
+  scheduler:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    command: ["python", "manage.py", "run_scheduler", "--at", "${SCHEDULER_AT:-02:00}"]
+    healthcheck:
+      disable: true
+    environment:
+      RUN_MIGRATIONS: "0"   # the api service migrates
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
+      DATABASE_URL: postgres://${POSTGRES_USER:-stohill}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-stohill_erp}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      TIME_ZONE: ${TIME_ZONE:-Africa/Harare}
+    volumes:
+      - media:/app/media
+
   web:
     build: ./frontend
     restart: unless-stopped

@@ -2,13 +2,11 @@
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from apps.commissions.models import CommissionRecord, CommissionStructure
 
 class CommissionRecordViewSet(viewsets.ModelViewSet):
     queryset = CommissionRecord.objects.select_related('agent', 'property')
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'agent', 'transaction_type']
     search_fields = ['reference', 'agent__last_name']
@@ -24,15 +22,22 @@ class CommissionRecordViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Only pending commissions can be approved'}, status=400)
         from django.utils import timezone
         from datetime import date
-        record.status = 'approved'
-        record.approved_by = request.user
-        record.approved_date = date.today()
-        record.save(update_fields=['status', 'approved_by', 'approved_date'])
-        return Response({'status': 'approved'})
+        from django.db import transaction
+        from apps.finance.services.accounting import AccountingError, AccountingService
+        try:
+            with transaction.atomic():
+                record.status = 'approved'
+                record.approved_by = request.user
+                record.approved_date = date.today()
+                record.save(update_fields=['status', 'approved_by', 'approved_date'])
+                # Approval is when the expense is incurred: accrue it in the GL.
+                entry = AccountingService(user=request.user).accrue_commission(record)
+        except AccountingError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'status': 'approved', 'journal_entry': entry.reference})
 
 class CommissionStructureViewSet(viewsets.ModelViewSet):
     queryset = CommissionStructure.objects.all()
-    permission_classes = [IsAuthenticated]
     def get_serializer_class(self):
         from apps.commissions.serializers import CommissionStructureSerializer
         return CommissionStructureSerializer

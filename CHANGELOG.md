@@ -5,6 +5,81 @@
 Branch `chore/production-hardening`. Every bug below has a regression test in
 `backend/tests/`.
 
+### ERP gap closure, passes 2-3
+
+Tests are in `backend/tests/test_gap_closure_2.py` and `test_gap_closure_3.py`,
+plus the frontend Vitest suite. The full list is in `docs/GAP_ANALYSIS.md`,
+under *What changed*.
+
+- **Security.**
+  - Private uploads are served only by authenticated download actions (nginx
+    `X-Accel-Redirect` in production).
+  - Personal fields are trimmed for modules that only need lookups.
+  - CSV import is validated and all-or-nothing.
+- **Integrity.**
+  - Sub-ledger syncs are atomic and raise instead of logging.
+  - `ATOMIC_REQUESTS` is on.
+  - Memo asset books no longer post depreciation.
+  - Rent reminders now fire.
+- **Finance.**
+  - AR/AP settlement with allocation history, credit notes, refunds and
+    write-offs. AP payments now settle invoices; migration `finance.0016`
+    reopens legacy posted payments as unapplied.
+  - Document-currency posting, realised FX, and revaluation that reverses the
+    next day.
+  - Cost-centre dimension.
+  - Recurring and auto-reversing journals.
+  - Cash-flow statement, and customer and supplier statements (PDF and email).
+  - AP approval workflows.
+- **Property.**
+  - Owner trust accounting and payouts.
+  - Brokered sales book only the commission.
+  - Lease charges, proration, renewal and termination.
+  - Maintenance completion raises the contractor's AP bill and an optional
+    tenant recharge.
+- **Payroll.**
+  - Employer NSSA and ZIMDEF.
+  - Maker/checker run approval.
+  - Statutory summary, bank file, and emailed payslips.
+- **Operations.** `run_daily_jobs` and a `scheduler` service in Compose.
+- **Pre-existing bugs fixed along the way:**
+  - Invoice email/PDF imported a missing `PDFService`.
+  - Payslip PDF referenced a removed field.
+  - `CustomerProfile.email` was missing.
+  - Sales without an agent crashed; agent commission ignored the commission
+    structure.
+  - Manual journals posted staff lines to VAT Payable.
+
+### ERP gap closure
+
+See `docs/GAP_ANALYSIS.md` for the full analysis. Every item below has a test
+in `backend/tests/test_gap_closure.py`.
+
+- **Security.**
+  - Users could grant themselves any role via `PATCH /core/me/`.
+  - Any user could reset any other user's password, or edit roles, modules and
+    SoD rules. These now need access admin.
+  - Role/module access and critical SoD rules are now enforced by the API on
+    every endpoint (`utils/permissions.py`), not just in the sidebar.
+- **Reports mis-stated reversals.** The reversed original was dropped while
+  its reversal counted. Reports now use `JournalEntry.LEDGER_STATUSES`.
+- **Year-end close** now posts the closing entry to retained earnings, and
+  reopening reverses it.
+- **Rentals.**
+  - VAT and late-fee invoices never posted (unbalanced).
+  - Payments were allocated twice.
+  - Late fees never reached AR/GL.
+  - Deposits were never posted; added record/refund actions.
+- **Commissions** accrue on approval. **Payroll** posts one balanced accrual
+  per run with seeded GL mappings; AP clears net pay instead of booking wages
+  twice.
+- **Clean installs.** `bootstrap_system` now seeds the chart of accounts,
+  journals, posting profile, VAT codes and the current fiscal year. A taxed
+  line without a tax code no longer crashes.
+- **Added.**
+  - Recurring rent billing with annual escalation (`generate_rental_invoices`).
+  - AR/AP aging, GL detail and budget vs actual reports, plus a budgets API.
+  - All of them wired into the Reports page.
 ### Fixed: production bugs
 
 - **Batch posting never worked.** Approved journal batches could never be

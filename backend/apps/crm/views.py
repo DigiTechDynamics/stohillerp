@@ -3,7 +3,7 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count, Sum, Avg, Q
 from django.utils import timezone
@@ -21,6 +21,7 @@ from apps.crm.serializers import (
     CrmTagSerializer, LostReasonSerializer, EmailTemplateSerializer,
     SalesTeamSerializer, ContactDocumentSerializer
 )
+from utils.private_media import private_file_response
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -30,7 +31,6 @@ from apps.crm.serializers import (
 class SalesTeamViewSet(viewsets.ModelViewSet):
     queryset = SalesTeam.objects.all()
     serializer_class = SalesTeamSerializer
-    permission_classes = [IsAuthenticated]
     pagination_class = None
 
 
@@ -41,7 +41,6 @@ class SalesTeamViewSet(viewsets.ModelViewSet):
 class ContactViewSet(viewsets.ModelViewSet):
     queryset = Contact.objects.select_related('assigned_agent', 'sales_team').order_by('last_name')
     serializer_class = ContactSerializer
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['contact_type', 'status', 'rating', 'assigned_agent', 'sales_team']
     search_fields = ['first_name', 'last_name', 'email', 'phone_mobile', 'company']
@@ -80,7 +79,6 @@ class ContactViewSet(viewsets.ModelViewSet):
 class ContactDocumentViewSet(viewsets.ModelViewSet):
     queryset = ContactDocument.objects.select_related('contact', 'verified_by')
     serializer_class = ContactDocumentSerializer
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['contact', 'document_type', 'is_verified']
 
@@ -92,6 +90,10 @@ class ContactDocumentViewSet(viewsets.ModelViewSet):
         doc.save()
         return Response({'status': 'verified'})
 
+    @action(detail=True, methods=['get'])
+    def download(self, request, pk=None):
+        return private_file_response(self.get_object().file)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Tags
@@ -100,7 +102,6 @@ class ContactDocumentViewSet(viewsets.ModelViewSet):
 class CrmTagViewSet(viewsets.ModelViewSet):
     queryset = CrmTag.objects.all()
     serializer_class = CrmTagSerializer
-    permission_classes = [IsAuthenticated]
     pagination_class = None
 
 
@@ -111,7 +112,6 @@ class CrmTagViewSet(viewsets.ModelViewSet):
 class LostReasonViewSet(viewsets.ModelViewSet):
     queryset = LostReason.objects.filter(is_active=True)
     serializer_class = LostReasonSerializer
-    permission_classes = [IsAuthenticated]
     pagination_class = None
 
 
@@ -122,7 +122,6 @@ class LostReasonViewSet(viewsets.ModelViewSet):
 class EmailTemplateViewSet(viewsets.ModelViewSet):
     queryset = EmailTemplate.objects.all().order_by('name')
     serializer_class = EmailTemplateSerializer
-    permission_classes = [IsAuthenticated]
     pagination_class = None
 
     def perform_create(self, serializer):
@@ -138,7 +137,6 @@ class OpportunityViewSet(viewsets.ModelViewSet):
         'contact', 'property', 'stage', 'assigned_agent', 'lost_reason', 'pipeline', 'sales_team'
     ).prefetch_related('tags', 'opportunity_activities', 'opportunity_notes')
     serializer_class = OpportunitySerializer
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['pipeline', 'stage', 'priority', 'assigned_agent', 'is_lead', 'sales_team']
     search_fields = ['title', 'reference', 'contact__first_name', 'contact__last_name', 'contact_name', 'email_from']
@@ -346,14 +344,12 @@ class OpportunityViewSet(viewsets.ModelViewSet):
 class PipelineViewSet(viewsets.ModelViewSet):
     queryset = Pipeline.objects.prefetch_related('stages')
     serializer_class = PipelineSerializer
-    permission_classes = [IsAuthenticated]
     pagination_class = None
 
 
 class PipelineStageViewSet(viewsets.ModelViewSet):
     queryset = PipelineStage.objects.all()
     serializer_class = PipelineStageSerializer
-    permission_classes = [IsAuthenticated]
     pagination_class = None
 
 
@@ -364,7 +360,6 @@ class PipelineStageViewSet(viewsets.ModelViewSet):
 class ActivityViewSet(viewsets.ModelViewSet):
     queryset = Activity.objects.select_related('opportunity', 'assigned_to', 'email_template')
     serializer_class = ActivitySerializer
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['activity_type', 'status', 'assigned_to', 'opportunity', 'contact']
     search_fields = ['subject', 'description']
@@ -387,12 +382,15 @@ class ActivityViewSet(viewsets.ModelViewSet):
 class CrmNoteViewSet(viewsets.ModelViewSet):
     queryset = CrmNote.objects.select_related('opportunity', 'created_by').order_by('-created_at')
     serializer_class = CrmNoteSerializer
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['opportunity', 'contact', 'is_internal']
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+    @action(detail=True, methods=['get'])
+    def download(self, request, pk=None):
+        return private_file_response(self.get_object().attachment)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -471,7 +469,6 @@ class CRMInboundLeadView(APIView):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class CrmReportView(APIView):
-    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         report_type = request.query_params.get('type', 'pipeline')
