@@ -76,7 +76,7 @@ const navItems = [
   { path: '/documents', label: 'Documents', icon: FileText, group: 'Admin', module: 'documents' },
   { path: '/hr', label: 'HR Management', icon: UserCog, group: 'Admin', module: 'hr' },
   { path: '/agents', label: 'Agent Profiles', icon: Users, group: 'Admin', module: 'agents' },
-  { path: '/admin/access', label: 'User Access Control', icon: UserCog, group: 'Admin', module: 'admin' },
+  { path: '/user-access', label: 'User Access Control', icon: UserCog, group: 'Admin', module: 'admin' },
 ]
 
 export default function AppLayout() {

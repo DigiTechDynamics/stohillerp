@@ -12,8 +12,8 @@ import BrandLogo from '@/components/common/BrandLogo'
 export default function LoginPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
-  const [email, setEmail] = useState('admin@stohill.co.za')
-  const [password, setPassword] = useState('admin123!')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -132,12 +132,6 @@ export default function LoginPage() {
               {loading ? 'Authenticating...' : 'Sign In'}
             </button>
           </form>
-
-          <div className="mt-6 p-3 rounded-lg bg-dark-800 border border-white/5">
-            <p className="text-xs text-dark-400 font-mono text-center">
-              admin@stohill.co.za / admin123!
-            </p>
-          </div>
         </div>
 
         <p className="text-center text-xs text-dark-600 mt-4">

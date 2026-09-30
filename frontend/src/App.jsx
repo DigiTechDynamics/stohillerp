@@ -125,7 +125,9 @@ export default function App() {
         <Route path="hr/leave-management" element={<HRPage />} />
         <Route path="payroll" element={<PayrollPage />} />
         <Route path="agents" element={<AgentsPage />} />
-        <Route path="admin/access" element={<UserAccessPage />} />
+        <Route path="user-access" element={<UserAccessPage />} />
+        {/* /admin/* is proxied to the Django admin in production; keep old in-app links working */}
+        <Route path="admin/access" element={<Navigate to="/user-access" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
