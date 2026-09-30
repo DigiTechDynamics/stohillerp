@@ -72,6 +72,10 @@ class AssetBook(AuditedModel):
 
     asset = models.ForeignKey(FixedAsset, on_delete=models.CASCADE, related_name='books')
     book_type = models.CharField(max_length=50) # e.g., 'Statutory', 'Tax'
+    # Only the statutory (accounting) book posts to the GL. Tax and other
+    # memo books are calculated and tracked but must not post, or every
+    # asset with two books was depreciated twice in the ledger.
+    posts_to_gl = models.BooleanField(default=True)
     
     method = models.CharField(max_length=50, choices=DeprMethod.choices)
     useful_life_months = models.PositiveIntegerField()

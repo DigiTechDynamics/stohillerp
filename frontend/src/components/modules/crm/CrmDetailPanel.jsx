@@ -1,11 +1,7 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  User, Mail, Phone, Calendar, DollarSign, TrendingUp,
-  MessageSquare, Clock, Plus, Send, MoreVertical,
-  CheckCircle, ArrowRight, Tag as TagIcon, Building2,
-  AlertCircle, ChevronRight, Trophy, XCircle, Zap,
-  Flame, Thermometer, Snowflake, Activity as ActivityIcon, Loader2
+  User, Mail, Phone, TrendingUp, Clock, CheckCircle, ArrowRight, Tag as TagIcon, Building2, AlertCircle, ChevronRight, Trophy, XCircle, Zap, Flame, Thermometer, Snowflake, Activity as ActivityIcon, Loader2
 } from 'lucide-react'
 import { crmAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
@@ -95,7 +91,7 @@ function InlineActivityForm({ opportunityId, onClose }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Detail Panel
 // ─────────────────────────────────────────────────────────────────────────────
-export default function CrmDetailPanel({ id, type }) {
+export default function CrmDetailPanel({ id }) {
   const closePanel = useUIStore(s => s.closeSidePanel)
   const openPanel = useUIStore(s => s.openSidePanel)
   const queryClient = useQueryClient()
@@ -290,7 +286,7 @@ export default function CrmDetailPanel({ id, type }) {
             <div className="space-y-1">
               <p className="text-[10px] text-dark-500 font-bold uppercase tracking-widest">Expected Revenue</p>
               <p className="text-xl font-mono font-bold text-white tracking-tighter">
-                {formatCurrency(parseFloat(opp.expected_revenue || '0'), 'USD')}
+                {formatCurrency(parseFloat(opp.expected_revenue || '0'), opp.currency_code)}
               </p>
               <p className="text-[10px] text-dark-500 font-bold italic">at {opp.probability}% probability</p>
             </div>

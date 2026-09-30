@@ -3,12 +3,10 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Building2, Map, Grid, List, Search, Filter,
-  Plus, MapPin, BedDouble, Bath, Square, Eye,
-  TrendingUp, Home, DollarSign
+  Building2, Map, Grid, List, Search, Plus, MapPin, BedDouble, Bath, Square, Eye, TrendingUp, Home, DollarSign
 } from 'lucide-react'
 import { propertiesAPI } from '@/services/api'
-import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
+import { formatCurrency, getStatusColor } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
 import Pagination from '@/components/common/Pagination'
@@ -99,7 +97,7 @@ function PropertyCard({ property }) {
             )}
             {property.rental_rate && (
               <p className="text-xs text-dark-400">
-                {property.currency_code || '$'}{parseFloat(property.rental_rate).toLocaleString('en-US')}/mo rental
+                {formatCurrency(property.rental_rate, property.currency_code)}/mo rental
               </p>
             )}
           </div>

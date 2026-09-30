@@ -1,6 +1,5 @@
 // Stohill Properties - Bulk Action Bar
 // Sticky bar that appears when 1+ kanban cards are selected
-import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckSquare, UserCheck, Tag as TagIcon, Trash2, X, Loader2, Trophy, XCircle } from 'lucide-react'
@@ -8,7 +7,7 @@ import { crmAPI, hrAPI } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import { useState } from 'react'
 
-export default function BulkActionBar({ selectedIds, onClearSelection, onRefresh }) {
+export default function BulkActionBar({ selectedIds, onClearSelection }) {
   const queryClient = useQueryClient()
   const [showReassign, setShowReassign] = useState(false)
   const [showTagger, setShowTagger] = useState(false)

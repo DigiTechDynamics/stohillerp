@@ -8,7 +8,7 @@ from .models import (  # type: ignore
     FiscalPeriod, FiscalYear, ExchangeRate, PostingProfile,
     Supplier, SupplierInvoice, SupplierInvoiceLine, SupplierPayment,
     CustomerProfile, CustomerInvoice, CustomerInvoiceLine, CustomerReceipt,
-    BankAccount, BankTransaction, BankReconciliation,
+    BankAccount,
     TaxCode, TaxTransaction
 )
 
@@ -75,7 +75,7 @@ class JournalLineSerializer(serializers.ModelSerializer):
             'id', 'account', 'account_code', 'account_name', 
             'side', 'amount', 'amount_currency', 'description', 
             'vat_amount', 'entry_reference', 'entry_date',
-            'contact_ref', 'supplier_ref', 'employee_ref',
+            'contact_ref', 'supplier_ref', 'employee_ref', 'cost_center', 'property_ref',
             'entity_name'
         ]
         extra_kwargs = {
@@ -122,14 +122,18 @@ class JournalEntrySerializer(serializers.ModelSerializer):
         return "System"
 
     def validate(self, data):
-        """Ensure exchange rate is provided for non-base currencies."""
+        """Foreign-currency entries without an explicit rate use the stored rate for the entry date."""
         currency = data.get('currency')
         exchange_rate = data.get('exchange_rate', Decimal('1.0000000000'))
-        
-        if currency and not currency.is_base and exchange_rate == Decimal('1.0000000000'):
-            # It's okay if they didn't provide it if we can find one in the DB
-            pass # TODO: auto-fetch latest rate if missing
-            
+
+        if currency and not currency.is_base and exchange_rate == Decimal('1.0000000000') and data.get('entry_date'):
+            from apps.finance.services.accounting import AccountingError  # type: ignore
+            from apps.finance.services.fx import get_rate  # type: ignore
+            try:
+                data['exchange_rate'] = get_rate(currency, data['entry_date'])
+            except AccountingError as e:
+                raise serializers.ValidationError({'exchange_rate': str(e)})
+
         return data
 
     def get_total_debits(self, obj):
@@ -212,9 +216,9 @@ class JournalEntrySerializer(serializers.ModelSerializer):
                     supplier = Supplier.objects.get(pk=supplier_id)
                     account = supplier.ap_account
                 elif employee_id:
-                    # Target Staff/Payroll Control Account (Lookup by code '2100' or similar)
-                    account = ChartOfAccount.objects.filter(code='2100').first() # TODO: Make configurable
-                
+                    # Staff control account: Net Salaries Payable (was 2100, which is VAT Payable).
+                    account = ChartOfAccount.objects.filter(code='2630').first()
+
                 if not account:
                     raise serializers.ValidationError({"lines": "Account could not be resolved for one or more lines."})
 
@@ -231,7 +235,9 @@ class JournalEntrySerializer(serializers.ModelSerializer):
                     description=line_data.get('description', ''),
                     contact_ref_id=contact_id,
                     supplier_ref_id=supplier_id,
-                    employee_ref_id=employee_id
+                    employee_ref_id=employee_id,
+                    cost_center_id=line_data.get('cost_center') or None,
+                    property_ref_id=line_data.get('property_ref') or None,
                 )
             
         return entry
@@ -286,7 +292,7 @@ class JournalEntrySerializer(serializers.ModelSerializer):
                         supplier = Supplier.objects.get(pk=supplier_id)
                         account = supplier.ap_account
                     elif employee_id:
-                        account = ChartOfAccount.objects.filter(code='2100').first()
+                        account = ChartOfAccount.objects.filter(code='2630').first()
 
                     if not account:
                          raise serializers.ValidationError({"lines": "Account could not be resolved."})
@@ -303,7 +309,9 @@ class JournalEntrySerializer(serializers.ModelSerializer):
                         description=line_data.get('description', ''),
                         contact_ref_id=contact_id,
                         supplier_ref_id=supplier_id,
-                        employee_ref_id=employee_id
+                        employee_ref_id=employee_id,
+                        cost_center_id=line_data.get('cost_center') or None,
+                        property_ref_id=line_data.get('property_ref') or None,
                     )
         
         return instance
@@ -343,7 +351,8 @@ class SupplierInvoiceLineSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = SupplierInvoiceLine
-        fields = ['id', 'description', 'expense_account', 'expense_account_code', 'quantity', 'unit_price', 'tax_code', 'tax_amount', 'line_total']
+        fields = ['id', 'description', 'expense_account', 'expense_account_code', 'quantity', 'unit_price', 'tax_code', 'tax_amount', 'line_total',
+                  'cost_center', 'property_ref', 'po_line']
 
 class SupplierInvoiceSerializer(serializers.ModelSerializer):
     lines = SupplierInvoiceLineSerializer(many=True)  # type: ignore
@@ -355,11 +364,12 @@ class SupplierInvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = SupplierInvoice
         fields = [
-            'id', 'supplier', 'supplier_name', 'invoice_number', 'reference', 
-            'invoice_date', 'due_date', 'currency', 'currency_code', 'subtotal', 'tax_total', 'total_amount', 
-            'amount_paid', 'status', 'journal_entry', 'journal_entry_details', 'balance_due', 'lines'
+            'id', 'supplier', 'supplier_name', 'document_type', 'original_invoice', 'invoice_number', 'reference',
+            'invoice_date', 'due_date', 'currency', 'currency_code', 'exchange_rate', 'subtotal', 'tax_total', 'total_amount',
+            'amount_paid', 'status', 'journal_entry', 'journal_entry_details', 'balance_due', 'lines',
+            'match_override_reason'
         ]
-        read_only_fields = ['status', 'total_amount', 'subtotal', 'tax_total', 'amount_paid', 'journal_entry']
+        read_only_fields = ['status', 'total_amount', 'subtotal', 'tax_total', 'amount_paid', 'journal_entry', 'exchange_rate']
         extra_kwargs = {
             'invoice_number': {'required': False}
         }
@@ -425,9 +435,11 @@ class SupplierPaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = SupplierPayment
         fields = [
-            'id', 'supplier', 'supplier_name', 'bank_account', 'payment_date', 
-            'amount', 'currency', 'currency_code', 'payment_reference', 'status', 'journal_entry', 'journal_entry_details'
+            'id', 'supplier', 'supplier_name', 'bank_account', 'payment_date',
+            'amount', 'currency', 'currency_code', 'exchange_rate', 'unapplied_amount', 'payment_reference', 'status',
+            'journal_entry', 'journal_entry_details'
         ]
+        read_only_fields = ['status', 'journal_entry', 'exchange_rate', 'unapplied_amount']
 
 # ─── AR Serializers ──────────────────────────────────────────────────────────
 
@@ -452,7 +464,8 @@ class CustomerInvoiceLineSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = CustomerInvoiceLine
-        fields = ['id', 'description', 'revenue_account', 'revenue_account_code', 'quantity', 'unit_price', 'tax_code', 'tax_amount', 'line_total']
+        fields = ['id', 'description', 'revenue_account', 'revenue_account_code', 'quantity', 'unit_price', 'tax_code', 'tax_amount', 'line_total',
+                  'cost_center', 'property_ref']
 
 class CustomerInvoiceSerializer(serializers.ModelSerializer):
     lines = CustomerInvoiceLineSerializer(many=True)  # type: ignore
@@ -464,11 +477,12 @@ class CustomerInvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomerInvoice
         fields = [
-            'id', 'customer', 'customer_name', 'invoice_number', 'reference', 
-            'invoice_date', 'due_date', 'currency', 'currency_code', 'subtotal', 'tax_total', 'total_amount', 
+            'id', 'customer', 'customer_name', 'document_type', 'original_invoice', 'invoice_number', 'reference',
+            'invoice_date', 'due_date', 'currency', 'currency_code', 'exchange_rate', 'subtotal', 'tax_total', 'total_amount',
             'amount_paid', 'status', 'journal_entry', 'journal_entry_details', 'balance_due', 'lines'
         ]
-        read_only_fields = ['invoice_number', 'status', 'total_amount', 'subtotal', 'tax_total', 'amount_paid', 'journal_entry']
+        read_only_fields = ['invoice_number', 'status', 'total_amount', 'subtotal', 'tax_total', 'amount_paid', 'journal_entry',
+                            'exchange_rate']
 
     def get_balance_due(self, obj):
         return str(obj.balance_due)
@@ -531,9 +545,11 @@ class CustomerReceiptSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomerReceipt
         fields = [
-            'id', 'customer', 'customer_name', 'bank_account', 'receipt_date', 
-            'amount', 'currency', 'currency_code', 'receipt_reference', 'status', 'journal_entry', 'journal_entry_details'
+            'id', 'customer', 'customer_name', 'bank_account', 'receipt_date',
+            'amount', 'currency', 'currency_code', 'exchange_rate', 'unapplied_amount', 'receipt_reference', 'status',
+            'journal_entry', 'journal_entry_details'
         ]
+        read_only_fields = ['status', 'journal_entry', 'exchange_rate', 'unapplied_amount']
 
 # ─── Bank Serializers ────────────────────────────────────────────────────────
 
@@ -542,16 +558,6 @@ class BankAccountSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = BankAccount
-        fields = '__all__'
-
-class BankTransactionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BankTransaction
-        fields = '__all__'
-
-class BankReconciliationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BankReconciliation
         fields = '__all__'
 
 # ─── Tax Serializers ─────────────────────────────────────────────────────────

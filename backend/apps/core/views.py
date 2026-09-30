@@ -7,15 +7,29 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.core.models import User, Role, AuditLog, Currency, Module, SODRule
 from apps.core.serializers import (
-    UserSerializer, UserCreateSerializer, RoleSerializer, 
+    UserSerializer, UserCreateSerializer, RoleSerializer,
     AuditLogSerializer, CurrencySerializer, ModuleSerializer, SODRuleSerializer,
-    PasswordChangeSerializer
+    PasswordChangeSerializer, CurrentUserUpdateSerializer
 )
+from utils.permissions import HasModuleAccess, user_modules
+
+
+def is_access_admin(user):
+    """Superusers and holders of the 'admin' (User Access Management) module."""
+    return user.is_superuser or 'admin' in user_modules(user)
+
+
+class AccessAdminWritePermission(permissions.BasePermission):
+    """Reads for any authenticated user; changes to users/roles/modules/SoD need access admin."""
+    message = 'Only access administrators can change users, roles or SoD rules.'
+
+    def has_permission(self, request, view):
+        return request.method in permissions.SAFE_METHODS or is_access_admin(request.user)
 
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.prefetch_related('roles').order_by('first_name', 'last_name')
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess, AccessAdminWritePermission]
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
     search_fields = ['first_name', 'last_name', 'email']
     filterset_fields = ['status', 'is_active']
@@ -24,6 +38,13 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.action == 'create':
             return UserCreateSerializer
         return UserSerializer
+
+    def get_permissions(self):
+        # Users may change their own password; everything else that writes
+        # (including resetting someone else's password) needs access admin.
+        if self.action == 'set_password' and str(self.kwargs.get('pk')) == str(self.request.user.pk):
+            return [permissions.IsAuthenticated()]
+        return super().get_permissions()
 
     @action(detail=True, methods=['post'])
     def toggle_executive_mode(self, request, pk=None):
@@ -54,26 +75,24 @@ class UserViewSet(viewsets.ModelViewSet):
 class RoleViewSet(viewsets.ModelViewSet):
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess, AccessAdminWritePermission]
 
 
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = AuditLog.objects.select_related('user').order_by('-timestamp')
     serializer_class = AuditLogSerializer
-    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['action', 'model_name', 'user']
 
 
 class CurrentUserView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
     def patch(self, request):
-        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        serializer = CurrentUserUpdateSerializer(request.user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
@@ -82,7 +101,6 @@ class CurrentUserView(APIView):
 class CurrencyViewSet(viewsets.ModelViewSet):
     queryset = Currency.objects.all().order_by('code')
     serializer_class = CurrencySerializer
-    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [filters.SearchFilter]
     search_fields = ['code', 'name']
 
@@ -90,10 +108,10 @@ class CurrencyViewSet(viewsets.ModelViewSet):
 class ModuleViewSet(viewsets.ModelViewSet):
     queryset = Module.objects.all()
     serializer_class = ModuleSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess, AccessAdminWritePermission]
 
 
 class SODRuleViewSet(viewsets.ModelViewSet):
     queryset = SODRule.objects.all()
     serializer_class = SODRuleSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess, AccessAdminWritePermission]

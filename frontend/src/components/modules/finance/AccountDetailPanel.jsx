@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Edit2, TrendingUp, TrendingDown, Clock, Search, FileText } from 'lucide-react'
+import { Edit2, TrendingUp, TrendingDown, Clock, FileText } from 'lucide-react'
 import { financeAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'

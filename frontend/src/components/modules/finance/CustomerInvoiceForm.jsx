@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { Plus, Trash2, Save, AlertCircle, FileText, Calculator } from 'lucide-react'
 import { financeAPI } from '@/services/api'
@@ -15,6 +15,7 @@ export default function CustomerInvoiceForm() {
   
   const [formData, setFormData] = useState({
     customer: invoice?.customer || sidePanelData?.customer?.id || '',
+    document_type: invoice?.document_type || 'invoice',
     invoice_date: invoice?.invoice_date || new Date().toISOString().split('T')[0],
     due_date: invoice?.due_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     reference: invoice?.reference || '',
@@ -30,13 +31,6 @@ export default function CustomerInvoiceForm() {
       { description: '', revenue_account: '', quantity: 1, unit_price: '0.00', tax_code: '', tax_amount: '0.00', line_total: '0.00' }
     ]
   })
-
-  // Ensure lines are correctly structured if editing
-  useEffect(() => {
-    if (invoice && invoice.lines && formData.lines.length === invoice.lines.length) {
-       // already initialized or manually edited
-    }
-  }, [invoice])
 
   // Fetch Customers
   const { data: customersData } = useQuery({
@@ -131,7 +125,7 @@ export default function CustomerInvoiceForm() {
     }
   })
 
-  const handleSubmit = (e) => {
+  const handleSubmit = () => {
     if (!formData.customer) {
       setError('Please select a customer.')
       return
@@ -211,6 +205,15 @@ export default function CustomerInvoiceForm() {
               onChange={(val) => setFormData(prev => ({ ...prev, currency: val }))}
               label="Invoice Currency"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Document Type</label>
+            <select name="document_type" value={formData.document_type} onChange={handleChange} className="form-input w-full"
+              disabled={!!invoice?.id}>
+              <option value="invoice">Invoice</option>
+              <option value="credit_note">Credit note (reverses revenue/expense; apply it to invoices after posting)</option>
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

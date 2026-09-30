@@ -1,12 +1,9 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { 
-  ChevronLeft, ChevronRight, Calendar as CalendarIcon, 
-  Clock, MapPin, User, Search, Filter, Loader2,
-  Phone, Mail, MessageSquare, Home, Plus
+import {
+  ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Search, Filter, Phone, Mail, MessageSquare, Home, Plus
 } from 'lucide-react'
 import { crmAPI } from '@/services/api'
-import { formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -15,7 +12,7 @@ export default function CrmCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const openPanel = useUIStore(s => s.openSidePanel)
 
-  const { data: activitiesRes, isLoading } = useQuery({
+  const { data: activitiesRes } = useQuery({
     queryKey: ['crm-calendar-activities', currentDate.getMonth(), currentDate.getFullYear()],
     queryFn: () => crmAPI.activities.list({ 
       page_size: 100,

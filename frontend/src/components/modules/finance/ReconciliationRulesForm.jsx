@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Save, Trash2, CheckCircle, AlertCircle, Wand2, Filter, Settings } from 'lucide-react'
+import { Plus, Save, Trash2, CheckCircle, AlertCircle, Wand2, Filter } from 'lucide-react'
 import { bankingAPI, financeAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 
@@ -47,7 +47,7 @@ export default function ReconciliationRulesForm() {
         priority: 10
       })
     },
-    onError: (err) => setError('Failed to save rule.')
+    onError: () => setError('Failed to save rule.')
   })
 
   const deleteMutation = useMutation({

@@ -3,8 +3,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  DollarSign, PieChart, TrendingUp, ArrowRightLeft,
-  FileText, Search, Plus, Filter, Download, ListChecks, Calendar, Settings, Box
+  DollarSign, PieChart, TrendingUp, ArrowRightLeft, FileText, Search, Plus, ListChecks, Calendar, Settings
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { financeAPI } from '@/services/api'
@@ -99,7 +98,7 @@ export default function FinancePage() {
                   </div>
                   <span className="text-[10px] text-primary font-bold uppercase tracking-wider">Cash Position</span>
                 </div>
-                <p className="text-2xl font-semibold text-white">{formatCurrency(parseFloat(summary.cash_position || 0), 'USD')}</p>
+                <p className="text-2xl font-semibold text-white">{formatCurrency(parseFloat(summary.cash_position || 0))}</p>
                 <p className="text-xs text-dark-400 mt-1 flex items-center gap-1">
                   <TrendingUp size={12} className="text-emerald-400" />
                   Real-time balance
@@ -113,7 +112,7 @@ export default function FinancePage() {
                   </div>
                   <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Accounts Receivable</span>
                 </div>
-                <p className="text-2xl font-semibold text-white">{formatCurrency(parseFloat(summary.accounts_receivable || 0), 'USD')}</p>
+                <p className="text-2xl font-semibold text-white">{formatCurrency(parseFloat(summary.accounts_receivable || 0))}</p>
                 <p className="text-xs text-dark-400 mt-1">{summary.overdue_count || 0} overdue invoices pending</p>
               </div>
 

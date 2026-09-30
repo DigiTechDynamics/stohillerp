@@ -1,7 +1,6 @@
 // Stohill Properties - Commission Detail Panel
 import { useUIStore } from '@/stores/authStore'
-import { motion } from 'framer-motion'
-import { X, Award, MapPin, Building2, User, CheckCircle2, DollarSign, Calendar } from 'lucide-react'
+import { X, Award, Building2, User, CheckCircle2, Calendar } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/utils/format'
 
 export default function CommissionDetailPanel() {

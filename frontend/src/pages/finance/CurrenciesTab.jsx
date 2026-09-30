@@ -1,10 +1,9 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { DollarSign, Percent, Plus, RefreshCw, Loader2 } from 'lucide-react'
 import api from '@/services/api'
-import { formatCurrency, formatDate } from '@/utils/format'
-import { toast } from 'react-hot-toast'
+import { formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 
 export default function CurrenciesTab() {

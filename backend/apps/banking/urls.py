@@ -1,15 +1,15 @@
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
+
 from apps.banking.views import (
-    CorporateBankAccountViewSet, CorporateBankStatementViewSet, 
-    CorporateBankStatementLineViewSet, ReconciliationRuleViewSet
+    BankAccountViewSet, CorporateBankStatementLineViewSet, CorporateBankStatementViewSet, ReconciliationRuleViewSet,
 )
 
 router = DefaultRouter()
-router.register(r'accounts', CorporateBankAccountViewSet)
-router.register(r'statements', CorporateBankStatementViewSet)
-router.register(r'lines', CorporateBankStatementLineViewSet)
-router.register(r'reconciliation-rules', ReconciliationRuleViewSet)
+router.register(r'accounts', BankAccountViewSet, basename='bank-accounts')
+router.register(r'statements', CorporateBankStatementViewSet, basename='bank-statements')
+router.register(r'lines', CorporateBankStatementLineViewSet, basename='bank-statement-lines')
+router.register(r'reconciliation-rules', ReconciliationRuleViewSet, basename='reconciliation-rules')
 
 urlpatterns = [
     path('', include(router.urls)),

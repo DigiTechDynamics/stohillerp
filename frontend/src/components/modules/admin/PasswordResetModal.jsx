@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { X, Key, ShieldCheck, AlertCircle, Loader2 } from 'lucide-react'
 import { adminAPI } from '@/services/api'
 import { useMutation, useQueryClient } from '@tanstack/react-query'

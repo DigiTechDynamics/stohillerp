@@ -13,9 +13,12 @@ from .core import (  # type: ignore
     PostingProfile,
 )
 from .tax import TaxCode, TaxTransaction  # type: ignore
-from .bank import BankAccount, BankTransaction, BankReconciliation  # type: ignore
+from .bank import BankAccount  # type: ignore
 from .ap import Supplier, SupplierInvoice, SupplierInvoiceLine, SupplierPayment  # type: ignore
 from .ar import CustomerProfile, CustomerInvoice, CustomerInvoiceLine, CustomerReceipt  # type: ignore
+from .settlement import ARAllocation, APAllocation  # type: ignore
+from .recurring import RecurringJournal, RecurringJournalLine  # type: ignore
+from .approval import ApprovalRule, ApprovalRecord  # type: ignore
 
 __all__ = [
     'ChartOfAccount',
@@ -32,8 +35,6 @@ __all__ = [
     'TaxCode',
     'TaxTransaction',
     'BankAccount',
-    'BankTransaction',
-    'BankReconciliation',
     'Supplier',
     'SupplierInvoice',
     'SupplierInvoiceLine',
@@ -43,4 +44,10 @@ __all__ = [
     'CustomerInvoiceLine',
     'CustomerReceipt',
     'PostingProfile',
+    'ARAllocation',
+    'APAllocation',
+    'RecurringJournal',
+    'RecurringJournalLine',
+    'ApprovalRule',
+    'ApprovalRecord',
 ]

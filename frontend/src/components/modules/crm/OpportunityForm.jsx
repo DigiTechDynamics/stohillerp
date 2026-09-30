@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
-import { Save, AlertCircle, TrendingUp, User, Home, Calendar, Plus, Mail, Clock, Tag as TagIcon, Loader2, UserCheck, DollarSign, ShieldCheck } from 'lucide-react'
+import { Save, AlertCircle, TrendingUp, User, Home, Mail, Clock, Tag as TagIcon, Loader2, UserCheck, DollarSign, ShieldCheck } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { crmAPI, propertiesAPI, hrAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
@@ -72,14 +72,16 @@ export default function OpportunityForm() {
   })
   const pipelines = Array.isArray(pipelinesData?.data) ? pipelinesData.data : (pipelinesData?.data?.results || [])
   const pipeline = pipelines?.find(p => p.id === formData.pipeline) || pipelines?.[0]
-  const stages = pipeline?.stages?.filter(s => isLead ? s.stage_type === 'initial' : s.stage_type !== 'initial') || pipeline?.stages || []
+  const stages = useMemo(
+    () => pipeline?.stages?.filter(s => isLead ? s.stage_type === 'initial' : s.stage_type !== 'initial') || pipeline?.stages || [],
+    [pipeline, isLead])
 
   // Auto-select first stage and pipeline for new records
   useEffect(() => {
     if (!isEditing && pipeline?.id && stages.length > 0 && !formData.stage) {
       setFormData(prev => ({ ...prev, stage: stages[0].id, pipeline: pipeline.id }))
     }
-  }, [pipeline, stages, isEditing])
+  }, [pipeline, stages, isEditing, formData.stage])
 
   // Fetch Agents
   const { data: agentsData } = useQuery({

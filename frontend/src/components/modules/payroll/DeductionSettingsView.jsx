@@ -1,17 +1,16 @@
-import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { payrollAPI } from '@/services/api';
-import { formatCurrency } from '@/utils/format';
+import { formatCurrency, getDefaultCurrency } from '@/utils/format';
 import { Calculator, DollarSign, Save, Plus } from 'lucide-react';
 
 const DeductionSettingsView = ({ selectedRun }) => {
-  const { data: settingsData, refetch: refetchSettings } = useQuery({
+  const { data: settingsData } = useQuery({
     queryKey: ['payrollSettings'],
     queryFn: () => payrollAPI.settings.list().then(res => res.data),
   });
   const settings = settingsData?.results || [];
 
-  const { data: bracketsData, refetch: refetchBrackets } = useQuery({
+  const { data: bracketsData } = useQuery({
     queryKey: ['taxBrackets', selectedRun?.currency],
     queryFn: () => payrollAPI.taxBrackets.list({ currency: selectedRun?.currency }).then(res => res.data),
     enabled: !!selectedRun?.currency,
@@ -73,7 +72,7 @@ const DeductionSettingsView = ({ selectedRun }) => {
               </div>
               <div>
                 <h3 className="text-white font-bold">PAYE Tax Brackets</h3>
-                <p className="text-[10px] text-dark-500 uppercase tracking-widest font-bold">Thresholds for {selectedRun?.currency_code || 'USD'}</p>
+                <p className="text-[10px] text-dark-500 uppercase tracking-widest font-bold">Thresholds for {selectedRun?.currency_code || getDefaultCurrency()}</p>
               </div>
             </div>
           </div>

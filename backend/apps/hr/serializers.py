@@ -1,5 +1,7 @@
 """Stohil Properties - HR Serializers"""
 from rest_framework import serializers
+
+from utils.serializers import SensitiveFieldsMixin
 from apps.hr.models import Employee, Department, JobPosition, LeaveRequest, LeaveAllocation, Attendance, EmployeeContract
 
 class DepartmentSerializer(serializers.ModelSerializer):
@@ -8,7 +10,11 @@ class DepartmentSerializer(serializers.ModelSerializer):
         model = Department
         fields = '__all__'
 
-class EmployeeSerializer(serializers.ModelSerializer):
+class EmployeeSerializer(SensitiveFieldsMixin, serializers.ModelSerializer):
+    # Other modules use employees as agent pickers; personal data stays in HR/payroll.
+    sensitive_fields = ('id_number', 'bank_name', 'notes')
+    sensitive_modules = {'hr', 'payroll', 'agents'}
+
     full_name = serializers.ReadOnlyField()
     department_name = serializers.CharField(source='department.name', read_only=True)
     job_position_name = serializers.CharField(source='job_position.name', read_only=True)

@@ -1,5 +1,7 @@
 """Stohil Properties - CRM Serializers (Odoo CRM parity)"""
 from rest_framework import serializers
+
+from utils.serializers import SensitiveFieldsMixin
 from apps.crm.models import (
     Contact, Opportunity, Pipeline, PipelineStage,
     Activity, CrmTag, CrmNote, LostReason, EmailTemplate,
@@ -18,11 +20,18 @@ class SalesTeamSerializer(serializers.ModelSerializer):
 
 class ContactDocumentSerializer(serializers.ModelSerializer):
     verified_by_name = serializers.ReadOnlyField(source='verified_by.full_name')
+    # KYC files are private: download through the authenticated action only.
+    download_url = serializers.SerializerMethodField()
 
     class Meta:
         model = ContactDocument
-        fields = ['id', 'contact', 'name', 'document_type', 'file', 'expiry_date', 'is_verified', 'verified_by', 'verified_by_name', 'created_at']
+        fields = ['id', 'contact', 'name', 'document_type', 'file', 'download_url', 'expiry_date', 'is_verified',
+                  'verified_by', 'verified_by_name', 'created_at']
         read_only_fields = ['created_at', 'verified_by']
+        extra_kwargs = {'file': {'write_only': True}}
+
+    def get_download_url(self, obj):
+        return f'/api/v1/crm/contact-documents/{obj.pk}/download/' if obj.file else None
 
 
 class LostReasonSerializer(serializers.ModelSerializer):
@@ -38,7 +47,11 @@ class EmailTemplateSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at']
 
 
-class ContactSerializer(serializers.ModelSerializer):
+class ContactSerializer(SensitiveFieldsMixin, serializers.ModelSerializer):
+    # Identity and affordability data only for modules that deal with the
+    # client directly; finance and documents see the contact as a lookup.
+    sensitive_fields = ('id_number', 'passport_number', 'annual_income', 'affordability', 'credit_rating')
+    sensitive_modules = {'crm', 'rentals', 'sales'}
     full_name = serializers.ReadOnlyField()
     currency_code = serializers.ReadOnlyField(source='currency.code')
     active_leases = serializers.SerializerMethodField()
@@ -66,7 +79,9 @@ class ContactSerializer(serializers.ModelSerializer):
             return []
 
     def get_opportunity_count(self, obj):
-        return obj.opportunities.count()
+        # related_name is "contact_opportunities"; the old "opportunities"
+        # attribute raised AttributeError, crashing the whole contacts list.
+        return obj.contact_opportunities.count()
 
     def get_document_count(self, obj):
         return obj.documents.count()
@@ -97,8 +112,15 @@ class CrmNoteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CrmNote
-        fields = ['id', 'opportunity', 'contact', 'body', 'is_internal', 'attachment', 'created_at', 'author_name']
+        fields = ['id', 'opportunity', 'contact', 'body', 'is_internal', 'attachment', 'attachment_url',
+                  'created_at', 'author_name']
         read_only_fields = ['created_at', 'author_name']
+        extra_kwargs = {'attachment': {'write_only': True}}
+
+    attachment_url = serializers.SerializerMethodField()
+
+    def get_attachment_url(self, obj):
+        return f'/api/v1/crm/notes/{obj.pk}/download/' if obj.attachment else None
 
 
 class OpportunitySerializer(serializers.ModelSerializer):
@@ -122,6 +144,8 @@ class OpportunitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Opportunity
         fields = '__all__'
+        # Opportunity.save() generates the reference; clients shouldn't have to.
+        extra_kwargs = {'reference': {'required': False}}
 
     def get_contact_display(self, obj):
         if obj.contact:

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Save, X, Settings, Link as LinkIcon, AlertCircle } from 'lucide-react'
 import { fixedAssetsAPI } from '@/services/api'

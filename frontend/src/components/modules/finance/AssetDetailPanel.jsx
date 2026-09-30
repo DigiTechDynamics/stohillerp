@@ -1,9 +1,5 @@
-import React from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { 
-  Box, Calendar, DollarSign, History, 
-  TrendingDown, ShieldCheck, Tag, Info, List
-} from 'lucide-react'
+import { Calendar, DollarSign, History, TrendingDown, ShieldCheck, List } from 'lucide-react'
 import { fixedAssetsAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'

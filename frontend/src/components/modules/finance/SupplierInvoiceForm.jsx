@@ -13,6 +13,7 @@ export default function SupplierInvoiceForm() {
   
   const [formData, setFormData] = useState({
     supplier: sidePanelData?.invoice?.supplier || sidePanelData?.supplier?.id || '',
+    document_type: sidePanelData?.invoice?.document_type || 'invoice',
     invoice_date: sidePanelData?.invoice?.invoice_date || new Date().toISOString().split('T')[0],
     due_date: sidePanelData?.invoice?.due_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     invoice_number: sidePanelData?.invoice?.invoice_number || '',
@@ -31,6 +32,7 @@ export default function SupplierInvoiceForm() {
   useEffect(() => {
     if (sidePanelData?.invoice) {
       setFormData({
+        document_type: sidePanelData.invoice.document_type || 'invoice',
         supplier: sidePanelData.invoice.supplier || '',
         invoice_date: sidePanelData.invoice.invoice_date || '',
         due_date: sidePanelData.invoice.due_date || '',
@@ -208,6 +210,15 @@ export default function SupplierInvoiceForm() {
               onChange={(val) => setFormData(prev => ({ ...prev, currency: val }))}
               label="Invoice Currency"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Document Type</label>
+            <select name="document_type" value={formData.document_type} onChange={handleChange} className="form-input w-full"
+              disabled={!!formData.id || !!(sidePanelData?.invoice?.id)}>
+              <option value="invoice">Invoice</option>
+              <option value="credit_note">Credit note (reverses revenue/expense; apply it to invoices after posting)</option>
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

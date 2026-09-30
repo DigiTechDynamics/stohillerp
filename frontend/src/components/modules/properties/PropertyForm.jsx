@@ -1,6 +1,6 @@
 import { useState, forwardRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Building2, MapPin, Home, Info, Square, BedDouble, Bath, Car, Save, X, Loader2 } from 'lucide-react'
+import { MapPin, Home, Info, Square, BedDouble, Bath, Car, Save, Loader2 } from 'lucide-react'
 import { propertiesAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'

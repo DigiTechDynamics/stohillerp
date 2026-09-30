@@ -1,8 +1,7 @@
 // Stohill Properties - Email Template Selector
 // Used inside ActivityForm when activity type = 'email'
-import React from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Mail, ChevronDown, Loader2 } from 'lucide-react'
+import { Mail, Loader2 } from 'lucide-react'
 import { crmAPI } from '@/services/api'
 
 export default function EmailTemplateSelector({ value, onChange, onBodySelect }) {

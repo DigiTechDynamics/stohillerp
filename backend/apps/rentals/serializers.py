@@ -11,7 +11,7 @@ class LeaseSerializer(serializers.ModelSerializer):
     unit_number = serializers.CharField(source='unit.unit_number', read_only=True, default=None)
     agent_name = serializers.CharField(source='managing_agent.full_name', read_only=True, default=None)
     property_type_name = serializers.CharField(source='property.property_type.name', read_only=True, default=None)
-    currency_code = serializers.CharField(source='currency.code', read_only=True, default='USD')
+    currency_code = serializers.CharField(source='currency.code', read_only=True, default=None)
 
     class Meta:
         model = Lease
@@ -27,7 +27,7 @@ class RentalInvoiceSerializer(serializers.ModelSerializer):
     property_ref = serializers.CharField(source='lease.property.reference_number', read_only=True)
     property_name = serializers.CharField(source='lease.property.name', read_only=True)
     lease_number = serializers.CharField(source='lease.lease_number', read_only=True)
-    currency_code = serializers.CharField(source='currency.code', read_only=True, default='USD')
+    currency_code = serializers.CharField(source='currency.code', read_only=True, default=None)
 
     class Meta:
         model = RentalInvoice
@@ -68,3 +68,13 @@ class MaintenanceRequestSerializer(serializers.ModelSerializer):
         if obj.lease and obj.lease.property:
             return obj.lease.property.name
         return None
+
+
+class LeaseChargeSerializer(serializers.ModelSerializer):
+    account_code = serializers.CharField(source='account.code', read_only=True, default=None)
+
+    class Meta:
+        from apps.rentals.models import LeaseCharge
+        model = LeaseCharge
+        fields = ['id', 'lease', 'charge_type', 'description', 'monthly_amount', 'account', 'account_code',
+                  'vat_applicable', 'start_date', 'end_date', 'is_active']

@@ -66,6 +66,7 @@ class SalaryRule(AuditedModel):
         ALLOWANCE = 'allowance', 'Allowance'
         DEDUCTION = 'deduction', 'Deduction'
         NET = 'net', 'Net'
+        EMPLOYER = 'employer', 'Employer Contribution'
 
     class AmountType(models.TextChoices):
         FIXED = 'fixed', 'Fixed Amount'

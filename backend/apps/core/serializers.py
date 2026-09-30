@@ -75,6 +75,20 @@ class UserSerializer(serializers.ModelSerializer):
         return obj.check_sod_conflicts()
 
 
+class CurrentUserUpdateSerializer(UserSerializer):
+    """
+    Self-service profile edits via /core/me/. Roles and status are read-only
+    here: accepting role_ids let any user grant themselves Super Admin.
+    """
+
+    class Meta(UserSerializer.Meta):
+        read_only_fields = UserSerializer.Meta.read_only_fields + ['email', 'status', 'roles']
+
+    def validate(self, attrs):
+        attrs.pop('role_ids', None)
+        return attrs
+
+
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8, required=False)
     role_ids = serializers.ListField(child=serializers.UUIDField(), write_only=True, required=False)

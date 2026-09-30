@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, DollarSign, Award, Users, Filter, CheckCircle2, Clock, Calculator } from 'lucide-react'
+import { Search, DollarSign, Award, CheckCircle2, Clock, Calculator } from 'lucide-react'
 import { commissionsAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
@@ -26,6 +26,9 @@ export default function CommissionsPage() {
     queryFn: () => commissionsAPI.structures.list({ page }),
     enabled: activeTab === 'structures'
   })
+
+  const { data: statsRes } = useQuery({ queryKey: ['commission-stats'], queryFn: () => commissionsAPI.stats() })
+  const stats = statsRes?.data
 
   const records = recordsData?.data?.results || []
   const structures = structuresData?.data?.results || []
@@ -89,10 +92,14 @@ export default function CommissionsPage() {
       {/* Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Paid (YTD)', value: '$2.1M', icon: CheckCircle2, color: 'text-emerald-400' },
-          { label: 'Pending Approval', value: '$450k', icon: Clock, color: 'text-amber-400' },
-          { label: 'Top Earner (MTD)', value: 'Jane Smith', icon: Award, color: 'text-primary' },
-          { label: 'Avg Commission', value: '$62,500', icon: DollarSign, color: 'text-blue-400' },
+          { label: 'Paid (YTD)', value: stats ? formatCurrency(stats.paid_ytd) : '—', icon: CheckCircle2, color: 'text-emerald-400' },
+          { label: 'Awaiting approval', value: stats ? formatCurrency(stats.pending_approval) : '—',
+            sub: stats && parseFloat(stats.approved_unpaid) > 0 ? `${formatCurrency(stats.approved_unpaid)} approved, unpaid` : null,
+            icon: Clock, color: 'text-amber-400' },
+          { label: 'Top earner (this month)', value: stats?.top_earner_mtd?.name || (stats ? 'None yet' : '—'),
+            sub: stats?.top_earner_mtd ? formatCurrency(stats.top_earner_mtd.total) : null, icon: Award, color: 'text-primary' },
+          { label: 'Average commission (YTD)', value: stats?.average_ytd ? formatCurrency(stats.average_ytd) : '—',
+            sub: stats ? `${stats.count_ytd} approved or paid` : null, icon: DollarSign, color: 'text-blue-400' },
         ].map((stat, i) => (
           <div key={i} className="card p-4">
             <div className="flex items-center gap-3">
@@ -102,6 +109,7 @@ export default function CommissionsPage() {
               <div>
                 <p className="text-lg font-semibold text-white">{stat.value}</p>
                 <p className="text-[10px] text-dark-500 uppercase tracking-wider">{stat.label}</p>
+                {stat.sub && <p className="text-[10px] text-dark-400">{stat.sub}</p>}
               </div>
             </div>
           </div>

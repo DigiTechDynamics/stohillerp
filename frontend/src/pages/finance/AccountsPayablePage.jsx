@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Search, FileText, ShoppingCart, Wallet, CreditCard, Settings2 } from 'lucide-react'
+import { Plus, Search, ShoppingCart, Wallet, CreditCard, Settings2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { financeAPI } from '@/services/api'
 import { formatCurrency } from '@/utils/format'
@@ -36,6 +36,12 @@ export default function AccountsPayablePage() {
     enabled: activeTab === 'payments'
   })
 
+  const { data: agingData } = useQuery({
+    queryKey: ['ap-aging-total'],
+    queryFn: () => financeAPI.reports.apAging(),
+  })
+  const totals = agingData?.data?.totals
+
   const invoices = invoicesData?.data?.results || invoicesData?.data || []
   const suppliers = suppliersData?.data?.results || suppliersData?.data || []
   const payments = paymentsData?.data?.results || paymentsData?.data || []
@@ -68,8 +74,10 @@ export default function AccountsPayablePage() {
             </div>
             <span className="text-[10px] text-amber-500 font-bold uppercase tracking-wider">Total AP</span>
           </div>
-          <p className="text-2xl font-semibold text-white">{formatCurrency(785400, 'USD')}</p>
-          <p className="text-xs text-dark-400 mt-1">Outstanding supplier obligations</p>
+          <p className="text-2xl font-semibold text-white">{formatCurrency(totals?.total || 0)}</p>
+          <p className="text-xs text-dark-400 mt-1">
+            Outstanding supplier obligations{totals && parseFloat(totals.current) > 0 ? ` · ${formatCurrency(totals.current)} not yet due` : ''}
+          </p>
         </div>
       </div>
 

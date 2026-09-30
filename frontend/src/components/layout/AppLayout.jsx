@@ -1,18 +1,19 @@
 // Stohill Properties - Main Application Layout
-import React, { useState } from 'react'
-import { Outlet, NavLink, useLocation } from 'react-router-dom'
+import React, { Suspense, useState } from 'react'
+import { Outlet, NavLink } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  LayoutDashboard, Building2, Users, TrendingUp, Home, DollarSign,
-  Award, FileText, UserCog, ChevronLeft, ChevronRight, Search,
-  Bell, LogOut, Settings, Zap, Menu, X, Landmark, Briefcase, FileSearch, Box
+  LayoutDashboard, Building2, Users, TrendingUp, Home, Award, FileText, UserCog, ChevronLeft, ChevronRight, Search, Bell, LogOut, Zap, Menu, X, Landmark, Briefcase, FileSearch, Box, ShoppingCart, HardHat, SlidersHorizontal
 } from 'lucide-react'
 import { useAuthStore, useUIStore } from '@/stores/authStore'
+import { useCompanyProfile } from '@/hooks/useCompanyProfile'
 import CommandPalette from '@/components/common/CommandPalette'
 import SidePanelContainer from '@/components/common/SidePanelContainer'
 import ExecutiveModeToggle from '@/components/common/ExecutiveModeToggle'
 import ThemeToggle from '@/components/common/ThemeToggle'
-import logo from '@/assets/logo.png'
+import BrandLogo from '@/components/common/BrandLogo'
+import PageLoader from '@/components/common/PageLoader'
+import { signOut } from '@/services/api'
 
 // Simple Error Boundary Fallback for robust UI
 class ErrorBoundaryFallback extends React.Component {
@@ -32,7 +33,7 @@ class ErrorBoundaryFallback extends React.Component {
           </div>
           <h2 className="text-xl font-display text-white">Something went wrong</h2>
           <p className="text-dark-400 max-w-md mx-auto">
-            The module failed to load due to a rendering error. Our team has been notified.
+            This page hit an error and could not be shown. Reload to try again; if it keeps happening, report it with the details below.
           </p>
           <button 
             onClick={() => window.location.reload()}
@@ -58,6 +59,8 @@ const navItems = [
   { path: '/properties', label: 'Properties', icon: Building2, group: 'Operations', module: 'properties' },
   { path: '/rentals', label: 'Rental Management', icon: Home, group: 'Operations', module: 'rentals' },
   { path: '/sales', label: 'Sales & Deals', icon: TrendingUp, group: 'Operations', module: 'sales' },
+  { path: '/procurement', label: 'Purchasing', icon: ShoppingCart, group: 'Operations', module: 'procurement' },
+  { path: '/projects', label: 'Development Projects', icon: HardHat, group: 'Operations', module: 'projects' },
   // Finance
   { path: '/finance/ap', label: 'Accounts Payable', icon: Briefcase, group: 'Finance', module: 'finance_ap' },
   { path: '/finance/ar', label: 'Accounts Receivable', icon: FileSearch, group: 'Finance', module: 'finance_ar' },
@@ -67,15 +70,18 @@ const navItems = [
   { path: '/finance/assets', label: 'Fixed Assets', icon: Box, group: 'Finance', module: 'fixed_assets' },
   { path: '/finance/tax', label: 'Tax & VAT', icon: Zap, group: 'Finance', module: 'tax' },
   { path: '/payroll', label: 'Payroll', icon: Landmark, group: 'Finance', module: 'payroll' },
+  { path: '/finance/settings', label: 'Finance Settings', icon: SlidersHorizontal, group: 'Finance', module: 'finance_gl' },
   // Admin
   { path: '/documents', label: 'Documents', icon: FileText, group: 'Admin', module: 'documents' },
   { path: '/hr', label: 'HR Management', icon: UserCog, group: 'Admin', module: 'hr' },
   { path: '/agents', label: 'Agent Profiles', icon: Users, group: 'Admin', module: 'agents' },
-  { path: '/admin/access', label: 'User Access Control', icon: UserCog, group: 'Admin', module: 'admin' },
+  { path: '/user-access', label: 'User Access Control', icon: UserCog, group: 'Admin', module: 'admin' },
 ]
 
 export default function AppLayout() {
-  const { user, logout } = useAuthStore()
+  const { user } = useAuthStore()
+  // Pages format money in the company currency, so load it before they render.
+  const company = useCompanyProfile()
   const { sidebarCollapsed, toggleSidebar, openCommandPalette, theme } = useUIStore()
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -110,7 +116,7 @@ export default function AppLayout() {
         {/* Logo */}
         <div className={`flex items-center gap-3 px-4 py-5 border-b ${theme === 'light' ? 'border-border-color' : 'border-white/5'}`}>
           <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
-            <img src={logo} alt="Stohill Logo" className="w-8 h-8 object-contain" />
+            <BrandLogo className="w-8 h-8" />
           </div>
           <AnimatePresence>
             {!sidebarCollapsed && (
@@ -120,7 +126,7 @@ export default function AppLayout() {
                 exit={{ opacity: 0, width: 0 }}
                 className="overflow-hidden whitespace-nowrap"
               >
-                <span className="font-display text-white text-lg leading-none">Stohill Properties</span>
+                <span className="font-display text-white text-lg leading-none">{company.data?.name || 'ERP'}</span>
                 <span className="block text-[10px] text-primary/70 font-body tracking-[0.15em] uppercase">
                   ERP Platform
                 </span>
@@ -187,7 +193,7 @@ export default function AppLayout() {
         <div className="border-t border-white/5 p-3 space-y-2">
           {!sidebarCollapsed && <ExecutiveModeToggle />}
           <button
-            onClick={() => logout()}
+            onClick={() => signOut()}
             className="sidebar-item w-full text-red-400/80 hover:text-red-400 hover:bg-red-500/10"
           >
             <LogOut size={16} className="flex-shrink-0" />
@@ -270,7 +276,10 @@ export default function AppLayout() {
         {/* Page View */}
         <main className="flex-1 overflow-y-auto custom-scrollbar">
           <ErrorBoundaryFallback>
-            <Outlet />
+            {/* Suspense catches lazily-loaded page chunks (see App.jsx). */}
+            <Suspense fallback={<PageLoader />}>
+              {company.isLoading ? <PageLoader /> : <Outlet />}
+            </Suspense>
           </ErrorBoundaryFallback>
         </main>
       </div>

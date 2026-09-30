@@ -3,8 +3,7 @@ import { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import {
-  Plus, TrendingUp, Calendar, CheckSquare, Square,
-  Flame, Snowflake, Thermometer, AlertCircle, Clock
+  Plus, TrendingUp, CheckSquare, Square, Flame, Snowflake, Thermometer, AlertCircle, Clock
 } from 'lucide-react'
 import {
   DndContext,
@@ -145,7 +144,7 @@ function OpportunityCard({ opp, onClick, isSelected, onToggleSelect }) {
 
         <div className="text-right">
           <p className="text-[11px] font-bold text-white font-mono">
-            {formatCurrency(parseFloat(opp.expected_revenue || '0'), 'USD')}
+            {formatCurrency(parseFloat(opp.expected_revenue || '0'), opp.currency_code)}
           </p>
           {opp.probability > 0 && <p className="text-[9px] text-dark-500 font-bold">{opp.probability}%</p>}
         </div>
@@ -202,7 +201,7 @@ function KanbanColumn({ column, isLead, selectedIds, onToggleSelect, onCardClick
           <div className="flex items-center gap-1.5 text-dark-500">
             <TrendingUp size={10} className="text-primary" />
             <span className="font-mono font-bold text-dark-400">
-              {formatCurrency(parseFloat(column.total_revenue || '0'), 'USD')}
+              {formatCurrency(parseFloat(column.total_revenue || '0'))}
             </span>
           </div>
           <span className="text-dark-600 font-bold uppercase tracking-tighter text-[9px]">{column.probability}% Prob.</span>
@@ -251,7 +250,7 @@ function KanbanColumn({ column, isLead, selectedIds, onToggleSelect, onCardClick
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Kanban Board
 // ─────────────────────────────────────────────────────────────────────────────
-export default function KanbanBoard({ pipelineId, isLead = false, selectedIds = [], onToggleSelect, onClearSelection, filters = {} }) {
+export default function KanbanBoard({ pipelineId, isLead = false, selectedIds = [], onToggleSelect, filters = {} }) {
   const queryClient = useQueryClient()
   const openPanel = useUIStore(s => s.openSidePanel)
   const [activeCard, setActiveCard] = useState(null)

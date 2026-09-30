@@ -2,8 +2,8 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Plus, FileText, Upload, Folder, Shield, Filter, Download as DownloadIcon, MoreVertical, FileArchive, FileCode } from 'lucide-react'
-import { documentsAPI } from '@/services/api'
+import { Search, FileText, Upload, Folder, Shield, Download as DownloadIcon, FileArchive } from 'lucide-react'
+import { documentsAPI, downloadPrivateFile } from '@/services/api'
 import { formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import Pagination from '@/components/common/Pagination'
@@ -121,7 +121,15 @@ export default function DocumentsPage() {
                   <td className="px-4 py-3 text-sm text-dark-400">{formatDate(doc.updated_at)}</td>
                   <td className="px-4 py-3 text-xs text-dark-500 font-mono">{doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : '—'}</td>
                   <td className="px-4 py-3">
-                    <button className="p-1 hover:text-white transition-colors">
+                    <button
+                      className="p-1 hover:text-white transition-colors disabled:opacity-30"
+                      disabled={!doc.download_url}
+                      title="Download"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        downloadPrivateFile(doc.download_url, doc.title).catch(() => alert('Download failed.'))
+                      }}
+                    >
                       <DownloadIcon size={16} />
                     </button>
                   </td>

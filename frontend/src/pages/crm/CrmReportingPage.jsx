@@ -1,12 +1,10 @@
 // Stohill Properties - CRM Reporting & Analytics Page
 // Pipeline summary, Win/Loss funnel, Revenue Forecast, Activity Summary
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import {
-  TrendingUp, Trophy, XCircle, BarChart2, Calendar,
-  DollarSign, Percent, AlertCircle, Activity, Loader2,
-  Users, Target
+  Trophy, BarChart2, Calendar, DollarSign, Percent, AlertCircle, Activity, Users, Target
 } from 'lucide-react'
 import { crmAPI } from '@/services/api'
 import { formatCurrency } from '@/utils/format'
@@ -14,7 +12,7 @@ import { formatCurrency } from '@/utils/format'
 // ─────────────────────────────────────────────────────────────────────────────
 // KPI Card
 // ─────────────────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, sub, icon: Icon, color = 'primary', trend }) {
+function KpiCard({ label, value, sub, icon: Icon, color = 'primary' }) {
   const colors = {
     primary: 'bg-primary/10 text-primary border-primary/20',
     green: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
@@ -76,7 +74,7 @@ function PipelineFunnel({ stages }) {
             <div className="absolute inset-0 flex items-center justify-between px-3">
               <span className="text-[10px] font-bold text-white">{stage.count} deals</span>
               <span className="text-[10px] font-mono text-white/80">
-                {formatCurrency(stage.total_revenue, 'USD')}
+                {formatCurrency(stage.total_revenue)}
               </span>
             </div>
           </div>
@@ -126,7 +124,7 @@ function ForecastTable({ data }) {
                   <td key={m} className="py-3 px-4 text-right">
                     {d?.weighted > 0 ? (
                       <div>
-                        <p className="font-mono font-bold text-white">{formatCurrency(d.weighted, 'USD')}</p>
+                        <p className="font-mono font-bold text-white">{formatCurrency(d.weighted)}</p>
                         <p className="text-[9px] text-dark-600">{d.count} deal{d.count !== 1 ? 's' : ''}</p>
                       </div>
                     ) : (
@@ -338,14 +336,14 @@ export default function CrmReportingPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
             label="Total Pipeline"
-            value={formatCurrency(overview?.total_pipeline || 0, 'USD')}
+            value={formatCurrency(overview?.total_pipeline || 0)}
             sub={`${overview?.open_opportunities || 0} open deals`}
             icon={DollarSign}
             color="primary"
           />
           <KpiCard
             label="Weighted Forecast"
-            value={formatCurrency(overview?.weighted_forecast || 0, 'USD')}
+            value={formatCurrency(overview?.weighted_forecast || 0)}
             sub="Probability-adjusted"
             icon={Target}
             color="blue"
@@ -359,7 +357,7 @@ export default function CrmReportingPage() {
           />
           <KpiCard
             label="Avg Deal Size"
-            value={formatCurrency(overview?.avg_deal_size || 0, 'USD')}
+            value={formatCurrency(overview?.avg_deal_size || 0)}
             sub="Won deals"
             icon={Trophy}
             color="amber"

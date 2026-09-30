@@ -23,6 +23,10 @@ class PayrollRunViewSet(viewsets.ModelViewSet):
         payroll_run = self.get_object()
         if payroll_run.status in [PayrollRun.Status.APPROVED, PayrollRun.Status.PAID, PayrollRun.Status.CANCELLED]:
             return Response({'error': 'Can only process draft or processing payroll runs'}, status=status.HTTP_400_BAD_REQUEST)
+        if JournalEntry.objects.filter(source_module='payroll', source_id=payroll_run.id,
+                                       status=JournalEntry.EntryStatus.POSTED).exists():
+            return Response({'error': 'This payroll run is already posted to the GL; reverse the entry before re-processing.'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
             # 0. Assign Currency if not set
@@ -88,6 +92,11 @@ class PayrollRunViewSet(viewsets.ModelViewSet):
                             amount = ZimbabweTaxService.calculate_aids_levy(rule_totals.get('PAYE', Decimal('0.00')))
                         elif rule.code == 'NSSA':
                             amount = ZimbabweTaxService.calculate_nssa(contract.wage, currency_code)
+                        # Employer contributions: company cost, not deducted from pay.
+                        elif rule.code == 'NSSA_ER':
+                            amount = ZimbabweTaxService.calculate_employer_nssa(contract.wage, currency_code)
+                        elif rule.code == 'ZIMDEF':
+                            amount = ZimbabweTaxService.calculate_zimdef(emp_gross)
                         elif rule.amount_type == 'fixed':
                             amount = rule.fixed_amount
                         elif rule.amount_type == 'percentage':
@@ -142,15 +151,21 @@ class PayrollRunViewSet(viewsets.ModelViewSet):
             payroll_run.processed_at = timezone.now()
             payroll_run.processed_by = request.user if request.user.is_authenticated else None
             
-            # 4. Create/Update Supplier Invoice in AP
-            wage_account = ChartOfAccount.objects.filter(code='5900').first()
-            if not wage_account:
-                wage_account = ChartOfAccount.objects.filter(account_type='expense').first()
+            # 4. Accrue the payroll in the GL (Dr wages / Cr statutory + net pay
+            #    liabilities, per the salary rules' accounts). Previously this
+            #    built a JournalEntry by hand, never checked it balanced, left
+            #    duplicates on every re-process and swallowed all errors.
+            gl_warning = self._accrue_payroll(payroll_run, request.user)
 
+            # 5. Net pay goes to AP (Staff Payroll) so it is paid like any
+            #    other creditor. The line clears Net Salaries Payable; debiting
+            #    wages here as well would have booked the expense twice.
+            net_payable = ChartOfAccount.objects.filter(code='2630').first() or \
+                ChartOfAccount.objects.filter(code='5900').first()
             supplier, _ = Supplier.objects.get_or_create(
                 name="Staff Payroll",
                 defaults={
-                    'ap_account': ChartOfAccount.objects.filter(account_sub_type='payable').first(),
+                    'ap_account': ChartOfAccount.objects.filter(account_sub_type='payable').order_by('code').first(),
                     'currency': payroll_run.currency
                 }
             )
@@ -166,7 +181,7 @@ class PayrollRunViewSet(viewsets.ModelViewSet):
                     status=SupplierInvoice.InvoiceStatus.DRAFT
                 )
                 payroll_run.supplier_invoice = invoice
-            
+
             invoice.total_amount = total_net
             invoice.subtotal = total_net
             invoice.save()
@@ -175,43 +190,70 @@ class PayrollRunViewSet(viewsets.ModelViewSet):
             SupplierInvoiceLine.objects.create(
                 invoice=invoice,
                 description=f"Net Payroll: {payroll_run.name}",
-                expense_account=wage_account,
-                unit_price=total_gross, # Using Gross for full visibility in AP, though deductions offset it normally
-                line_total=total_gross
+                expense_account=net_payable,
+                unit_price=total_net,
+                line_total=total_net
             )
-
-            # 5. Create Odoo-Style Direct Journal Entry if GL rules are configured
-            if hasattr(payroll_run, '_gl_lines') and payroll_run._gl_lines:
-                try:
-                    journal, _ = Journal.objects.get_or_create(code='PAY', defaults={'name': 'Payroll Journal', 'auto_posting': True})
-                    period = FiscalPeriod.objects.filter(start_date__lte=payroll_run.period_end, end_date__gte=payroll_run.period_end).first()
-                    
-                    if period and period.is_open_for_posting():
-                        je_ref = NumberSequenceService.get_next_number('JournalEntry', prefix='JE-PAY-', padding=4)
-                        je = JournalEntry.objects.create(
-                            reference=je_ref,
-                            journal=journal,
-                            fiscal_period=period,
-                            currency=payroll_run.currency,
-                            entry_type='payroll',
-                            status='approved',
-                            entry_date=payroll_run.period_end,
-                            description=f"Payroll Run - {payroll_run.name}",
-                            source_module='payroll',
-                            source_id=payroll_run.id
-                        )
-                        
-                        for gl_data in payroll_run._gl_lines.values():
-                            if gl_data['debit'] > 0:
-                                JournalLine.objects.create(entry=je, account=gl_data['account'], side='debit', amount=gl_data['debit'], amount_currency=gl_data['debit'])
-                            if gl_data['credit'] > 0:
-                                JournalLine.objects.create(entry=je, account=gl_data['account'], side='credit', amount=gl_data['credit'], amount_currency=gl_data['credit'])
-                except Exception as e:
-                    pass # Silently fail GL posting if Finance period isn't setup
-
             payroll_run.save()
 
-        return Response(PayrollRunSerializer(payroll_run).data)
+        data = PayrollRunSerializer(payroll_run).data
+        if gl_warning:
+            data['gl_warning'] = gl_warning
+        return Response(data)
+
+    @staticmethod
+    def _accrue_payroll(payroll_run, user):
+        """
+        (Re)build the payroll accrual entry for a run. It is left APPROVED for
+        Finance to post (maker/checker), so it is replaced on re-processing
+        until then. Returns a warning string instead of silently skipping.
+        """
+        from apps.finance.services.accounting import AccountingError, AccountingService
+
+        existing = JournalEntry.objects.filter(source_module='payroll', source_id=payroll_run.id)
+        if existing.filter(status=JournalEntry.EntryStatus.POSTED).exists():
+            raise AccountingError('This payroll run is already posted to the GL; reverse it before re-processing.')
+        JournalLine.objects.filter(entry__in=existing).delete()
+        existing.delete()
+
+        gl_lines = getattr(payroll_run, '_gl_lines', None)
+        if not gl_lines:
+            return 'No GL accounts are configured on the salary rules; nothing was accrued.'
+        debits = sum(v['debit'] for v in gl_lines.values())
+        credits = sum(v['credit'] for v in gl_lines.values())
+        if debits != credits:
+            return (f'Payroll GL accrual not created: salary rule accounts are unbalanced '
+                    f'(Dr {debits} / Cr {credits}). Check the debit/credit accounts on each rule.')
+
+        service = AccountingService(user=user)
+        try:
+            period = service._get_fiscal_period(payroll_run.period_end)
+            journal = service._get_journal('PJ')
+        except AccountingError as e:
+            return f'Payroll GL accrual not created: {e}'
+
+        entry = JournalEntry.objects.create(
+            reference=service._generate_reference(journal.code),
+            journal=journal,
+            fiscal_period=period,
+            currency=payroll_run.currency,
+            entry_type=JournalEntry.EntryType.PAYROLL,
+            status=JournalEntry.EntryStatus.APPROVED,
+            entry_date=payroll_run.period_end,
+            description=f"Payroll Run - {payroll_run.name}",
+            source_module='payroll',
+            source_id=payroll_run.id,
+            source_reference=payroll_run.name,
+            created_by=user,
+        )
+        lines = []
+        for gl in gl_lines.values():
+            for side in ('debit', 'credit'):
+                if gl[side] > 0:
+                    lines.append(JournalLine(entry=entry, account=gl['account'], side=side,
+                                             amount=gl[side], amount_currency=gl[side]))
+        JournalLine.objects.bulk_create(lines)
+        return None
 
     @action(detail=True, methods=['post'])
     def pay_all(self, request, pk=None):
@@ -233,6 +275,102 @@ class PayrollRunViewSet(viewsets.ModelViewSet):
                 ).update(status='paid', payment_date=timezone.now().date(), payment_reference=f"PAY-{payroll_run.id}")
 
         return Response(PayrollRunSerializer(payroll_run).data)
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        """Processed -> approved. Whoever processed the run can't approve it (maker/checker)."""
+        payroll_run = self.get_object()
+        if payroll_run.status != PayrollRun.Status.PROCESSING:
+            return Response({'error': 'Only processed runs can be approved.'}, status=status.HTTP_400_BAD_REQUEST)
+        if payroll_run.processed_by_id == request.user.pk:
+            return Response({'error': 'You processed this run, so someone else must approve it.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        payroll_run.status = PayrollRun.Status.APPROVED
+        payroll_run.save(update_fields=['status'])
+        return Response(PayrollRunSerializer(payroll_run).data)
+
+    @action(detail=True, methods=['get'])
+    def statutory(self, request, pk=None):
+        """
+        Remittance summary for the run: PAYE and AIDS levy (ZIMRA P2),
+        NSSA employee + employer (P4), ZIMDEF, with per-employee detail.
+        """
+        payroll_run = self.get_object()
+        codes = ('PAYE', 'AIDS', 'NSSA', 'NSSA_ER', 'ZIMDEF')
+        lines = PayslipLine.objects.filter(payslip__payroll_run=payroll_run, code__in=codes) \
+            .select_related('payslip__employee')
+        totals = {c: Decimal('0.00') for c in codes}
+        per_employee = {}
+        for line in lines:
+            totals[line.code] += line.amount
+            emp = line.payslip.employee
+            row = per_employee.setdefault(emp.pk, {'employee_number': emp.employee_number, 'name': emp.full_name,
+                                                   **{c: '0.00' for c in codes}})
+            row[line.code] = str(Decimal(row[line.code]) + line.amount)
+        gross = PayslipLine.objects.filter(payslip__payroll_run=payroll_run, category__in=['basic', 'allowance']) \
+            .aggregate(total=models.Sum('amount'))['total'] or Decimal('0.00')
+        return Response({
+            'run': payroll_run.name, 'period_start': payroll_run.period_start, 'period_end': payroll_run.period_end,
+            'currency': payroll_run.currency.code if payroll_run.currency else 'USD',
+            'gross_pay': str(gross),
+            'zimra_p2': {'paye': str(totals['PAYE']), 'aids_levy': str(totals['AIDS']),
+                         'total': str(totals['PAYE'] + totals['AIDS'])},
+            'nssa_p4': {'employee': str(totals['NSSA']), 'employer': str(totals['NSSA_ER']),
+                        'total': str(totals['NSSA'] + totals['NSSA_ER'])},
+            'zimdef': str(totals['ZIMDEF']),
+            'employees': sorted(per_employee.values(), key=lambda r: r['employee_number']),
+        })
+
+    @action(detail=True, methods=['get'])
+    def bank_file(self, request, pk=None):
+        """CSV of net pay per employee for upload to the bank (approved or paid runs only)."""
+        import csv
+        from django.http import HttpResponse
+
+        payroll_run = self.get_object()
+        if payroll_run.status not in (PayrollRun.Status.APPROVED, PayrollRun.Status.PAID):
+            return Response({'error': 'Only approved runs can be exported for payment.'}, status=400)
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="payroll_{payroll_run.period_end:%Y%m}_bank.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['employee_number', 'name', 'bank_name', 'branch_code', 'account_number', 'amount',
+                         'currency', 'reference'])
+        currency = payroll_run.currency.code if payroll_run.currency else 'USD'
+        missing = []
+        for slip in payroll_run.payslips.select_related('employee').order_by('employee__employee_number'):
+            emp = slip.employee
+            if not emp.bank_account_number:
+                missing.append(emp.employee_number)
+            writer.writerow([emp.employee_number, emp.full_name, emp.bank_name, emp.bank_branch_code,
+                             emp.bank_account_number, f'{slip.net_amount:.2f}', currency,
+                             f'SALARY {payroll_run.period_end:%b %Y}'.upper()])
+        if missing:
+            response['X-Missing-Bank-Details'] = ','.join(missing)
+        return response
+
+    @action(detail=True, methods=['post'])
+    def email_payslips(self, request, pk=None):
+        """Email each employee their payslip PDF. Returns who was sent and who was skipped."""
+        from django.core.mail import EmailMessage
+        from apps.finance.services.pdf_service import generate_payslip_pdf
+
+        payroll_run = self.get_object()
+        if payroll_run.status not in (PayrollRun.Status.APPROVED, PayrollRun.Status.PAID):
+            return Response({'error': 'Payslips are sent once the run is approved.'}, status=400)
+        sent, skipped = [], []
+        for slip in payroll_run.payslips.select_related('employee', 'payroll_run').prefetch_related('lines'):
+            emp = slip.employee
+            if not emp.email:
+                skipped.append(emp.employee_number)
+                continue
+            message = EmailMessage(subject=f'Payslip - {payroll_run.name}',
+                                   body=f'Dear {emp.first_name},\n\nYour payslip for {payroll_run.name} is attached.\n',
+                                   to=[emp.email])
+            message.attach(f'Payslip_{emp.employee_number}.pdf', generate_payslip_pdf(slip), 'application/pdf')
+            message.send()
+            sent.append(emp.employee_number)
+        return Response({'sent': sent, 'skipped_no_email': skipped})
+
 
 class PayslipViewSet(viewsets.ModelViewSet):
     queryset = Payslip.objects.prefetch_related('lines').select_related('employee', 'payroll_run', 'contract')

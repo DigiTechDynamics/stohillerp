@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, CheckCircle, XCircle, User, Info, AlertTriangle } from 'lucide-react'
+import { CheckCircle, User, Info, AlertTriangle } from 'lucide-react'
 import { financeAPI } from '@/services/api'
-import { formatCurrency, formatDate } from '@/utils/format'
+import { formatCurrency } from '@/utils/format'
 import { useAuthStore } from '@/stores/authStore'
 import Pagination from '@/components/common/Pagination'
 
@@ -13,13 +13,12 @@ export default function BatchApprovalPage() {
   const queryClient = useQueryClient()
   const currentUser = useAuthStore((s) => s.user)
   
-  const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
 
   // Only fetch batches strictly waiting for approval
   const { data, isLoading } = useQuery({
-    queryKey: ['journal-batches', 'pending', { search, page }],
-    queryFn: () => financeAPI.batches.list({ status: 'pending_approval', search, page }),
+    queryKey: ['journal-batches', 'pending', { page }],
+    queryFn: () => financeAPI.batches.list({ status: 'pending_approval', page }),
   })
 
   const batches = data?.data?.results || []

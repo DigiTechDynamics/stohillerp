@@ -1,11 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { 
-  X, Save, User, Mail, Phone, Shield, 
-  ChevronRight, CheckCircle2, AlertCircle,
-  LayoutGrid, Info
-} from 'lucide-react'
-import { authAPI, adminAPI } from '@/services/api'
+import { X, Save, User, Mail, Shield, CheckCircle2, AlertCircle, Info } from 'lucide-react'
+import { adminAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 
 export default function UserForm({ id, initialData }) {

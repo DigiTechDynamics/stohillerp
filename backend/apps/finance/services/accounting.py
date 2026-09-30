@@ -55,30 +55,38 @@ class PostingData:
         self.lines = []  # List of dictionaries
 
     def add_debit(self, account_code: str, amount: Decimal, description: str = '',
-                  property_ref=None, contact_ref=None, supplier_ref=None):
+                  property_ref=None, contact_ref=None, supplier_ref=None, cost_center=None):
         """Add a debit line to this posting."""
-        self.lines.append({
-            'account_code': account_code,
-            'side': 'debit',
-            'amount': Decimal(str(amount)),
-            'description': description,
-            'property_ref': property_ref,
-            'contact_ref': contact_ref,
-            'supplier_ref': supplier_ref,
-        })
-        return self
+        return self._add('debit', account_code, amount, description, property_ref, contact_ref,
+                         supplier_ref, cost_center)
 
     def add_credit(self, account_code: str, amount: Decimal, description: str = '',
-                   property_ref=None, contact_ref=None, supplier_ref=None):
+                   property_ref=None, contact_ref=None, supplier_ref=None, cost_center=None):
         """Add a credit line to this posting."""
+        return self._add('credit', account_code, amount, description, property_ref, contact_ref,
+                         supplier_ref, cost_center)
+
+    def add(self, side: str, account_code: str, amount: Decimal, description: str = '', **refs):
+        """Add a line on `side` ('debit'/'credit'); a negative amount flips the side."""
+        amount = Decimal(str(amount))
+        if amount < 0:
+            side, amount = ('credit' if side == 'debit' else 'debit'), -amount
+        if amount == 0:
+            return self
+        return self._add(side, account_code, amount, description, refs.get('property_ref'),
+                         refs.get('contact_ref'), refs.get('supplier_ref'), refs.get('cost_center'))
+
+    def _add(self, side, account_code, amount, description, property_ref, contact_ref, supplier_ref,
+             cost_center):
         self.lines.append({
             'account_code': account_code,
-            'side': 'credit',
+            'side': side,
             'amount': Decimal(str(amount)),
             'description': description,
             'property_ref': property_ref,
             'contact_ref': contact_ref,
             'supplier_ref': supplier_ref,
+            'cost_center': cost_center,
         })
         return self
 
@@ -180,8 +188,13 @@ class AccountingService:
         from apps.core.services.number_sequence import NumberSequenceService  # type: ignore
         return NumberSequenceService.get_next_number(f"Journal {journal_code}", prefix=f"{journal_code}-", padding=6)
 
-    def _get_fiscal_period(self, entry_date: date) -> FiscalPeriod:
-        """Find the open fiscal period for a given date."""
+    def _get_fiscal_period(self, entry_date: date, allow_locked: bool = False) -> FiscalPeriod:
+        """
+        Find the open fiscal period for a given date.
+
+        allow_locked lets system closing entries land in a locked/closed
+        period of a fiscal year that is itself still open.
+        """
         # Try to find exactly one period that is currently open
         periods = FiscalPeriod.objects.select_related('fiscal_year').filter(
             start_date__lte=entry_date,
@@ -201,6 +214,9 @@ class AccountingService:
         if not period:
             period = periods.first()
 
+        if allow_locked and not period.fiscal_year.is_closed:
+            return period
+
         if not period.is_open_for_posting():
             raise AccountingError(
                 f'Fiscal period "{period.name}" is "{period.status}". '
@@ -219,6 +235,13 @@ class AccountingService:
                 f'Please verify the Chart of Accounts.'
             )
 
+    def _default_tax_code(self) -> TaxCode:
+        """Taxed lines without a code are reported under the standard rate."""
+        code = TaxCode.objects.filter(code='STD', is_active=True).first()
+        if code is None:
+            raise AccountingError('A taxed line has no tax code and no active STD tax code exists.')
+        return code
+
     def _get_journal(self, code: str) -> Journal:
         """Fetch a journal by code."""
         try:
@@ -227,7 +250,8 @@ class AccountingService:
             raise AccountingError(f'Journal "{code}" not found.')
 
     @transaction.atomic
-    def post_entry(self, posting_data: PostingData, journal_code: str = 'GJ') -> JournalEntry:
+    def post_entry(self, posting_data: PostingData, journal_code: str = 'GJ',
+                   allow_locked_period: bool = False) -> JournalEntry:
         """
         Core posting method. Creates and immediately posts a journal entry.
 
@@ -268,7 +292,7 @@ class AccountingService:
         # ─── Resolve Dependencies ─────────────────────────────────────────────
 
         journal = self._get_journal(journal_code)
-        fiscal_period = self._get_fiscal_period(posting_data.entry_date)
+        fiscal_period = self._get_fiscal_period(posting_data.entry_date, allow_locked=allow_locked_period)
         reference = self._generate_reference(journal.code)
 
         # Pre-fetch all accounts to fail fast before creating the entry
@@ -334,6 +358,9 @@ class AccountingService:
             if not isinstance(line_amount, Decimal):
                 line_amount = Decimal(str(line_amount))
                 
+            if account.requires_cost_center and not line_data.get('cost_center'):
+                raise AccountingError(f'Account {account.code} requires a cost center on every posting.')
+
             lines_to_create.append(JournalLine(
                 entry=entry,
                 account=account,
@@ -344,8 +371,10 @@ class AccountingService:
                 property_ref=line_data.get('property_ref'),
                 contact_ref=line_data.get('contact_ref'),
                 supplier_ref=line_data.get('supplier_ref'),
+                cost_center=line_data.get('cost_center'),
             ))
 
+        self._absorb_rounding(lines_to_create)
         JournalLine.objects.bulk_create(lines_to_create)
 
         # ─── Post the Entry ───────────────────────────────────────────────────
@@ -363,14 +392,43 @@ class AccountingService:
 
         return entry
 
+    @staticmethod
+    def _absorb_rounding(lines):
+        """
+        Foreign-currency entries balance in document currency, but converting
+        each line to base and rounding to cents can leave a cent or two over.
+        Put that residue on the largest line so the base amounts balance too.
+        """
+        dr = sum(ln.amount for ln in lines if ln.side == 'debit')
+        cr = sum(ln.amount for ln in lines if ln.side == 'credit')
+        diff = dr - cr
+        if diff == 0:
+            return
+        if abs(diff) > Decimal('0.05') * max(len(lines), 1):
+            raise AccountingError(f'Entry does not balance in base currency (difference {diff}).')
+        largest = max(lines, key=lambda ln: ln.amount)
+        largest.amount += -diff if largest.side == 'debit' else diff
+
+    # Statuses from which an entry may be posted:
+    #   DRAFT    - single-entry posting (JournalEntryViewSet.post_entry)
+    #   APPROVED - batch posting after maker/checker approval
+    # Previously only DRAFT was accepted, so approved batches could never post.
+    POSTABLE_STATUSES = (JournalEntry.EntryStatus.DRAFT, JournalEntry.EntryStatus.APPROVED)
+
     @transaction.atomic
     def post_saved_entry(self, entry: JournalEntry) -> JournalEntry:
         """
-        Post a previously saved DRAFT journal entry.
+        Post a previously saved DRAFT or APPROVED journal entry.
         Validates the entry (balance, period) and updates account balances.
+
+        Atomic, and locks the entry row so two concurrent requests can't post
+        the same entry twice (which would double the account balances).
         """
-        if entry.status != JournalEntry.EntryStatus.DRAFT:
-            raise AccountingError('Only draft entries can be posted.')
+        entry = JournalEntry.objects.select_for_update().get(pk=entry.pk)
+        if entry.status not in self.POSTABLE_STATUSES:
+            raise AccountingError(
+                f'Entry {entry.reference} is {entry.status}; only draft or approved entries can be posted.'
+            )
 
         if not entry.is_balanced():
             raise AccountingError(
@@ -380,6 +438,11 @@ class AccountingService:
 
         # Re-verify fiscal period
         self._get_fiscal_period(entry.entry_date)
+
+        missing_dimension = entry.lines.filter(account__requires_cost_center=True, cost_center__isnull=True) \
+            .values_list('account__code', flat=True).first()
+        if missing_dimension:
+            raise AccountingError(f'Account {missing_dimension} requires a cost center on every posting.')
 
         # Post the Entry
         entry.status = JournalEntry.EntryStatus.POSTED
@@ -439,6 +502,23 @@ class AccountingService:
 
     # ─── Module-Specific Posting Methods ──────────────────────────────────────
 
+    @staticmethod
+    def _agent_split_rate(deal_amount) -> Decimal:
+        """
+        Agent's % of the company commission from the default commission
+        structure (highest tier reached by the deal, else its base rate).
+        Without a configured structure the agent gets 100%, as before.
+        """
+        from apps.commissions.models import CommissionStructure  # type: ignore
+
+        structure = CommissionStructure.objects.filter(is_default=True).prefetch_related('tiers').first()
+        if structure is None:
+            return Decimal('100.00')
+        tier = [t for t in structure.tiers.all() if t.threshold_amount <= deal_amount]
+        if structure.calculation_type == CommissionStructure.CalculationType.TIERED and tier:
+            return tier[-1].rate_percentage
+        return structure.base_rate or Decimal('100.00')
+
     @transaction.atomic
     def post_sale_transaction(self, sale_transaction) -> JournalEntry:
         """
@@ -451,14 +531,29 @@ class AccountingService:
         """
         from apps.finance.models import CustomerInvoice, CustomerInvoiceLine, CustomerProfile  # type: ignore
         from apps.commissions.models import CommissionRecord  # type: ignore
-        from apps.properties.models import Property  # type: ignore
         from decimal import Decimal
+
+        # Principal sale (company stock): the buyer is invoiced the sale price
+        # and cost of sale is recognised. Agency sale (brokered): the property
+        # isn't ours, so only our commission is revenue, billed to the seller.
+        agency = sale_transaction.get_effective_sale_type() == sale_transaction.SaleType.AGENCY
+        if agency:
+            if not sale_transaction.seller_id:
+                raise AccountingError('A brokered sale needs the seller, who is invoiced the commission.')
+            if not sale_transaction.commission_amount:
+                sale_transaction.calculate_commission()
+                sale_transaction.save(update_fields=['commission_amount'])
+            bill_to, amount = sale_transaction.seller, sale_transaction.commission_amount
+            revenue_key, line_label = 'COMMISSION_INCOME', 'Sales commission'
+        else:
+            bill_to, amount = sale_transaction.buyer, sale_transaction.sale_price
+            revenue_key, line_label = 'SALE_REVENUE', 'Property Sale'
 
         # 1. Create/Get Customer Profile
         customer_profile, _ = CustomerProfile.objects.get_or_create(
-            contact_link=sale_transaction.buyer,
+            contact_link=bill_to,
             defaults={
-                'name': sale_transaction.buyer.full_name,
+                'name': bill_to.full_name,
                 'ar_account_id': self._get_account(self.ACCOUNTS['ACCOUNTS_RECEIVABLE']).id
             }
         )
@@ -475,8 +570,8 @@ class AccountingService:
                 invoice_date=sale_transaction.transfer_date or date.today(),
                 due_date=sale_transaction.transfer_date or date.today(),
                 currency=sale_transaction.currency,
-                subtotal=sale_transaction.sale_price,
-                total_amount=sale_transaction.sale_price,
+                subtotal=amount,
+                total_amount=amount,
                 reference=sale_transaction.sale_reference,
                 status=CustomerInvoice.InvoiceStatus.DRAFT
             )
@@ -485,10 +580,11 @@ class AccountingService:
         if not invoice.lines.filter(description__icontains=sale_transaction.property.reference_number).exists():
             CustomerInvoiceLine.objects.create(
                 invoice=invoice,
-                description=f"Property Sale: {sale_transaction.property.reference_number}",
-                revenue_account=self._get_account(self.ACCOUNTS['SALE_REVENUE']),
-                unit_price=sale_transaction.sale_price,
-                line_total=sale_transaction.sale_price
+                description=f"{line_label}: {sale_transaction.property.reference_number}",
+                revenue_account=self._get_account(self.ACCOUNTS[revenue_key]),
+                unit_price=amount,
+                line_total=amount,
+                property_ref=sale_transaction.property,
             )
 
         # Post Invoice (Debits AR, Credits Revenue) if not already posted
@@ -500,33 +596,40 @@ class AccountingService:
         else:
             invoice_entry = invoice.journal_entry
 
-        # 3. Create/Get Commission Record
-        if sale_transaction.commission_amount > 0:
+        # 3. Create/Get the agent's commission record (none when no agent was
+        # involved; this used to crash on the not-null agent column).
+        agent = sale_transaction.selling_agent or sale_transaction.listing_agent
+        if (sale_transaction.commission_amount or 0) > 0 and agent is not None:
             comm_ref = f"COMM-{sale_transaction.sale_reference}"
             commission = CommissionRecord.objects.filter(reference=comm_ref).first()
-            
+
             if not commission:
+                split = self._agent_split_rate(sale_transaction.sale_price)
+                agent_share = (sale_transaction.commission_amount * split / 100).quantize(Decimal('0.01'))
                 commission = CommissionRecord.objects.create(
                 reference=f"COMM-{sale_transaction.sale_reference}",
-                agent=sale_transaction.selling_agent or sale_transaction.listing_agent,
+                agent=agent,
                 transaction_type='sale',
                 sale_transaction=sale_transaction,
                 property=sale_transaction.property,
                 transaction_amount=sale_transaction.sale_price,
                 company_commission_rate=sale_transaction.commission_rate,
                 company_commission_amount=sale_transaction.commission_amount,
-                agent_split_rate=Decimal('100.00'), # Default to 100% of the recorded amount for now
-                gross_commission=sale_transaction.commission_amount,
-                net_commission=sale_transaction.commission_amount,
+                agent_split_rate=split,
+                gross_commission=agent_share,
+                net_commission=agent_share,
                 status=CommissionRecord.CommissionStatus.APPROVED,
                 approved_by=self.user,
                 approved_date=date.today()
             )
+            if commission.status == CommissionRecord.CommissionStatus.APPROVED and commission.net_commission > 0:
+                self.accrue_commission(commission)
 
         # 4. Recognize Cost of Sale & Update Inventory Status
         property_obj = sale_transaction.property
-        cost_amount = property_obj.purchase_price or Decimal('0.00')
-        
+        # A brokered property was never on our books, so there's no cost of sale.
+        cost_amount = Decimal('0.00') if agency else (property_obj.purchase_price or Decimal('0.00'))
+
         if cost_amount > 0:
             cos_posting = PostingData(
                 description=f'Cost Recognition - {property_obj.reference_number}',
@@ -596,6 +699,35 @@ class AccountingService:
         return self.post_entry(posting, journal_code='RJ')  # Rental Journal
 
     @transaction.atomic
+    def accrue_commission(self, commission_record) -> JournalEntry:
+        """
+        Recognise an approved commission as an expense and a liability.
+
+        Debit: Commission Expense
+        Credit: Commission Payable (cleared when the agent is paid via payroll
+        or post_commission_payment)
+        """
+        if commission_record.journal_entry_id:
+            return commission_record.journal_entry
+        amount = commission_record.net_commission
+        posting = PostingData(
+            description=f'Commission accrual - {commission_record.agent.full_name}',
+            entry_date=commission_record.approved_date or date.today(),
+            source_module='commission',
+            source_id=commission_record.id,
+            source_reference=commission_record.reference,
+        )
+        posting.add_debit(self.ACCOUNTS['COMMISSION_EXPENSE'], amount,
+                          f'Commission: {commission_record.reference}',
+                          property_ref=commission_record.property)
+        posting.add_credit(self.ACCOUNTS['COMMISSION_PAYABLE'], amount,
+                           f'Commission payable: {commission_record.reference}')
+        entry = self.post_entry(posting, journal_code='CJ')
+        commission_record.journal_entry = entry
+        commission_record.save(update_fields=['journal_entry'])
+        return entry
+
+    @transaction.atomic
     def post_commission_payment(self, commission_record) -> JournalEntry:
         """
         Post agent commission payment.
@@ -628,7 +760,7 @@ class AccountingService:
         return self.post_entry(posting, journal_code='CJ')  # Commission Journal
 
     @transaction.atomic
-    def post_deposit_received(self, lease, deposit_amount: Decimal) -> JournalEntry:
+    def post_deposit_received(self, lease, deposit_amount: Decimal, entry_date: date = None) -> JournalEntry:
         """
         Post security deposit receipt. This is a balance sheet entry only.
 
@@ -637,237 +769,226 @@ class AccountingService:
         """
         posting = PostingData(
             description=f'Security Deposit - {lease.tenant.full_name}',
-            entry_date=date.today(),
+            entry_date=entry_date or date.today(),
             source_module='rental',
             source_id=lease.id,
             source_reference=f'DEP-{lease.lease_number}',
         )
 
-        posting.add_debit(self.ACCOUNTS['BANK_TRUST'], deposit_amount, 'Deposit received')
-        posting.add_credit(self.ACCOUNTS['TENANT_DEPOSITS'], deposit_amount, 'Deposit liability')
+        posting.add_debit(self.ACCOUNTS['BANK_TRUST'], deposit_amount, 'Deposit received',
+                          property_ref=lease.property, contact_ref=lease.tenant)
+        posting.add_credit(self.ACCOUNTS['TENANT_DEPOSITS'], deposit_amount, 'Deposit liability',
+                           property_ref=lease.property, contact_ref=lease.tenant)
 
         return self.post_entry(posting, journal_code='RJ')
 
     @transaction.atomic
+    def post_deposit_refund(self, lease, refund_amount: Decimal, applied_to_arrears: Decimal,
+                            entry_date: date = None) -> JournalEntry:
+        """
+        Release a tenant deposit at lease end.
+
+        Debit: Tenant Deposits (full amount released)
+        Credit: Bank Trust (cash refunded)
+        Credit: Accounts Receivable (portion kept against unpaid rent)
+        """
+        total = refund_amount + applied_to_arrears
+        posting = PostingData(
+            description=f'Deposit release - {lease.tenant.full_name}',
+            entry_date=entry_date or date.today(),
+            source_module='rental',
+            source_id=lease.id,
+            source_reference=f'DEPREF-{lease.lease_number}',
+        )
+        posting.add_debit(self.ACCOUNTS['TENANT_DEPOSITS'], total, 'Deposit released',
+                          property_ref=lease.property, contact_ref=lease.tenant)
+        if refund_amount > 0:
+            posting.add_credit(self.ACCOUNTS['BANK_TRUST'], refund_amount, 'Deposit refunded',
+                               property_ref=lease.property, contact_ref=lease.tenant)
+        if applied_to_arrears > 0:
+            posting.add_credit(self.ACCOUNTS['ACCOUNTS_RECEIVABLE'], applied_to_arrears,
+                               'Deposit applied to arrears', property_ref=lease.property,
+                               contact_ref=lease.tenant)
+
+        return self.post_entry(posting, journal_code='RJ')
+
+    # ─── AR / AP documents ────────────────────────────────────────────────────
+    # Documents post in their own currency at the rate for the document date;
+    # the rate is stored on the document so settlement can compute realised
+    # exchange differences. Credit notes post the same lines, sides reversed.
+
+    def _fix_document_rate(self, doc, currency, on):
+        from apps.finance.services.fx import get_rate
+        doc.exchange_rate = get_rate(currency, on)
+        doc.save(update_fields=['exchange_rate'])
+        return doc.exchange_rate
+
+    @transaction.atomic
     def post_supplier_invoice(self, invoice) -> JournalEntry:
         """
-        Post a supplier invoice to AP and appropriate expense accounts.
-        Credit: Accounts Payable
-        Debit: Expense Accounts (per line)
-        Debit: VAT Receivable (if applicable)
+        Invoice:     Cr AP (total) / Dr expense per line (net) / Dr input VAT
+        Credit note: the same, sides reversed; input VAT reported negative.
         """
+        from apps.finance.services.fx import currency_code
+        from apps.procurement.services import enforce_match, record_invoiced
+
+        if not invoice.is_credit_note:
+            enforce_match(invoice)   # PO-linked lines must agree with the PO and the goods received
+        sign = Decimal('-1') if invoice.is_credit_note else Decimal('1')
+        kind = 'Credit Note' if invoice.is_credit_note else 'Invoice'
+        rate = self._fix_document_rate(invoice, invoice.currency, invoice.invoice_date)
         posting = PostingData(
-            description=f'Supplier Invoice - {invoice.supplier.name} - {invoice.invoice_number}',
+            description=f'Supplier {kind} - {invoice.supplier.name} - {invoice.invoice_number}',
             entry_date=invoice.invoice_date,
             source_module='ap',
             source_id=invoice.id,
             source_reference=invoice.invoice_number,
+            currency_code=currency_code(invoice.currency),
+            exchange_rate=rate,
         )
-
-        # Credit AP with total amount
         ap_account = invoice.supplier.ap_account.code if invoice.supplier.ap_account else self.ACCOUNTS['ACCOUNTS_PAYABLE']
-        posting.add_credit(
-            ap_account,
-            invoice.total_amount,
-            f'Invoice {invoice.invoice_number}',
-            supplier_ref=invoice.supplier
-        )
+        posting.add('credit', ap_account, sign * invoice.total_amount, f'{kind} {invoice.invoice_number}',
+                    supplier_ref=invoice.supplier)
 
-        # Debit expenses per line
-        for line in invoice.lines.all():
-            # Debit expense with net amount (line_total - tax_amount)
-            posting.add_debit(
-                line.expense_account.code,
-                line.line_total - line.tax_amount,
-                line.description,
-            )
-            
-            # Debit VAT if applicable
+        lines = list(invoice.lines.select_related('expense_account', 'tax_code__paid_account'))
+        for line in lines:
+            posting.add('debit', line.expense_account.code, sign * (line.line_total - line.tax_amount),
+                        line.description, cost_center=line.cost_center, property_ref=line.property_ref)
             if line.tax_amount > 0:
-                # Use tax-specific account if configured, otherwise fallback to system default
-                vat_account = line.tax_code.paid_account.code if (line.tax_code and line.tax_code.paid_account) else self.ACCOUNTS['VAT_RECEIVABLE']
-                posting.add_debit(
-                    vat_account,
-                    line.tax_amount,
-                    f'Input VAT - {line.description}',
-                )
+                vat_account = line.tax_code.paid_account.code if (line.tax_code and line.tax_code.paid_account) \
+                    else self.ACCOUNTS['VAT_RECEIVABLE']
+                posting.add('debit', vat_account, sign * line.tax_amount, f'Input VAT - {line.description}')
 
-        # Assuming PJ for Purchases Journal
         entry = self.post_entry(posting, journal_code='PJ')
-        
-        # Log Tax Transactions for reporting
-        tax_trans = []
-        for line in invoice.lines.filter(tax_amount__gt=0):
-            tax_trans.append(TaxTransaction(
-                tax_code=line.tax_code,
-                transaction_type=TaxTransaction.TransactionType.INPUT,
-                date=invoice.invoice_date,
-                gross_amount=line.line_total,
-                tax_amount=line.tax_amount,
-                net_amount=line.line_total - line.tax_amount,
-                journal_entry=entry,
-                reference=invoice.invoice_number
-            ))
-        if tax_trans:
-            TaxTransaction.objects.bulk_create(tax_trans)
-            
+        self._record_tax(lines, TaxTransaction.TransactionType.INPUT, invoice, entry, sign)
+        if not invoice.is_credit_note:
+            record_invoiced(invoice)
         return entry
 
     @transaction.atomic
-    def post_supplier_payment(self, payment) -> JournalEntry:
+    def post_supplier_payment(self, payment, allocations=None, auto_allocate: bool = True) -> JournalEntry:
         """
-        Post a supplier payment.
-        Debit: Accounts Payable
-        Credit: Bank Account
+        Dr AP / Cr Bank, then settle invoices: the given allocations
+        [(invoice, amount)], else oldest-first. Anything left is a prepayment
+        (unapplied_amount) that can be applied or refunded later.
         """
+        from apps.finance.services.fx import currency_code
+        from apps.finance.services.settlement import SettlementService
+
+        rate = self._fix_document_rate(payment, payment.currency, payment.payment_date)
         posting = PostingData(
             description=f'Supplier Payment - {payment.supplier.name}',
             entry_date=payment.payment_date,
             source_module='ap',
             source_id=payment.id,
             source_reference=payment.payment_reference,
+            currency_code=currency_code(payment.currency),
+            exchange_rate=rate,
         )
-
         ap_account = payment.supplier.ap_account.code if payment.supplier.ap_account else self.ACCOUNTS['ACCOUNTS_PAYABLE']
-        posting.add_debit(
-            ap_account,
-            payment.amount,
-            f'Payment - {payment.payment_reference}',
-            supplier_ref=payment.supplier
-        )
+        posting.add_debit(ap_account, payment.amount, f'Payment - {payment.payment_reference}',
+                          supplier_ref=payment.supplier)
+        posting.add_credit(payment.bank_account.gl_account.code, payment.amount, f'Payment {payment.payment_reference}')
+        entry = self.post_entry(posting, journal_code='GJ')
 
-        posting.add_credit(
-            payment.bank_account.gl_account.code,
-            payment.amount,
-            f'Payment {payment.payment_reference}',
-        )
-
-        return self.post_entry(posting, journal_code='GJ')
+        payment.unapplied_amount = payment.amount
+        payment.save(update_fields=['unapplied_amount'])
+        settlement = SettlementService(user=self.user)
+        if allocations:
+            settlement.allocate_payment(payment, allocations)
+        elif auto_allocate:
+            settlement.auto_allocate_payment(payment)
+        return entry
 
     @transaction.atomic
     def post_customer_invoice(self, invoice) -> JournalEntry:
         """
-        Post a customer invoice to AR and appropriate revenue accounts.
-        Debit: Accounts Receivable
-        Credit: Revenue Accounts (per line)
-        Credit: VAT Payable (if applicable)
+        Invoice:     Dr AR (total) / Cr revenue per line (net) / Cr output VAT
+        Credit note: the same, sides reversed; output VAT reported negative.
         """
+        from apps.finance.services.fx import currency_code
+
+        sign = Decimal('-1') if invoice.is_credit_note else Decimal('1')
+        kind = 'Credit Note' if invoice.is_credit_note else 'Invoice'
+        rate = self._fix_document_rate(invoice, invoice.currency, invoice.invoice_date)
         posting = PostingData(
-            description=f'Customer Invoice - {invoice.customer.name} - {invoice.invoice_number}',
+            description=f'Customer {kind} - {invoice.customer.name} - {invoice.invoice_number}',
             entry_date=invoice.invoice_date,
             source_module='ar',
             source_id=invoice.id,
             source_reference=invoice.invoice_number,
+            currency_code=currency_code(invoice.currency),
+            exchange_rate=rate,
         )
+        posting.add('debit', self.ACCOUNTS['ACCOUNTS_RECEIVABLE'], sign * invoice.total_amount,
+                    f'{kind} {invoice.invoice_number}', contact_ref=invoice.customer.contact_link)
 
-        # Debit AR with total amount
-        posting.add_debit(
-            self.ACCOUNTS['ACCOUNTS_RECEIVABLE'],
-            invoice.total_amount,
-            f'Invoice {invoice.invoice_number}',
-            contact_ref=invoice.customer.contact_link,
-        )
-
-        # Credit revenue per line
-        for line in invoice.lines.all():
-            # Credit revenue with net amount (line_total - tax_amount)
-            posting.add_credit(
-                line.revenue_account.code,
-                line.line_total - line.tax_amount,
-                line.description,
-            )
-            
-            # Credit VAT if applicable
+        lines = list(invoice.lines.select_related('revenue_account', 'tax_code__collected_account'))
+        for line in lines:
+            posting.add('credit', line.revenue_account.code, sign * (line.line_total - line.tax_amount),
+                        line.description, cost_center=line.cost_center, property_ref=line.property_ref)
             if line.tax_amount > 0:
-                # Use tax-specific account if configured, otherwise fallback to system default
-                vat_account = line.tax_code.collected_account.code if (line.tax_code and line.tax_code.collected_account) else self.ACCOUNTS['VAT_PAYABLE']
-                posting.add_credit(
-                    vat_account,
-                    line.tax_amount,
-                    f'Output VAT - {line.description}',
-                )
+                vat_account = line.tax_code.collected_account.code \
+                    if (line.tax_code and line.tax_code.collected_account) else self.ACCOUNTS['VAT_PAYABLE']
+                posting.add('credit', vat_account, sign * line.tax_amount, f'Output VAT - {line.description}')
 
-        entry = self.post_entry(posting, journal_code='SJ')  # Sales Journal
-        
-        # Log Tax Transactions for reporting
-        tax_trans = []
-        for line in invoice.lines.filter(tax_amount__gt=0):
-            tax_trans.append(TaxTransaction(
-                tax_code=line.tax_code,
-                transaction_type=TaxTransaction.TransactionType.OUTPUT,
-                date=invoice.invoice_date,
-                gross_amount=line.line_total,
-                tax_amount=line.tax_amount,
-                net_amount=line.line_total - line.tax_amount,
-                journal_entry=entry,
-                reference=invoice.invoice_number
-            ))
-        if tax_trans:
-            TaxTransaction.objects.bulk_create(tax_trans)
-            
+        entry = self.post_entry(posting, journal_code='SJ')
+        self._record_tax(lines, TaxTransaction.TransactionType.OUTPUT, invoice, entry, sign)
         return entry
 
+    def _record_tax(self, lines, tax_type, document, entry, sign):
+        """VAT return detail, in base currency; credit notes reduce the return."""
+        from apps.finance.services.fx import to_base
+
+        rate = document.exchange_rate
+        TaxTransaction.objects.bulk_create([
+            TaxTransaction(
+                tax_code=line.tax_code or self._default_tax_code(),
+                transaction_type=tax_type,
+                date=document.invoice_date,
+                gross_amount=sign * to_base(line.line_total, rate),
+                tax_amount=sign * to_base(line.tax_amount, rate),
+                net_amount=sign * to_base(line.line_total - line.tax_amount, rate),
+                journal_entry=entry,
+                reference=document.invoice_number,
+            )
+            for line in lines if line.tax_amount > 0
+        ])
+
     @transaction.atomic
-    def post_customer_receipt(self, receipt) -> JournalEntry:
+    def post_customer_receipt(self, receipt, allocate: bool = True, allocations=None) -> JournalEntry:
         """
-        Post a customer receipt and allocate to outstanding invoices (FIFO).
-        Debit: Bank Account
-        Credit: Accounts Receivable
+        Dr Bank / Cr AR, then settle invoices: the given allocations
+        [(invoice, amount)], else oldest-first when allocate=True. Anything
+        left is customer credit on account (unapplied_amount).
+
+        Pass allocate=False when the caller settles invoices itself.
         """
+        from apps.finance.services.fx import currency_code
+        from apps.finance.services.settlement import SettlementService
+
+        rate = self._fix_document_rate(receipt, receipt.currency, receipt.receipt_date)
         posting = PostingData(
             description=f'Customer Receipt - {receipt.customer.name}',
             entry_date=receipt.receipt_date,
             source_module='ar',
             source_id=receipt.id,
             source_reference=receipt.receipt_reference,
+            currency_code=currency_code(receipt.currency),
+            exchange_rate=rate,
         )
-
-        posting.add_debit(
-            receipt.bank_account.gl_account.code,
-            receipt.amount,
-            f'Receipt {receipt.receipt_reference}',
-        )
-
-        posting.add_credit(
-            self.ACCOUNTS['ACCOUNTS_RECEIVABLE'],
-            receipt.amount,
-            f'Receipt from {receipt.customer.name}',
-            contact_ref=receipt.customer.contact_link,
-        )
-
+        posting.add_debit(receipt.bank_account.gl_account.code, receipt.amount, f'Receipt {receipt.receipt_reference}')
+        posting.add_credit(self.ACCOUNTS['ACCOUNTS_RECEIVABLE'], receipt.amount, f'Receipt from {receipt.customer.name}',
+                           contact_ref=receipt.customer.contact_link)
         entry = self.post_entry(posting, journal_code='GJ')
 
-        # FIFO Allocation to Invoices
-        from apps.finance.models import CustomerInvoice
-        remaining_amount = receipt.amount
-        
-        # Fetch unpaid/partially paid invoices for this customer, oldest first
-        outstanding_invoices = CustomerInvoice.objects.filter(
-            customer=receipt.customer,
-            status__in=[
-                CustomerInvoice.InvoiceStatus.POSTED,
-                CustomerInvoice.InvoiceStatus.PARTIAL,
-                CustomerInvoice.InvoiceStatus.OVERDUE
-            ]
-        ).order_by('invoice_date', 'created_at')
-
-        for invoice in outstanding_invoices:
-            if remaining_amount <= 0:
-                break
-            
-            can_pay = invoice.total_amount - invoice.amount_paid
-            payment_allocation = min(remaining_amount, can_pay)
-            
-            invoice.amount_paid += payment_allocation
-            remaining_amount -= payment_allocation
-            
-            # Update Status
-            if invoice.amount_paid >= invoice.total_amount:
-                invoice.status = CustomerInvoice.InvoiceStatus.PAID
-            else:
-                invoice.status = CustomerInvoice.InvoiceStatus.PARTIAL
-            invoice.save(update_fields=['amount_paid', 'status'])
-        
+        receipt.unapplied_amount = receipt.amount
+        receipt.save(update_fields=['unapplied_amount'])
+        settlement = SettlementService(user=self.user)
+        if allocations:
+            settlement.allocate_receipt(receipt, allocations)
+        elif allocate:
+            settlement.auto_allocate_receipt(receipt)
         return entry
 
     @transaction.atomic
@@ -922,13 +1043,111 @@ class AccountingService:
         entry = self.post_entry(posting, journal_code='GJ')
         return entry
 
+    # ─── Year-End Close ───────────────────────────────────────────────────────
+
+    YEAR_END_SOURCE = 'year_end'
+
     @transaction.atomic
-    def create_reversal(self, entry: JournalEntry) -> JournalEntry:
+    def close_fiscal_year(self, fiscal_year: FiscalYear):
+        """
+        Close a fiscal year: move the year's revenue and expense balances into
+        retained earnings with a closing entry dated the last day of the year,
+        then close the year and all its periods.
+
+        Returns the closing JournalEntry (None when the year had no P&L).
+        Refuses while unposted entries dated in the year remain.
+        """
+        from django.db.models import Q, Sum  # type: ignore
+
+        fy = FiscalYear.objects.select_for_update().get(pk=fiscal_year.pk)
+        if fy.is_closed:
+            raise AccountingError(f'{fy.name} is already closed.')
+
+        unposted = JournalEntry.objects.filter(
+            entry_date__range=(fy.start_date, fy.end_date),
+            status__in=[JournalEntry.EntryStatus.DRAFT, JournalEntry.EntryStatus.PENDING_APPROVAL,
+                        JournalEntry.EntryStatus.APPROVED],
+        ).count()
+        if unposted:
+            raise AccountingError(
+                f'{unposted} unposted journal entr{"y is" if unposted == 1 else "ies are"} dated in '
+                f'{fy.name}. Post or cancel them before closing the year.'
+            )
+
+        balances = JournalLine.objects.filter(
+            entry__status__in=JournalEntry.LEDGER_STATUSES,
+            entry__entry_date__range=(fy.start_date, fy.end_date),
+            account__account_type__in=['revenue', 'expense'],
+        ).exclude(entry__source_module=self.YEAR_END_SOURCE).values('account__code').annotate(
+            dr=Sum('amount', filter=Q(side='debit')),
+            cr=Sum('amount', filter=Q(side='credit')),
+        ).order_by('account__code')
+
+        posting = PostingData(
+            description=f'Year-end close {fy.name}',
+            entry_date=fy.end_date,
+            source_module=self.YEAR_END_SOURCE,
+            source_id=fy.id,
+            source_reference=fy.name,
+        )
+        net_profit = Decimal('0.00')
+        for row in balances:
+            net_credit = (row['cr'] or Decimal('0')) - (row['dr'] or Decimal('0'))
+            if net_credit > 0:
+                posting.add_debit(row['account__code'], net_credit, f'Close {fy.name}')
+            elif net_credit < 0:
+                posting.add_credit(row['account__code'], -net_credit, f'Close {fy.name}')
+            net_profit += net_credit
+
+        retained = self.ACCOUNTS['RETAINED_EARNINGS']
+        if net_profit > 0:
+            posting.add_credit(retained, net_profit, f'Net profit {fy.name}')
+        elif net_profit < 0:
+            posting.add_debit(retained, -net_profit, f'Net loss {fy.name}')
+
+        entry = None
+        if posting.lines:
+            entry = self.post_entry(posting, journal_code='YE', allow_locked_period=True)
+
+        fy.is_closed = True
+        fy.closed_at = timezone.now()
+        fy.closed_by = self.user
+        fy.save(update_fields=['is_closed', 'closed_at', 'closed_by'])
+        fy.periods.update(status=FiscalPeriod.PeriodStatus.CLOSED)
+        logger.info('Closed fiscal year %s (net %s)', fy.name, net_profit)
+        return entry
+
+    @transaction.atomic
+    def reopen_fiscal_year(self, fiscal_year: FiscalYear):
+        """Reopen a closed year and reverse its closing entry (dated the year end)."""
+        fy = FiscalYear.objects.select_for_update().get(pk=fiscal_year.pk)
+        if not fy.is_closed:
+            raise AccountingError(f'{fy.name} is already open.')
+        fy.is_closed = False
+        fy.closed_at = None
+        fy.closed_by = None
+        fy.save(update_fields=['is_closed', 'closed_at', 'closed_by'])
+
+        closing = JournalEntry.objects.filter(
+            source_module=self.YEAR_END_SOURCE, source_id=fy.id,
+            status=JournalEntry.EntryStatus.POSTED, is_reversal=False,
+        ).first()
+        if closing:
+            return self.create_reversal(closing, entry_date=fy.end_date, allow_locked_period=True)
+        return None
+
+    @transaction.atomic
+    def create_reversal(self, entry: JournalEntry, entry_date: date = None,
+                        allow_locked_period: bool = False) -> JournalEntry:
         """
         Create a full reversal of a posted entry.
         Swaps all debits to credits and vice versa.
         Links back to the original entry.
+
+        Atomic, and locks the original row so it can't be reversed twice by
+        concurrent requests.
         """
+        entry = JournalEntry.objects.select_for_update().get(pk=entry.pk)
         if entry.status != JournalEntry.EntryStatus.POSTED:
             raise AccountingError('Only posted entries can be reversed.')
 
@@ -937,7 +1156,7 @@ class AccountingService:
 
         posting = PostingData(
             description=f'REVERSAL: {entry.description}',
-            entry_date=date.today(),
+            entry_date=entry_date or date.today(),
             source_module=entry.source_module,
             currency_code=entry.currency.code,
             exchange_rate=entry.exchange_rate,
@@ -955,17 +1174,22 @@ class AccountingService:
                 'contact_ref': line.contact_ref,
             })
 
-        reversal = self.post_entry(posting, journal_code=entry.journal.code)
+        reversal = self.post_entry(posting, journal_code=entry.journal.code,
+                                   allow_locked_period=allow_locked_period)
+        # Link via queryset.update(): the reversal is already POSTED, and
+        # JournalEntry.save() (correctly) refuses to modify posted entries, which
+        # made every reversal fail. These are linkage fields set in the same
+        # transaction that created the entry, not an edit of posted amounts.
+        JournalEntry.objects.filter(pk=reversal.pk).update(is_reversal=True, reversed_entry=entry)
         reversal.is_reversal = True
         reversal.reversed_entry = entry
-        reversal.save(update_fields=['is_reversal', 'reversed_entry'])
 
         # Mark original as reversed
         JournalEntry.objects.filter(pk=entry.pk).update(status=JournalEntry.EntryStatus.REVERSED)
 
         return reversal
 
-    def generate_trial_balance(self, fiscal_period: FiscalPeriod, property_id=None) -> dict:
+    def generate_trial_balance(self, fiscal_period: FiscalPeriod, property_id=None, cost_center_id=None) -> dict:
         """
         Generate Trial Balance for a fiscal period, optionally filtered by Property.
         Returns structured data with account balances.
@@ -974,11 +1198,13 @@ class AccountingService:
 
         qs = JournalLine.objects.filter(
             entry__fiscal_period=fiscal_period,
-            entry__status=JournalEntry.EntryStatus.POSTED,
+            entry__status__in=JournalEntry.LEDGER_STATUSES,
         )
         
         if property_id:
             qs = qs.filter(property_ref_id=property_id)
+        if cost_center_id:
+            qs = qs.filter(cost_center_id=cost_center_id)
 
         # Aggregate debits and credits per account for the period
         lines = qs.values(

@@ -46,6 +46,10 @@ class PayrollRunSerializer(serializers.ModelSerializer):
     class Meta:
         model = PayrollRun
         fields = '__all__'
+        # Status moves only through process/approve/pay_all (maker/checker);
+        # totals and the AP link are computed by processing.
+        read_only_fields = ['status', 'total_gross', 'total_deductions', 'total_net', 'processed_at',
+                            'processed_by', 'supplier_invoice']
 
 class TaxBracketSerializer(serializers.ModelSerializer):
     currency_code = serializers.ReadOnlyField(source='currency.code')

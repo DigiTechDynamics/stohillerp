@@ -412,10 +412,17 @@ class Opportunity(AuditedModel):
             import datetime
             self.reference = f"{prefix}-{datetime.datetime.now().strftime('%y%m')}-{uuid.uuid4().hex[:6].upper()}"
         
-        # Track stage entries
-        if self.pk:
-            old_obj = self.__class__.objects.get(pk=self.pk)
-            if old_obj.stage != self.stage:
+        # Track stage entries.
+        # Use _state.adding, not `if self.pk`: the pk is a UUID assigned at
+        # instantiation, so `self.pk` is truthy even for unsaved objects and the
+        # old lookup raised DoesNotExist on every create.
+        if not self._state.adding:
+            old_stage_id = (
+                self.__class__.objects.filter(pk=self.pk)
+                .values_list('stage_id', flat=True)
+                .first()
+            )
+            if old_stage_id != self.stage_id:
                 from django.utils import timezone
                 self.stage_entered_at = timezone.now()
 

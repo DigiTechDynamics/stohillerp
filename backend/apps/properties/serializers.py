@@ -25,7 +25,7 @@ class PropertyListSerializer(serializers.ModelSerializer):
     property_type_name = serializers.CharField(source='property_type.name', read_only=True)
     primary_image = serializers.SerializerMethodField()
     full_address = serializers.ReadOnlyField()
-    currency_code = serializers.CharField(source='currency.code', read_only=True, default='USD')
+    currency_code = serializers.CharField(source='currency.code', read_only=True, default=None)
 
     class Meta:
         model = Property
@@ -50,7 +50,7 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
     images = PropertyImageSerializer(many=True, read_only=True)  # type: ignore
     units = PropertyUnitSerializer(many=True, read_only=True)  # type: ignore
     full_address = serializers.ReadOnlyField()
-    currency_code = serializers.CharField(source='currency.code', read_only=True, default='USD')
+    currency_code = serializers.CharField(source='currency.code', read_only=True, default=None)
 
     class Meta:
         model = Property

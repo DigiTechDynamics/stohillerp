@@ -23,13 +23,18 @@ class EmailService:
             logger.error(f"Customer {invoice.customer.name} has no email address.")
             return False
             
-        subject = f"Invoice {invoice.invoice_number} from Stohil Properties"
-        body = f"Dear {invoice.customer.name},\n\nPlease find attached your invoice {invoice.invoice_number} for the amount of {invoice.total_amount}.\n\nThank you for your business.\n\nStohil Properties"
+        from apps.core.company import company_profile
+
+        company = company_profile()
+        currency = invoice.currency.code if invoice.currency else company['currency']
+        subject = f"Invoice {invoice.invoice_number} from {company['name']}"
+        body = (f"Dear {invoice.customer.name},\n\nPlease find attached your invoice {invoice.invoice_number} "
+                f"for {currency} {invoice.total_amount:,.2f}.\n\nThank you for your business.\n\n{company['name']}")
         
         email = EmailMessage(
             subject=subject,
             body=body,
-            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@stohillerp.com'),
+            from_email=settings.DEFAULT_FROM_EMAIL,
             to=[customer_email],
         )
         

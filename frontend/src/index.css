@@ -9,7 +9,7 @@
      ============================================= */
   :root {
     --primary: #E5A645;
-    --primary-rgb: 229, 166, 69;
+    --primary-rgb: 229 166 69;   /* space-separated: used as rgb(var(--primary-rgb) / alpha) */
     --primary-hover: #D4922A;
     --bg-main: #222222;
     --bg-main-dark: #111111;
@@ -36,7 +36,7 @@
      ============================================= */
   html.light {
     --primary: #E6A23C;
-    --primary-rgb: 230, 162, 60;
+    --primary-rgb: 230 162 60;
     --primary-hover: #CF8C22;
     --bg-main: #F0F0F0;
     --bg-main-dark: #E2E2E2;

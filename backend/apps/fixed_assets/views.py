@@ -1,7 +1,8 @@
+from decimal import Decimal, InvalidOperation
+
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import AssetCategory, FixedAsset, AssetBook, AssetLocation, AssetTransaction
 from .serializers import (
@@ -13,14 +14,12 @@ from .services.depreciation import DepreciationService
 class AssetCategoryViewSet(viewsets.ModelViewSet):
     queryset = AssetCategory.objects.all()
     serializer_class = AssetCategorySerializer
-    permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'code']
 
 class FixedAssetViewSet(viewsets.ModelViewSet):
     queryset = FixedAsset.objects.all().prefetch_related('books')
     serializer_class = FixedAssetSerializer
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['category', 'status']
     search_fields = ['name', 'code', 'serial_number']
@@ -52,7 +51,13 @@ class FixedAssetViewSet(viewsets.ModelViewSet):
         """Action to dispose of an asset."""
         asset = self.get_object()
         disposal_date = request.data.get('disposal_date')
-        net_proceeds = Decimal(str(request.data.get('net_proceeds', '0.00')))
+        # Previously crashed with NameError: Decimal was never imported.
+        try:
+            net_proceeds = Decimal(str(request.data.get('net_proceeds', '0.00')))
+        except (InvalidOperation, ValueError):
+            return Response({'error': 'net_proceeds must be a number'}, status=status.HTTP_400_BAD_REQUEST)
+        if net_proceeds < 0:
+            return Response({'error': 'net_proceeds cannot be negative'}, status=status.HTTP_400_BAD_REQUEST)
         notes = request.data.get('notes', '')
         
         if not disposal_date:
@@ -73,16 +78,13 @@ class FixedAssetViewSet(viewsets.ModelViewSet):
 class AssetBookViewSet(viewsets.ModelViewSet):
     queryset = AssetBook.objects.all()
     serializer_class = AssetBookSerializer
-    permission_classes = [IsAuthenticated]
 
 class AssetLocationViewSet(viewsets.ModelViewSet):
     queryset = AssetLocation.objects.all()
     serializer_class = AssetLocationSerializer
-    permission_classes = [IsAuthenticated]
     filterset_fields = ['asset']
 
 class AssetTransactionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = AssetTransaction.objects.all()
     serializer_class = AssetTransactionSerializer
-    permission_classes = [IsAuthenticated]
     filterset_fields = ['asset', 'transaction_type']

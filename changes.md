@@ -1,5 +1,8 @@
 # Stohill ERP - Summary of Changes
 
+> Historical log. For changes from the production-hardening pass onward, see
+> [CHANGELOG.md](CHANGELOG.md).
+
 This document outlines the key improvements, fixes, and features implemented in the Stohill ERP system to date.
 
 ## 1. System Initialization & Infrastructure

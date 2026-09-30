@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
-import { Save, AlertCircle, Calendar, MessageSquare, Phone, Mail, User, Clock, CheckCircle } from 'lucide-react'
+import { AlertCircle, User, Clock, CheckCircle } from 'lucide-react'
 import { crmAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 

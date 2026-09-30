@@ -1,57 +1,56 @@
-# Stohil Properties - Global .gitignore
+# ─── Secrets & local config ──────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+local_settings.py
 
-# ─── Python / Django ────────────────────────────────────────────────────────
+# ─── Python ──────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
-*$py.class
-.env
-.venv
+.venv/
 venv/
-ENV/
-env/
-build/
-dist/
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-media/
-staticfiles/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+backend/staticfiles/
+backend/media/
+backend/logs/
+*.sqlite3
+*.sqlite3-journal
 
-# ─── JavaScript / Node ────────────────────────────────────────────────────────
+# ─── Node / frontend ─────────────────────────────────────────────────────────
 node_modules/
-.DS_Store
 dist/
-dist-ssr
+dist-ssr/
+.vite/
 *.local
 .eslintcache
-.stylelintcache
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.vite/
-.vercel/
 
-# ─── IDE / Editors ────────────────────────────────────────────────────────────
+# ─── Build output (never commit compiled artefacts) ──────────────────────────
+target/
+build/
+
+# ─── Editors / OS ────────────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
-*.swo
 .DS_Store
 
-# ─── Antigravity / Agent Data ──────────────────────────────────────────────────
+# ─── AI agent scratch data ───────────────────────────────────────────────────
 .gemini/
 .agents/
 .agent/
 _agents/
 _agent/
-brain/
 agent_logs/
 tmp/
-*.webp
-*.png
-*.mp4
-tb.txt
-debug_reports.py
-verify_ap_workflow.py
-seed_demo.sh
+
+# NOTE: image files are intentionally NOT ignored. The old "*.png" rule kept
+# the brand logo out of git and broke fresh builds. Commit assets you need.
+
+# Database backups (docker compose backup service)
+backups/

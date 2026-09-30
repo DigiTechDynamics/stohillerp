@@ -1,6 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Calendar, Hash, User, Clock, CheckCircle2, FileText, Send, Edit2, Trash2, Loader2 } from 'lucide-react'
-import { financeAPI } from '@/services/api'
+import { useState } from 'react'
+import { Calendar, Hash, CheckCircle2, FileText, Send, Edit2, Trash2, Loader2, Scale } from 'lucide-react'
+import { apiErrorMessage, financeAPI } from '@/services/api'
+import ApprovalBox from '@/components/common/ApprovalBox'
+import DocumentActions from './DocumentActions'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
@@ -25,7 +28,7 @@ export default function APInvoiceDetailPanel({ invoice: initialInvoice }) {
       closeSidePanel()
     },
     onError: (err) => {
-      toast.error(err.response?.data?.error || 'Failed to post invoice')
+      toast.error(apiErrorMessage(err, 'Failed to post invoice'))
     }
   })
   
@@ -37,7 +40,7 @@ export default function APInvoiceDetailPanel({ invoice: initialInvoice }) {
       queryClient.invalidateQueries({ queryKey: ['ap-invoice', invoice.id] })
     },
     onError: (err) => {
-      toast.error(err.response?.data?.error || 'Failed to review invoice')
+      toast.error(apiErrorMessage(err, 'Failed to review invoice'))
     }
   })
 
@@ -49,7 +52,7 @@ export default function APInvoiceDetailPanel({ invoice: initialInvoice }) {
       closeSidePanel()
     },
     onError: (err) => {
-      toast.error(err.response?.data?.error || 'Failed to delete invoice')
+      toast.error(apiErrorMessage(err, 'Failed to delete invoice'))
     }
   })
 
@@ -84,7 +87,7 @@ export default function APInvoiceDetailPanel({ invoice: initialInvoice }) {
         </div>
 
         <div>
-           <h2 className="text-xl font-semibold text-white">Purchase Invoice</h2>
+           <h2 className="text-xl font-semibold text-white">{invoice.document_type === 'credit_note' ? 'Supplier Credit Note' : 'Purchase Invoice'}</h2>
            <p className="text-dark-400 text-sm mt-1">{invoice.supplier_name}</p>
         </div>
       </div>
@@ -146,6 +149,13 @@ export default function APInvoiceDetailPanel({ invoice: initialInvoice }) {
           </table>
         </div>
       </div>
+
+      {['draft', 'reviewed'].includes(invoice.status) && (
+        <>
+          <MatchBox invoice={invoice} />
+          <ApprovalBox api={financeAPI.ap.invoices} id={invoice.id} queryKey="ap-invoice" />
+        </>
+      )}
 
       {/* Actions */}
       <div className="pt-6">
@@ -228,7 +238,50 @@ export default function APInvoiceDetailPanel({ invoice: initialInvoice }) {
              )}
            </div>
         )}
+        {!['draft', 'reviewed'].includes(invoice.status) && (
+          <div className="mt-6"><DocumentActions side="ap" invoice={invoice} /></div>
+        )}
       </div>
+    </div>
+  )
+}
+
+// 3-way match (PO price / goods received / invoice) for PO-linked invoices.
+function MatchBox({ invoice }) {
+  const queryClient = useQueryClient()
+  const [reason, setReason] = useState('')
+  const { data } = useQuery({
+    queryKey: ['ap-invoice-match', invoice.id],
+    queryFn: () => financeAPI.ap.invoices.matchStatus(invoice.id),
+  })
+  const match = data?.data
+  const override = useMutation({
+    mutationFn: () => financeAPI.ap.invoices.overrideMatch(invoice.id, reason),
+    onSuccess: () => {
+      toast.success('Match overridden.')
+      queryClient.invalidateQueries({ queryKey: ['ap-invoice-match', invoice.id] })
+    },
+    onError: (err) => toast.error(apiErrorMessage(err)),
+  })
+  if (!match || match.status === 'not_applicable') return null
+  const colour = match.status === 'matched' ? 'text-emerald-400' : match.status === 'overridden' ? 'text-amber-300' : 'text-rose-400'
+  return (
+    <div className="space-y-2 bg-dark-800/50 border border-white/5 rounded-xl p-4">
+      <h3 className="text-[10px] font-bold text-dark-500 uppercase tracking-widest flex items-center gap-2">
+        <Scale size={12} /> 3-way match: <span className={colour}>{match.status}</span>
+      </h3>
+      {match.exceptions.map((e, i) => <p key={i} className="text-xs text-rose-300">{e}</p>)}
+      {match.status === 'overridden' && (
+        <p className="text-xs text-dark-400">Overridden by {match.override.by}: {match.override.reason}</p>
+      )}
+      {match.status === 'exceptions' && (
+        <div className="flex gap-2">
+          <input className="form-input text-xs flex-1" placeholder="Reason to accept the differences"
+            aria-label="Override reason" value={reason} onChange={e => setReason(e.target.value)} />
+          <button className="btn-secondary text-xs px-3" disabled={!reason || override.isPending}
+            onClick={() => override.mutate()}>Override</button>
+        </div>
+      )}
     </div>
   )
 }

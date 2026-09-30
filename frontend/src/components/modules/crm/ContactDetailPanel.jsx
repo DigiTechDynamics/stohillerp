@@ -1,15 +1,11 @@
 // Stohill Properties - Contact Detail Panel
 // Full contact record with enrichment fields, linked opportunities, activities, notes, and KYC documents
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  User, Mail, Phone, Globe, Linkedin, Building2, Star,
-  TrendingUp, Activity as ActivityIcon, MessageSquare,
-  Edit2, BarChart2, AlertCircle, Loader2, Calendar,
-  ChevronRight, MapPin, DollarSign, Flame, Snowflake, Thermometer,
-  FileText, ShieldCheck, Download, Trash2, Plus, Upload, CheckCircle2
+  User, Mail, Phone, Globe, Linkedin, Building2, TrendingUp, Activity as ActivityIcon, MessageSquare, Edit2, BarChart2, AlertCircle, Loader2, ChevronRight, MapPin, DollarSign, Flame, Snowflake, Thermometer, FileText, ShieldCheck, Download, Trash2, Plus, Upload, CheckCircle2
 } from 'lucide-react'
-import { crmAPI } from '@/services/api'
+import { apiErrorMessage, crmAPI, downloadPrivateFile } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
@@ -52,7 +48,7 @@ function OpportunityRow({ opp, onClick }) {
       </div>
       <div className="flex items-center gap-2 flex-shrink-0 ml-2">
         <span className="text-xs font-mono font-bold text-white">
-          {formatCurrency(parseFloat(opp.expected_revenue || 0), 'USD')}
+          {formatCurrency(parseFloat(opp.expected_revenue || 0), opp.currency_code)}
         </span>
         <ChevronRight size={12} className="text-dark-600 group-hover:text-primary" />
       </div>
@@ -191,14 +187,14 @@ function DocumentList({ contactId }) {
                   <ShieldCheck size={14} />
                 </button>
               )}
-              <a
-                href={doc.file}
-                target="_blank"
-                rel="noreferrer"
+              <button
+                onClick={() => downloadPrivateFile(doc.download_url, doc.name).catch(() => alert('Download failed.'))}
+                disabled={!doc.download_url}
                 className="p-2 text-dark-400 hover:text-primary hover:bg-white/5 rounded-lg transition-colors"
+                title="Download"
               >
                 <Download size={14} />
-              </a>
+              </button>
               <button
                 onClick={() => window.confirm('Delete document?') && deleteMutation.mutate(doc.id)}
                 className="p-2 text-dark-400 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors"
@@ -244,6 +240,12 @@ export default function ContactDetailPanel({ contactId, contact: contactProp }) 
       queryClient.invalidateQueries({ queryKey: ['crm-contact', contactId] })
       toast.success(`Lead score updated: ${res.data.lead_score}`)
     }
+  })
+
+  const inviteMutation = useMutation({
+    mutationFn: (id) => crmAPI.contacts.inviteToPortal(id),
+    onSuccess: (res) => toast.success(`Portal invitation emailed to ${res.data.email}.`),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Could not send the invitation.')),
   })
 
   const contact = contactRes?.data
@@ -311,6 +313,16 @@ export default function ContactDetailPanel({ contactId, contact: contactProp }) 
                 <ScoreIcon size={9} />
                 {scoreData.label} • {contact.lead_score}
               </button>
+              {contact.contact_type === 'tenant' && (
+                <button
+                  onClick={() => inviteMutation.mutate(contact.id)}
+                  disabled={inviteMutation.isPending || !contact.email}
+                  className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest border border-primary/30 text-primary hover:bg-primary/10 transition-all disabled:opacity-40"
+                  title={contact.email ? 'Email the tenant a link to set up their portal login (re-sends if already invited)' : 'Add an email address first'}
+                >
+                  {inviteMutation.isPending ? 'Sending...' : 'Invite to portal'}
+                </button>
+              )}
             </div>
           </div>
           <button
@@ -376,10 +388,10 @@ export default function ContactDetailPanel({ contactId, contact: contactProp }) 
             {(contact.budget_min || contact.budget_max || contact.annual_income) && (
               <section className="bg-dark-800/40 rounded-2xl border border-white/5 p-5 space-y-4">
                 <p className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Financial Profile</p>
-                {contact.budget_min && <InfoRow icon={DollarSign} label="Budget Min" value={formatCurrency(contact.budget_min, 'USD')} />}
-                {contact.budget_max && <InfoRow icon={DollarSign} label="Budget Max" value={formatCurrency(contact.budget_max, 'USD')} />}
-                {contact.annual_income && <InfoRow icon={DollarSign} label="Annual Income" value={formatCurrency(contact.annual_income, 'USD')} />}
-                {contact.affordability && <InfoRow icon={DollarSign} label="Affordability" value={formatCurrency(contact.affordability, 'USD')} />}
+                {contact.budget_min && <InfoRow icon={DollarSign} label="Budget Min" value={formatCurrency(contact.budget_min)} />}
+                {contact.budget_max && <InfoRow icon={DollarSign} label="Budget Max" value={formatCurrency(contact.budget_max)} />}
+                {contact.annual_income && <InfoRow icon={DollarSign} label="Annual Income" value={formatCurrency(contact.annual_income)} />}
+                {contact.affordability && <InfoRow icon={DollarSign} label="Affordability" value={formatCurrency(contact.affordability)} />}
               </section>
             )}
 

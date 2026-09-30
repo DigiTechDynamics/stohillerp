@@ -1,75 +1,75 @@
 // Stohill Properties - Side Panel Container
 // Slide-in contextual panels for record details
+import { Suspense, lazy } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, Building2, MapPin, BedDouble, Bath, Square, Calendar, DollarSign, Briefcase, FileText, User, Mail, Phone, ExternalLink, Trash2, Edit2, Loader2, Key, MessageSquare, CheckCircle, Plus } from 'lucide-react'
-import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query'
+import { X, Building2, MapPin, BedDouble, Bath, Square, DollarSign, Briefcase, FileText, Trash2, Edit2, Loader2 } from 'lucide-react'
+import { useQueryClient, useMutation } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
-import { propertiesAPI, crmAPI } from '@/services/api'
+import { propertiesAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
-import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
-import AccountForm from '@/components/modules/finance/AccountForm'
-import AccountDetailPanel from '@/components/modules/finance/AccountDetailPanel'
-import JournalEntryDetailPanel from '@/components/modules/finance/JournalEntryDetailPanel'
-import EmployeeForm from '@/components/modules/hr/EmployeeForm'
-import EmployeeDetailPanel from '@/components/modules/hr/EmployeeDetailPanel'
-import LeaveManagementPanel from '@/components/modules/hr/LeaveManagementPanel'
-import DocumentUploadForm from '@/components/modules/documents/DocumentUploadForm'
-import ComplianceAuditPanel from '@/components/modules/documents/ComplianceAuditPanel'
-import DepartmentForm from '@/components/modules/hr/DepartmentForm'
-import DepartmentListPanel from '@/components/modules/hr/DepartmentListPanel'
-import LeaseForm from '@/components/modules/rentals/LeaseForm'
-import LeaseDetailPanel from '@/components/modules/rentals/LeaseDetailPanel'
-import RentalInvoiceForm from '@/components/modules/rentals/RentalInvoiceForm'
-import RentalPaymentForm from '@/components/modules/rentals/RentalPaymentForm'
-import TenantForm from '@/components/modules/rentals/TenantForm'
-import MaintenanceForm from '@/components/modules/rentals/MaintenanceForm'
-import PropertyForm from '@/components/modules/properties/PropertyForm'
-import CustomerForm from '@/components/modules/finance/CustomerForm'
-import CustomerInvoiceForm from '@/components/modules/finance/CustomerInvoiceForm'
-import CustomerReceiptForm from '@/components/modules/finance/CustomerReceiptForm'
-import SupplierForm from '@/components/modules/finance/SupplierForm'
-import SupplierInvoiceForm from '@/components/modules/finance/SupplierInvoiceForm'
-import SupplierPaymentForm from '@/components/modules/finance/SupplierPaymentForm'
-import CustomerReceiptDetailPanel from '@/components/modules/finance/CustomerReceiptDetailPanel'
-import SupplierPaymentDetailPanel from '@/components/modules/finance/SupplierPaymentDetailPanel'
-import ARInvoiceDetailPanel from '@/components/modules/finance/ARInvoiceDetailPanel'
-import APInvoiceDetailPanel from '@/components/modules/finance/APInvoiceDetailPanel'
-import SupplierDetailPanel from '@/components/modules/finance/SupplierDetailPanel'
-import TaxCodeForm from '@/components/modules/finance/TaxCodeForm'
-import PostingProfileForm from '@/components/modules/finance/PostingProfileForm'
-import Chatter from '@/components/common/Chatter'
-import AssetForm from '@/components/modules/finance/AssetForm'
-import AssetCategoryForm from '@/components/modules/finance/AssetCategoryForm'
-import AssetDetailPanel from '@/components/modules/finance/AssetDetailPanel'
-import AssetDisposalForm from '@/components/modules/finance/AssetDisposalForm'
-import RunDepreciationForm from '@/components/modules/finance/RunDepreciationForm'
-import CommissionStructureForm from '@/components/modules/commissions/CommissionStructureForm'
-import CommissionCalculator from '@/components/modules/commissions/CommissionCalculator'
-import CommissionDetailPanel from '@/components/modules/commissions/CommissionDetailPanel'
-import CurrencyForm from '@/components/modules/finance/CurrencyForm'
-import ExchangeRateForm from '@/components/modules/finance/ExchangeRateForm'
-import OpportunityForm from '@/components/modules/crm/OpportunityForm'
-import ActivityForm from '@/components/modules/crm/ActivityForm'
-import CrmDetailPanel from '@/components/modules/crm/CrmDetailPanel'
-import CrmContactDetailPanel from '@/components/modules/crm/ContactDetailPanel'
-import BankAccountForm from '@/components/modules/finance/BankAccountForm'
-import BankTransactionView from '@/components/modules/finance/BankTransactionView'
-import StatementUploadForm from '@/components/modules/finance/StatementUploadForm'
-import ReconciliationRulesForm from '@/components/modules/finance/ReconciliationRulesForm'
-import UserForm from '@/components/modules/admin/UserForm'
-import RoleForm from '@/components/modules/admin/RoleForm'
-import SODRuleForm from '@/components/modules/admin/SODRuleForm'
-import SaleForm from '@/components/modules/sales/SaleForm'
-import SaleDetailPanel from '@/components/modules/sales/SaleDetailPanel'
-import FiscalYearForm from '@/components/modules/finance/FiscalYearForm'
-import PayrollRunForm from '@/components/modules/payroll/PayrollRunForm'
+import { formatCurrency, getStatusColor } from '@/utils/format'
+// Module forms/panels load on demand: importing them eagerly pulled every
+// module's UI into the initial bundle for every user.
+const AccountForm = lazy(() => import('@/components/modules/finance/AccountForm'))
+const AccountDetailPanel = lazy(() => import('@/components/modules/finance/AccountDetailPanel'))
+const JournalEntryDetailPanel = lazy(() => import('@/components/modules/finance/JournalEntryDetailPanel'))
+const EmployeeForm = lazy(() => import('@/components/modules/hr/EmployeeForm'))
+const EmployeeDetailPanel = lazy(() => import('@/components/modules/hr/EmployeeDetailPanel'))
+const LeaveManagementPanel = lazy(() => import('@/components/modules/hr/LeaveManagementPanel'))
+const DocumentUploadForm = lazy(() => import('@/components/modules/documents/DocumentUploadForm'))
+const ComplianceAuditPanel = lazy(() => import('@/components/modules/documents/ComplianceAuditPanel'))
+const DepartmentForm = lazy(() => import('@/components/modules/hr/DepartmentForm'))
+const DepartmentListPanel = lazy(() => import('@/components/modules/hr/DepartmentListPanel'))
+const LeaseForm = lazy(() => import('@/components/modules/rentals/LeaseForm'))
+const LeaseDetailPanel = lazy(() => import('@/components/modules/rentals/LeaseDetailPanel'))
+const RentalInvoiceForm = lazy(() => import('@/components/modules/rentals/RentalInvoiceForm'))
+const RentalPaymentForm = lazy(() => import('@/components/modules/rentals/RentalPaymentForm'))
+const TenantForm = lazy(() => import('@/components/modules/rentals/TenantForm'))
+const MaintenanceForm = lazy(() => import('@/components/modules/rentals/MaintenanceForm'))
+const PropertyForm = lazy(() => import('@/components/modules/properties/PropertyForm'))
+const CustomerForm = lazy(() => import('@/components/modules/finance/CustomerForm'))
+const CustomerInvoiceForm = lazy(() => import('@/components/modules/finance/CustomerInvoiceForm'))
+const CustomerReceiptForm = lazy(() => import('@/components/modules/finance/CustomerReceiptForm'))
+const SupplierForm = lazy(() => import('@/components/modules/finance/SupplierForm'))
+const SupplierInvoiceForm = lazy(() => import('@/components/modules/finance/SupplierInvoiceForm'))
+const SupplierPaymentForm = lazy(() => import('@/components/modules/finance/SupplierPaymentForm'))
+const CustomerReceiptDetailPanel = lazy(() => import('@/components/modules/finance/CustomerReceiptDetailPanel'))
+const SupplierPaymentDetailPanel = lazy(() => import('@/components/modules/finance/SupplierPaymentDetailPanel'))
+const ARInvoiceDetailPanel = lazy(() => import('@/components/modules/finance/ARInvoiceDetailPanel'))
+const APInvoiceDetailPanel = lazy(() => import('@/components/modules/finance/APInvoiceDetailPanel'))
+const SupplierDetailPanel = lazy(() => import('@/components/modules/finance/SupplierDetailPanel'))
+const TaxCodeForm = lazy(() => import('@/components/modules/finance/TaxCodeForm'))
+const PostingProfileForm = lazy(() => import('@/components/modules/finance/PostingProfileForm'))
+const AssetForm = lazy(() => import('@/components/modules/finance/AssetForm'))
+const AssetCategoryForm = lazy(() => import('@/components/modules/finance/AssetCategoryForm'))
+const AssetDetailPanel = lazy(() => import('@/components/modules/finance/AssetDetailPanel'))
+const AssetDisposalForm = lazy(() => import('@/components/modules/finance/AssetDisposalForm'))
+const RunDepreciationForm = lazy(() => import('@/components/modules/finance/RunDepreciationForm'))
+const CommissionStructureForm = lazy(() => import('@/components/modules/commissions/CommissionStructureForm'))
+const CommissionCalculator = lazy(() => import('@/components/modules/commissions/CommissionCalculator'))
+const CommissionDetailPanel = lazy(() => import('@/components/modules/commissions/CommissionDetailPanel'))
+const CurrencyForm = lazy(() => import('@/components/modules/finance/CurrencyForm'))
+const ExchangeRateForm = lazy(() => import('@/components/modules/finance/ExchangeRateForm'))
+const OpportunityForm = lazy(() => import('@/components/modules/crm/OpportunityForm'))
+const ActivityForm = lazy(() => import('@/components/modules/crm/ActivityForm'))
+const CrmDetailPanel = lazy(() => import('@/components/modules/crm/CrmDetailPanel'))
+const CrmContactDetailPanel = lazy(() => import('@/components/modules/crm/ContactDetailPanel'))
+const BankAccountForm = lazy(() => import('@/components/modules/finance/BankAccountForm'))
+const BankTransactionView = lazy(() => import('@/components/modules/finance/BankTransactionView'))
+const StatementUploadForm = lazy(() => import('@/components/modules/finance/StatementUploadForm'))
+const ReconciliationRulesForm = lazy(() => import('@/components/modules/finance/ReconciliationRulesForm'))
+const UserForm = lazy(() => import('@/components/modules/admin/UserForm'))
+const RoleForm = lazy(() => import('@/components/modules/admin/RoleForm'))
+const SODRuleForm = lazy(() => import('@/components/modules/admin/SODRuleForm'))
+const SaleForm = lazy(() => import('@/components/modules/sales/SaleForm'))
+const SaleDetailPanel = lazy(() => import('@/components/modules/sales/SaleDetailPanel'))
+const FiscalYearForm = lazy(() => import('@/components/modules/finance/FiscalYearForm'))
+const PayrollRunForm = lazy(() => import('@/components/modules/payroll/PayrollRunForm'))
 
 function PropertyDetailPanel({ property }) {
   const queryClient = useQueryClient()
   const openPanel = useUIStore(s => s.openSidePanel)
   const closePanel = useUIStore(s => s.closeSidePanel)
-  
-  if (!property) return null
 
   const deleteMutation = useMutation({
     mutationFn: () => propertiesAPI.delete(property.id),
@@ -78,10 +78,12 @@ function PropertyDetailPanel({ property }) {
       toast.success('Property archived successfully')
       closePanel()
     },
-    onError: (err) => {
+    onError: () => {
       toast.error('Failed to archive property')
     }
   })
+
+  if (!property) return null
 
   const handleArchive = () => {
     if (window.confirm('Are you sure you want to archive this property record?')) {
@@ -186,147 +188,10 @@ function PropertyDetailPanel({ property }) {
   )
 }
 
-function ContactDetailPanel({ contact }) {
-  const openPanel = useUIStore(s => s.openSidePanel)
-  
-  const { data: activitiesRes, isLoading: activitiesLoading } = useQuery({
-    queryKey: ['crm-activities', contact?.id],
-    queryFn: () => crmAPI.activities.list({ contact: contact?.id }),
-    enabled: !!contact?.id
-  })
-  
-  const activities = activitiesRes?.data?.results || []
-
-  if (!contact) return null
-
-  const getActivityIcon = (type) => {
-    switch(type) {
-      case 'call': return <Phone size={14} className="text-blue-400" />
-      case 'email': return <Mail size={14} className="text-amber-400" />
-      case 'meeting': return <User size={14} className="text-purple-400" />
-      case 'viewing': return <Building2 size={14} className="text-emerald-400" />
-      case 'whatsapp': return <MessageSquare size={14} className="text-green-400" />
-      default: return <FileText size={14} className="text-dark-400" />
-    }
-  }
-
+function PanelLoader() {
   return (
-    <div className="p-6 space-y-8">
-      {/* Profile Header */}
-      <div className="flex items-start gap-5">
-        <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold border border-primary/20">
-          {contact.first_name?.[0]}{contact.last_name?.[0]}
-        </div>
-        <div className="flex-1 min-w-0 py-1">
-          <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-2xl font-semibold text-white truncate">{contact.first_name} {contact.last_name}</h2>
-            <span className="badge-primary text-[10px] py-0.5 px-2">{contact.contact_type}</span>
-          </div>
-          <p className="text-dark-400 flex items-center gap-1.5">
-            <Briefcase size={14} /> {contact.company || 'Individual Client'}
-          </p>
-        </div>
-      </div>
-
-      {/* Contact Info */}
-      <div className="grid grid-cols-1 gap-4">
-        <div className="bg-dark-800/50 border border-white/5 rounded-xl p-4 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-dark-400">
-            <Mail size={18} />
-          </div>
-          <div>
-            <p className="text-[10px] text-dark-500 uppercase font-bold tracking-wider">Email Address</p>
-            <p className="text-white text-sm">{contact.email || '—'}</p>
-          </div>
-        </div>
-        <div className="bg-dark-800/50 border border-white/5 rounded-xl p-4 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-dark-400">
-            <Phone size={18} />
-          </div>
-          <div>
-            <p className="text-[10px] text-dark-500 uppercase font-bold tracking-wider">Mobile Number</p>
-            <p className="text-white text-sm">{contact.phone_mobile || '—'}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Linked Properties Section */}
-      <div className="space-y-4">
-        <h3 className="text-xs font-bold text-dark-500 uppercase tracking-widest flex items-center gap-2">
-          <Building2 size={14} /> Linked Properties
-        </h3>
-        
-        {contact.active_leases?.length > 0 ? (
-          <div className="space-y-3">
-            {contact.active_leases.map(lease => (
-              <div 
-                key={lease.id}
-                className="group relative p-4 rounded-xl bg-dark-800/80 border border-white/5 hover:border-primary/30 transition-all"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                      <Key size={18} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-white group-hover:text-primary transition-colors">
-                        {lease.property_name}
-                      </p>
-                      <p className="text-[10px] text-dark-500 font-mono mt-0.5">
-                        {lease.property_ref} · Lease {lease.lease_number}
-                      </p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => openPanel('property-detail', { property: { id: lease.property_id, name: lease.property_name, reference_number: lease.property_ref } })}
-                    className="p-2 rounded-lg bg-white/5 text-dark-400 hover:text-white hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100"
-                    title="View Property Profile"
-                  >
-                    <ExternalLink size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="border border-dashed border-white/10 rounded-xl p-8 text-center bg-white/2">
-            <Building2 size={32} className="mx-auto text-dark-700 mb-2" />
-            <p className="text-xs text-dark-500">No active property leases found for this contact.</p>
-          </div>
-        )}
-      </div>
-
-      {/* Guarantor Info */}
-      {contact.guarantor_name && (
-        <div className="space-y-4">
-          <h3 className="text-xs font-bold text-amber-500 uppercase tracking-widest flex items-center gap-2">
-            <User size={14} /> Guarantor Information
-          </h3>
-          <div className="bg-amber-500/5 border border-amber-500/10 rounded-xl p-4 space-y-3">
-            <div className="flex justify-between items-center border-b border-amber-500/10 pb-2">
-              <span className="text-xs text-dark-400">Name</span>
-              <span className="text-sm font-medium text-white">{contact.guarantor_name}</span>
-            </div>
-            <div className="flex justify-between items-center border-b border-amber-500/10 pb-2">
-              <span className="text-xs text-dark-400">Relationship</span>
-              <span className="text-sm font-medium text-amber-400">{contact.guarantor_relationship || 'Not Specified'}</span>
-            </div>
-            <div className="flex justify-between items-center border-b border-amber-500/10 pb-2">
-              <span className="text-xs text-dark-400">Email</span>
-              <span className="text-sm font-medium text-white">{contact.guarantor_email || '—'}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-dark-400">Phone</span>
-              <span className="text-sm font-medium text-white">{contact.guarantor_phone || '—'}</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Unified Chatter & Activities */}
-      <div className="border-t border-white/5 -mx-6 pt-6">
-        <Chatter contactId={contact.id} contactData={contact} />
-      </div>
+    <div role="status" className="flex items-center justify-center py-16">
+      <Loader2 size={20} className="animate-spin text-primary" />
     </div>
   )
 }
@@ -418,7 +283,8 @@ export default function SidePanelContainer() {
               </button>
             </div>
 
-            {/* Panel Content Builder */}
+            {/* Panel Content Builder (Suspense: panels are lazy-loaded) */}
+            <Suspense fallback={<PanelLoader />}>
             <div className="relative">
               {activeSidePanel === 'property-detail' && sidePanelData?.property && (
                 <PropertyDetailPanel property={sidePanelData.property} />
@@ -683,6 +549,7 @@ export default function SidePanelContainer() {
                 </div>
               )}
             </div>
+            </Suspense>
           </motion.div>
         </>
       )}

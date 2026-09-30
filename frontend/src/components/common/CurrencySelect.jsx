@@ -11,7 +11,8 @@ export default function CurrencySelect({
   placeholder = "Select Currency",
   error = null,
   disabled = false,
-  required = false
+  required = false,
+  valueKey = 'id',   // 'code' for models keyed by currency code (e.g. bank accounts)
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef(null)
@@ -39,7 +40,7 @@ export default function CurrencySelect({
   const selectedCurrency = currencies.find(c => c.id === value || c.code === value)
 
   const handleSelect = (currency) => {
-    onChange(currency.id)
+    onChange(currency[valueKey])
     setIsOpen(false)
   }
 

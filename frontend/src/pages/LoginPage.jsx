@@ -4,15 +4,16 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { authAPI } from '@/services/api'
 import { useAuthStore } from '@/stores/authStore'
+import { homePathFor, isPortalUser } from '@/utils/portal'
 import toast from 'react-hot-toast'
 import { AlertCircle, Eye, EyeOff } from 'lucide-react'
-import logo from '@/assets/logo.png'
+import BrandLogo from '@/components/common/BrandLogo'
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
-  const [email, setEmail] = useState('admin@stohill.co.za')
-  const [password, setPassword] = useState('admin123!')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -36,8 +37,8 @@ export default function LoginPage() {
       // 4. Save full auth state
       setAuth(userData, access, refresh)
       
-      toast.success(`Welcome back, ${userData.first_name || 'Admin'}!`)
-      navigate('/dashboard')
+      toast.success(`Welcome${isPortalUser(userData) ? '' : ' back'}, ${userData.first_name || 'Admin'}!`)
+      navigate(homePathFor(userData))
     } catch (err) {
       const resp = err?.response?.data
       const msg = resp?.error?.message?.detail || resp?.error?.message || resp?.detail || 'Invalid credentials. Please try again.'
@@ -64,7 +65,7 @@ export default function LoginPage() {
         <div className="bg-dark-900 border border-white/8 rounded-2xl p-8 shadow-dark">
           <div className="flex items-center gap-4 mb-8">
             <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center shadow-lg border border-white/5">
-              <img src={logo} alt="Stohill Logo" className="w-9 h-9 object-contain" />
+              <BrandLogo className="w-9 h-9" />
             </div>
             <div>
               <h1 className="font-display text-2xl text-white leading-none">Stohill Properties</h1>
@@ -131,12 +132,6 @@ export default function LoginPage() {
               {loading ? 'Authenticating...' : 'Sign In'}
             </button>
           </form>
-
-          <div className="mt-6 p-3 rounded-lg bg-dark-800 border border-white/5">
-            <p className="text-xs text-dark-400 font-mono text-center">
-              admin@stohill.co.za / admin123!
-            </p>
-          </div>
         </div>
 
         <p className="text-center text-xs text-dark-600 mt-4">

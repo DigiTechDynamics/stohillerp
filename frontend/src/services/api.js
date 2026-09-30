@@ -2,7 +2,13 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/authStore'
 
-const BASE_URL = '/api/v1/'
+// Same-origin by default: Vite proxies /api in dev and nginx does in prod.
+// Override with VITE_API_BASE_URL only if the API lives on another origin.
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1/'
+
+// Endpoints that must never trigger the refresh-and-retry flow. A 401 from
+// login means "wrong password", not "expired token".
+const AUTH_ENDPOINTS = ['auth/login/', 'auth/refresh/']
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -16,26 +22,52 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+// Single-flight refresh: when several requests hit 401 at once they all await
+// the same refresh call. Without this, parallel refreshes would each send the
+// same refresh token, and with rotation + blacklisting all but the first fail.
+let refreshPromise = null
+
+function refreshAccessToken() {
+  if (!refreshPromise) {
+    const { refreshToken, user, setAuth } = useAuthStore.getState()
+    refreshPromise = axios
+      .post(`${BASE_URL}auth/refresh/`, { refresh: refreshToken })
+      .then(({ data }) => {
+        // The backend rotates refresh tokens: always store the new one.
+        setAuth(user, data.access, data.refresh ?? refreshToken)
+        return data.access
+      })
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+  return refreshPromise
+}
+
+function forceLogout() {
+  useAuthStore.getState().logout()
+  if (window.location.pathname !== '/login') window.location.assign('/login')
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const isAuthCall = AUTH_ENDPOINTS.some((path) => originalRequest?.url?.endsWith(path))
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthCall) {
       originalRequest._retry = true
-      const refreshToken = useAuthStore.getState().refreshToken
-      if (refreshToken) {
-        try {
-          const { data } = await axios.post(`${BASE_URL}auth/refresh/`, { refresh: refreshToken })
-          useAuthStore.getState().setAuth(useAuthStore.getState().user, data.access, refreshToken)
-          originalRequest.headers.Authorization = `Bearer ${data.access}`
-          return api(originalRequest)
-        } catch {
-          useAuthStore.getState().logout()
-          window.location.href = '/login'
-        }
-      } else {
-        useAuthStore.getState().logout()
-        window.location.href = '/login'
+      if (!useAuthStore.getState().refreshToken) {
+        forceLogout()
+        return Promise.reject(error)
+      }
+      try {
+        const access = await refreshAccessToken()
+        originalRequest.headers.Authorization = `Bearer ${access}`
+        return api(originalRequest)
+      } catch (refreshError) {
+        forceLogout()
+        return Promise.reject(refreshError)
       }
     }
     return Promise.reject(error)
@@ -44,11 +76,18 @@ api.interceptors.response.use(
 
 export const authAPI = {
   login: (email, password) => api.post('auth/login/', { email, password }),
+  // Revokes the refresh token server-side so a stolen copy can't be reused.
+  logout: (refresh) => api.post('auth/logout/', { refresh }),
   me: () => api.get('core/me/'),
   updateMe: (data) => api.patch('core/me/', data),
+  portalActivate: (data) => api.post('auth/portal-activate/', data),
   currencies: {
     list: (params) => api.get('core/currencies/', { params }),
   },
+}
+
+export const companyAPI = {
+  profile: () => api.get('core/company/'),
 }
 
 export const propertiesAPI = {
@@ -71,6 +110,7 @@ export const crmAPI = {
     delete: (id) => api.delete(`crm/contacts/${id}/`),
     duplicateCheck: (params) => api.get('crm/contacts/duplicate_check/', { params }),
     recomputeScore: (id) => api.post(`crm/contacts/${id}/recompute_score/`),
+    inviteToPortal: (id) => api.post(`crm/contacts/${id}/invite_to_portal/`),
   },
   opportunities: {
     list: (params) => api.get('crm/opportunities/', { params }),
@@ -138,6 +178,7 @@ export const salesAPI = {
   update: (id, data) => api.patch(`sales/transactions/${id}/`, data),
   postToFinance: (id) => api.post(`sales/transactions/${id}/post_to_finance/`),
   confirmDeal: (id) => api.post(`sales/transactions/${id}/confirm_deal/`),
+  stats: () => api.get('sales/transactions/stats/'),
 }
 
 export const rentalsAPI = {
@@ -147,6 +188,11 @@ export const rentalsAPI = {
     create: (data) => api.post('rentals/leases/', data),
     update: (id, data) => api.patch(`rentals/leases/${id}/`, data),
     adjustRental: (id, amount) => api.post(`rentals/leases/${id}/adjust_rental/`, { monthly_rental: amount }),
+    generateInvoices: (id, asOf) => api.post(`rentals/leases/${id}/generate_invoices/`, { as_of: asOf }),
+    recordDeposit: (id, data) => api.post(`rentals/leases/${id}/record_deposit/`, data),
+    refundDeposit: (id, data) => api.post(`rentals/leases/${id}/refund_deposit/`, data),
+    renew: (id, data) => api.post(`rentals/leases/${id}/renew/`, data),
+    terminate: (id, data) => api.post(`rentals/leases/${id}/terminate/`, data),
     stats: () => api.get('rentals/leases/stats/'),
   },
   invoices: {
@@ -163,6 +209,19 @@ export const rentalsAPI = {
     list: (params) => api.get('rentals/maintenance/', { params }),
     create: (data) => api.post('rentals/maintenance/', data),
     update: (id, data) => api.patch(`rentals/maintenance/${id}/`, data),
+    complete: (id, data) => api.post(`rentals/maintenance/${id}/complete/`, data),
+  },
+  charges: {
+    list: (params) => api.get('rentals/charges/', { params }),
+    create: (data) => api.post('rentals/charges/', data),
+    update: (id, data) => api.patch(`rentals/charges/${id}/`, data),
+    remove: (id) => api.delete(`rentals/charges/${id}/`),
+  },
+  owners: {
+    list: () => api.get('rentals/owners/'),
+    statement: (id, params) => api.get(`rentals/owners/${id}/statement/`, { params }),
+    statementPdf: (id, params) => api.get(`rentals/owners/${id}/statement/`, { params: { ...params, export_format: 'pdf' }, responseType: 'blob' }),
+    payout: (id, data) => api.post(`rentals/owners/${id}/payout/`, data),
   },
 }
 
@@ -196,6 +255,37 @@ export const financeAPI = {
     update: (id, data) => api.patch(`finance/entries/${id}/`, data),
     post: (id) => api.post(`finance/entries/${id}/post_entry/`),
     reverse: (id) => api.post(`finance/entries/${id}/reverse/`),
+  },
+  allocations: {
+    ar: (params) => api.get('finance/ar-allocations/', { params }),
+    ap: (params) => api.get('finance/ap-allocations/', { params }),
+  },
+  costCenters: {
+    list: (params) => api.get('finance/cost-centers/', { params }),
+    create: (data) => api.post('finance/cost-centers/', data),
+    update: (id, data) => api.patch(`finance/cost-centers/${id}/`, data),
+  },
+  recurringJournals: {
+    list: (params) => api.get('finance/recurring-journals/', { params }),
+    create: (data) => api.post('finance/recurring-journals/', data),
+    update: (id, data) => api.patch(`finance/recurring-journals/${id}/`, data),
+    remove: (id) => api.delete(`finance/recurring-journals/${id}/`),
+    runDue: () => api.post('finance/recurring-journals/run_due/'),
+  },
+  approvalRules: {
+    list: (params) => api.get('finance/approval-rules/', { params }),
+    create: (data) => api.post('finance/approval-rules/', data),
+    update: (id, data) => api.patch(`finance/approval-rules/${id}/`, data),
+    remove: (id) => api.delete(`finance/approval-rules/${id}/`),
+  },
+  fx: {
+    revalue: (asOf) => api.post('finance/fx/revalue/', { as_of: asOf }),
+  },
+  budgets: {
+    list: (params) => api.get('finance/budgets/', { params }),
+    create: (data) => api.post('finance/budgets/', data),
+    update: (id, data) => api.patch(`finance/budgets/${id}/`, data),
+    remove: (id) => api.delete(`finance/budgets/${id}/`),
   },
   fiscalYears: {
     list: (params) => api.get('finance/fiscal-years/', { params }),
@@ -231,6 +321,14 @@ export const financeAPI = {
       api.get('finance/reports/balance-sheet/', { params: { as_at_date: asAtDate } }),
     vatReturn: (fromDate, toDate) =>
       api.get('finance/reports/vat-return/', { params: { from_date: fromDate, to_date: toDate } }),
+    arAging: (asAtDate) => api.get('finance/reports/ar-aging/', { params: { as_at_date: asAtDate } }),
+    apAging: (asAtDate) => api.get('finance/reports/ap-aging/', { params: { as_at_date: asAtDate } }),
+    generalLedger: (account, fromDate, toDate) =>
+      api.get('finance/reports/general-ledger/', { params: { account, from_date: fromDate, to_date: toDate } }),
+    cashFlow: (fromDate, toDate) =>
+      api.get('finance/reports/cash-flow/', { params: { from_date: fromDate, to_date: toDate } }),
+    budgetVsActual: (fiscalYearId, periodId) =>
+      api.get('finance/reports/budget-vs-actual/', { params: { fiscal_year: fiscalYearId || undefined, period: periodId || undefined } }),
     export: (reportId, format, params) => 
       api.get(`finance/reports/export/${reportId}/`, { 
         params: { ...params, export_format: format },
@@ -264,6 +362,7 @@ export const financeAPI = {
       update: (id, data) => api.patch(`finance/suppliers/${id}/`, data),
       delete: (id) => api.delete(`finance/suppliers/${id}/`),
       toggleActive: (id) => api.post(`finance/suppliers/${id}/toggle_active/`),
+      statementPdf: (id, params) => api.get(`finance/suppliers/${id}/statement/`, { params: { ...params, export_format: 'pdf' }, responseType: 'blob' }),
     },
     invoices: {
       list: (params) => api.get('finance/supplier-invoices/', { params }),
@@ -273,12 +372,25 @@ export const financeAPI = {
       delete: (id) => api.delete(`finance/supplier-invoices/${id}/`),
       review: (id) => api.post(`finance/supplier-invoices/${id}/review_invoice/`),
       post: (id) => api.post(`finance/supplier-invoices/${id}/post_invoice/`),
+      approvalStatus: (id) => api.get(`finance/supplier-invoices/${id}/approval_status/`),
+      approve: (id, comment) => api.post(`finance/supplier-invoices/${id}/approve/`, { comment }),
+      reject: (id, comment) => api.post(`finance/supplier-invoices/${id}/reject/`, { comment }),
+      matchStatus: (id) => api.get(`finance/supplier-invoices/${id}/match_status/`),
+      overrideMatch: (id, reason) => api.post(`finance/supplier-invoices/${id}/override_match/`, { reason }),
+      applyCredit: (id, allocations) => api.post(`finance/supplier-invoices/${id}/apply_credit/`, { allocations }),
+      writeOff: (id, data) => api.post(`finance/supplier-invoices/${id}/write_off/`, data),
+      refund: (id, data) => api.post(`finance/supplier-invoices/${id}/refund/`, data),
     },
     payments: {
       list: (params) => api.get('finance/supplier-payments/', { params }),
       detail: (id) => api.get(`finance/supplier-payments/${id}/`),
       create: (data) => api.post('finance/supplier-payments/', data),
       post: (id) => api.post(`finance/supplier-payments/${id}/post_payment/`),
+      approvalStatus: (id) => api.get(`finance/supplier-payments/${id}/approval_status/`),
+      approve: (id, comment) => api.post(`finance/supplier-payments/${id}/approve/`, { comment }),
+      reject: (id, comment) => api.post(`finance/supplier-payments/${id}/reject/`, { comment }),
+      allocate: (id, allocations) => api.post(`finance/supplier-payments/${id}/allocate/`, { allocations }),
+      refund: (id, data) => api.post(`finance/supplier-payments/${id}/refund/`, data),
     }
   },
   ar: {
@@ -287,6 +399,9 @@ export const financeAPI = {
       detail: (id) => api.get(`finance/customers/${id}/`),
       create: (data) => api.post('finance/customers/', data),
       update: (id, data) => api.patch(`finance/customers/${id}/`, data),
+      statement: (id, params) => api.get(`finance/customers/${id}/statement/`, { params }),
+      statementPdf: (id, params) => api.get(`finance/customers/${id}/statement/`, { params: { ...params, export_format: 'pdf' }, responseType: 'blob' }),
+      emailStatement: (id, data) => api.post(`finance/customers/${id}/email_statement/`, data),
     },
     invoices: {
       list: (params) => api.get('finance/customer-invoices/', { params }),
@@ -295,12 +410,18 @@ export const financeAPI = {
       update: (id, data) => api.patch(`finance/customer-invoices/${id}/`, data),
       post: (id) => api.post(`finance/customer-invoices/${id}/post_invoice/`),
       email: (id) => api.post(`finance/customer-invoices/${id}/email_invoice/`),
+      pdf: (id) => api.get(`finance/customer-invoices/${id}/pdf/`, { responseType: 'blob' }),
+      applyCredit: (id, allocations) => api.post(`finance/customer-invoices/${id}/apply_credit/`, { allocations }),
+      writeOff: (id, data) => api.post(`finance/customer-invoices/${id}/write_off/`, data),
+      refund: (id, data) => api.post(`finance/customer-invoices/${id}/refund/`, data),
     },
     receipts: {
       list: (params) => api.get('finance/customer-receipts/', { params }),
       detail: (id) => api.get(`finance/customer-receipts/${id}/`),
       create: (data) => api.post('finance/customer-receipts/', data),
       post: (id) => api.post(`finance/customer-receipts/${id}/post_receipt/`),
+      allocate: (id, allocations) => api.post(`finance/customer-receipts/${id}/allocate/`, { allocations }),
+      refund: (id, data) => api.post(`finance/customer-receipts/${id}/refund/`, data),
     }
   },
   bank: {
@@ -330,17 +451,22 @@ export const bankingAPI = {
     create: (data) => api.post('banking/accounts/', data),
     update: (id, data) => api.patch(`banking/accounts/${id}/`, data),
     stats: (id) => api.get(`banking/accounts/${id}/stats/`),
+    unmatchedLedger: (id) => api.get(`banking/accounts/${id}/unmatched_ledger/`),
+    reconciliation: (id, asOf) => api.get(`banking/accounts/${id}/reconciliation/`, { params: { as_of: asOf } }),
   },
   statements: {
     list: (params) => api.get('banking/statements/', { params }),
     detail: (id) => api.get(`banking/statements/${id}/`),
-    create: (data) => api.post('banking/statements/', data),
+    import: (formData) => api.post('banking/statements/import/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
     auto_match: (id) => api.post(`banking/statements/${id}/auto_match/`),
-    process_statement: (id) => api.post(`banking/statements/${id}/process_statement/`),
   },
   lines: {
     list: (params) => api.get('banking/lines/', { params }),
     reconcile: (id, data) => api.post(`banking/lines/${id}/reconcile_manually/`, data),
+    unreconcile: (id) => api.post(`banking/lines/${id}/unreconcile/`),
+    postAdjustment: (id, data) => api.post(`banking/lines/${id}/post_adjustment/`, data),
   },
   rules: {
     list: (params) => api.get('banking/reconciliation-rules/', { params }),
@@ -352,10 +478,58 @@ export const bankingAPI = {
 
 export const fixedAssetsAPI = financeAPI.fixedAssets
 
+export const procurementAPI = {
+  orders: {
+    list: (params) => api.get('procurement/orders/', { params }),
+    detail: (id) => api.get(`procurement/orders/${id}/`),
+    create: (data) => api.post('procurement/orders/', data),
+    update: (id, data) => api.patch(`procurement/orders/${id}/`, data),
+    approvalStatus: (id) => api.get(`procurement/orders/${id}/approval_status/`),
+    approve: (id, comment) => api.post(`procurement/orders/${id}/approve/`, { comment }),
+    reject: (id, comment) => api.post(`procurement/orders/${id}/reject/`, { comment }),
+    issue: (id) => api.post(`procurement/orders/${id}/issue/`),
+    cancel: (id) => api.post(`procurement/orders/${id}/cancel/`),
+    receive: (id, data) => api.post(`procurement/orders/${id}/receive/`, data),
+    createInvoice: (id, data) => api.post(`procurement/orders/${id}/create_invoice/`, data),
+  },
+  receipts: {
+    list: (params) => api.get('procurement/receipts/', { params }),
+  },
+}
+
+export const projectsAPI = {
+  list: (params) => api.get('projects/', { params }),
+  detail: (id) => api.get(`projects/${id}/`),
+  create: (data) => api.post('projects/', data),
+  update: (id, data) => api.patch(`projects/${id}/`, data),
+  costReport: (id) => api.get(`projects/${id}/cost_report/`),
+  capitalise: (id, data) => api.post(`projects/${id}/capitalise/`, data),
+}
+
+export const portalAPI = {
+  me: () => api.get('portal/me/'),
+  invoices: () => api.get('portal/invoices/'),
+  invoicePdf: (id) => api.get(`portal/invoices/${id}/pdf/`, { responseType: 'blob' }),
+  statement: (params) => api.get('portal/statement/', { params }),
+  statementPdf: (params) => api.get('portal/statement/', { params: { ...params, export_format: 'pdf' }, responseType: 'blob' }),
+  maintenance: {
+    list: () => api.get('portal/maintenance/'),
+    create: (data) => api.post('portal/maintenance/', data),
+  },
+  payments: {
+    list: () => api.get('portal/payments/'),
+    start: (invoiceIds) => api.post('portal/payments/', { invoices: invoiceIds }),
+    detail: (reference) => api.get(`portal/payments/${reference}/`),
+    refresh: (reference) => api.post(`portal/payments/${reference}/refresh/`),
+    simulate: (reference, outcome) => api.post(`portal/payments/${reference}/simulate/`, { outcome }),
+  },
+}
+
 export const commissionsAPI = {
   list: (params) => api.get('commissions/records/', { params }),
   detail: (id) => api.get(`commissions/records/${id}/`),
   approve: (id) => api.post(`commissions/records/${id}/approve/`),
+  stats: () => api.get('commissions/records/stats/'),
   structures: {
     list: (params) => api.get('commissions/structures/', { params }),
     create: (data) => api.post('commissions/structures/', data),
@@ -367,7 +541,10 @@ export const documentsAPI = {
   list: (params) => api.get('documents/', { params }),
   detail: (id) => api.get(`documents/${id}/`),
   upload: (formData) => api.post('documents/', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  compliance: { list: (params) => api.get('documents/compliance/', { params }) },
+  compliance: {
+    list: (params) => api.get('documents/compliance/', { params }),
+    summary: () => api.get('documents/compliance/summary/'),
+  },
 }
 
 export const hrAPI = {
@@ -407,6 +584,10 @@ export const payrollAPI = {
     update: (id, data) => api.patch(`payroll/runs/${id}/`, data),
     process: (id) => api.post(`payroll/runs/${id}/process/`),
     payAll: (id) => api.post(`payroll/runs/${id}/pay_all/`),
+    approve: (id) => api.post(`payroll/runs/${id}/approve/`),
+    statutory: (id) => api.get(`payroll/runs/${id}/statutory/`),
+    bankFile: (id) => api.get(`payroll/runs/${id}/bank_file/`, { responseType: 'blob' }),
+    emailPayslips: (id) => api.post(`payroll/runs/${id}/email_payslips/`),
   },
   payslips: {
     list: (params) => api.get('payroll/payslips/', { params }),
@@ -475,4 +656,65 @@ export const dataManagementAPI = {
   },
 }
 
+// Private files (KYC, contracts, attachments) are only served to an
+// authenticated API request, so a plain <a href> can't fetch them: download
+// through axios (which adds the bearer token) and save the blob.
+export async function downloadPrivateFile(url, fallbackName = 'download') {
+  const path = url.replace(/^\/api\/v1\//, '')
+  const response = await api.get(path, { responseType: 'blob' })
+  const disposition = response.headers?.['content-disposition'] || ''
+  const match = /filename\*=UTF-8''([^;]+)/.exec(disposition)
+  const filename = match ? decodeURIComponent(match[1]) : fallbackName
+  const href = window.URL.createObjectURL(response.data)
+  const link = document.createElement('a')
+  link.href = href
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(href)
+}
+
+// Human-readable message from an API error (the backend wraps errors as
+// {success:false, error:{message}} where message is a string or field map).
+export function apiErrorMessage(error, fallback = 'Something went wrong.') {
+  const message = error?.response?.data?.error?.message ?? error?.response?.data?.error
+  if (!message) return fallback
+  if (typeof message === 'string') return message
+  if (message.detail) return [].concat(message.detail).join(' ')
+  return Object.entries(message).map(([k, v]) => `${k}: ${[].concat(v).join(' ')}`).join('; ')
+}
+
+// Save a blob response (PDF/CSV) under the server's filename.
+export function saveBlobResponse(response, fallbackName = 'download') {
+  const disposition = response.headers?.['content-disposition'] || ''
+  const star = /filename\*=UTF-8''([^;]+)/.exec(disposition)
+  const plain = /filename="?([^";]+)"?/.exec(disposition)
+  const filename = star ? decodeURIComponent(star[1]) : plain ? plain[1] : fallbackName
+  const href = window.URL.createObjectURL(response.data)
+  const link = document.createElement('a')
+  link.href = href
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(href)
+}
+
 export default api
+
+/**
+ * Sign the user out everywhere this refresh token is used.
+ * Server-side revocation is best-effort: local state is always cleared,
+ * even if the network call fails (e.g. the token already expired).
+ */
+export async function signOut() {
+  const { refreshToken, logout } = useAuthStore.getState()
+  try {
+    if (refreshToken) await authAPI.logout(refreshToken)
+  } catch {
+    // Ignore: an expired/invalid token needs no revocation.
+  } finally {
+    logout()
+  }
+}

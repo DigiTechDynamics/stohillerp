@@ -1,8 +1,8 @@
 // Stohill Properties - CRM Lost Reason Modal
 // Shown when user clicks "Mark Lost" on an opportunity
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { XCircle, AlertCircle, Plus, Loader2 } from 'lucide-react'
+import { XCircle, Plus, Loader2 } from 'lucide-react'
 import { crmAPI } from '@/services/api'
 import { toast } from 'react-hot-toast'
 

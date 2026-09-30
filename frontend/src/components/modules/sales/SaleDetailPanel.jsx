@@ -1,8 +1,5 @@
-import React from 'react'
-import { 
-  Building2, User, DollarSign, Calendar, 
-  Percent, Briefcase, FileText, MapPin, 
-  CheckCircle2, Clock, XCircle, Info, RefreshCw, Edit2, ExternalLink, FileCheck
+import {
+  Building2, User, DollarSign, Calendar, Percent, Briefcase, FileText, CheckCircle2, Clock, XCircle, Info, RefreshCw, Edit2, ExternalLink, FileCheck
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
@@ -13,8 +10,6 @@ import { toast } from 'react-hot-toast'
 export default function SaleDetailPanel({ sale }) {
   const { openSidePanel } = useUIStore()
   const queryClient = useQueryClient()
-
-  if (!sale) return null
 
   const confirmMutation = useMutation({
     mutationFn: () => salesAPI.confirmDeal(sale.id),
@@ -37,6 +32,8 @@ export default function SaleDetailPanel({ sale }) {
       toast.error(err.response?.data?.message || 'Failed to post to finance')
     }
   })
+
+  if (!sale) return null
 
   const getStatusInfo = (status) => {
     switch (status) {

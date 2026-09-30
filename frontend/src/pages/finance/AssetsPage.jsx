@@ -1,10 +1,7 @@
-import React, { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { 
-  Plus, Search, Filter, Download, Box, TrendingUp, 
-  Settings, History, AlertCircle, Calendar, DollarSign
-} from 'lucide-react'
+import { Plus, Search, Box, TrendingUp, Settings, History, Calendar, DollarSign } from 'lucide-react'
 import { fixedAssetsAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
@@ -31,15 +28,6 @@ export default function AssetsPage() {
   const { data: categoriesData } = useQuery({
     queryKey: ['asset-categories'],
     queryFn: () => fixedAssetsAPI.categories.list(),
-  })
-
-  // Depreciation Run Mutation
-  const deprecationMutation = useMutation({
-    mutationFn: (data) => fixedAssetsAPI.assets.runDepreciation(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fixed-assets'] })
-      // Add notification here if available
-    }
   })
 
   const totalNBV = assetsData?.data?.results?.reduce((sum, asset) => {
@@ -108,7 +96,7 @@ export default function AssetsPage() {
             <DollarSign size={80} className="text-emerald-500" />
           </div>
           <p className="text-sm font-medium text-dark-400 uppercase tracking-wider">Acquisition Cost</p>
-          <p className="text-4xl font-bold text-white mt-2">{formatCurrency(totalCost, 'USD')}</p>
+          <p className="text-4xl font-bold text-white mt-2">{formatCurrency(totalCost)}</p>
           <p className="text-xs text-emerald-400 mt-4 flex items-center gap-1">
              Original investment value
           </p>
@@ -124,7 +112,7 @@ export default function AssetsPage() {
             <TrendingUp size={80} className="text-primary" />
           </div>
           <p className="text-sm font-medium text-primary/80 uppercase tracking-wider">Net Book Value</p>
-          <p className="text-4xl font-bold text-white mt-2">{formatCurrency(totalNBV, 'USD')}</p>
+          <p className="text-4xl font-bold text-white mt-2">{formatCurrency(totalNBV)}</p>
           <p className="text-xs text-primary/60 mt-4 italic">
             Current balance sheet value
           </p>

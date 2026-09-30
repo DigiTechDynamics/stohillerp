@@ -1,9 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Calendar, Hash, User, Clock, CheckCircle2, CreditCard, Building2, Send } from 'lucide-react'
+import { Calendar, Hash, User, Clock, CheckCircle2, Building2, Send } from 'lucide-react'
 import { financeAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
+import { apiErrorMessage } from '@/services/api'
+import { CashDocumentActions } from './DocumentActions'
 
 export default function CustomerReceiptDetailPanel({ receipt: initialReceipt }) {
   const queryClient = useQueryClient()
@@ -26,7 +28,7 @@ export default function CustomerReceiptDetailPanel({ receipt: initialReceipt }) 
       closeSidePanel()
     },
     onError: (err) => {
-      toast.error(err.response?.data?.error || 'Failed to post receipt')
+      toast.error(apiErrorMessage(err, 'Failed to post receipt'))
     }
   })
 
@@ -151,6 +153,7 @@ export default function CustomerReceiptDetailPanel({ receipt: initialReceipt }) 
                  </div>
                </div>
              )}
+             <CashDocumentActions side="ar" document={receipt} />
            </div>
         )}
       </div>

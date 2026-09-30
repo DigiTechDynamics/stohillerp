@@ -2,9 +2,8 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Plus, User, Briefcase, MapPin, Mail, Phone, Filter, MoreVertical, BadgeCheck } from 'lucide-react'
+import { Search, Plus, User, MapPin, Mail, Phone, MoreVertical } from 'lucide-react'
 import { hrAPI } from '@/services/api'
-import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 
 import DataManagementButtons from '@/components/common/DataManagementButtons'

@@ -1,26 +1,21 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Landmark, Plus, RefreshCw, Wallet, 
-  TrendingUp, ArrowRightLeft, MoreVertical,
-  CheckCircle2, AlertCircle, Search, Filter,
-  Upload
+import {
+  Landmark, Plus, RefreshCw, Wallet, ArrowRightLeft, MoreVertical, CheckCircle2, Search, Filter, Upload
 } from 'lucide-react'
 import { bankingAPI, financeAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
-import DataManagementButtons from '@/components/common/DataManagementButtons'
 import Pagination from '@/components/common/Pagination'
 import ReconciliationWorkspace from './ReconciliationWorkspace'
-import { useQueryClient } from '@tanstack/react-query'
 
 export default function BankingPage() {
   const [tab, setTab] = useState('accounts')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('name')
   const [page, setPage] = useState(1)
-  const queryClient = useQueryClient()
+  const [reconAccountId, setReconAccountId] = useState('')
   const { openSidePanel } = useUIStore.getState()
 
   const { data: accountsData, isLoading, refetch } = useQuery({
@@ -42,8 +37,17 @@ export default function BankingPage() {
   })
   const payments = paymentsRaw?.data?.results || []
 
+  const { data: draftPaymentsRaw } = useQuery({
+    queryKey: ['ap-payments', { status: 'draft' }],
+    queryFn: () => financeAPI.ap.payments.list({ status: 'draft', page_size: 200 }),
+  })
+  const draftPayments = draftPaymentsRaw?.data?.results || []
+  const draftPaymentTotal = draftPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0)
+
   const accounts = accountsData?.data?.results || accountsData?.data || []
   const totalBalance = accounts.reduce((sum, acc) => sum + parseFloat(acc.current_balance || 0), 0)
+  const unreconciled = accounts.reduce((sum, acc) => sum + (acc.unreconciled_lines || 0), 0)
+  const reconAccount = reconAccountId || accounts[0]?.id || ''
 
   const tabs = [
     { id: 'accounts', label: 'Bank Accounts' },
@@ -61,12 +65,7 @@ export default function BankingPage() {
           <p className="text-dark-400 text-sm mt-1">Real-time liquidity and automated reconciliation</p>
         </div>
         <div className="flex items-center gap-3">
-          {tab === 'statements' && (
-            <DataManagementButtons 
-              module="statements" 
-              onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['bank-statements'] })} 
-            />
-          )}
+
           <button className="btn-secondary" onClick={() => refetch()}>
             <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
             Refresh
@@ -98,10 +97,7 @@ export default function BankingPage() {
             <span className="text-[10px] text-primary font-bold uppercase tracking-wider text-right">Liquidity</span>
           </div>
           <p className="stat-value">{formatCurrency(totalBalance)}</p>
-          <p className="text-xs text-dark-400 mt-1 flex items-center gap-1">
-            <TrendingUp size={12} className="text-emerald-400" />
-            +2.4% from last month
-          </p>
+          <p className="text-xs text-dark-400 mt-1">Book balance across {accounts.length} account(s)</p>
         </div>
 
         <div className="card p-5">
@@ -111,8 +107,8 @@ export default function BankingPage() {
             </div>
             <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider text-right">Reconciliation</span>
           </div>
-          <p className="stat-value">12 Items</p>
-          <p className="text-xs text-dark-400 mt-1">Require manual review</p>
+          <p className="stat-value">{unreconciled} Items</p>
+          <p className="text-xs text-dark-400 mt-1">Statement lines not yet reconciled</p>
         </div>
 
         <div className="card p-5">
@@ -122,8 +118,8 @@ export default function BankingPage() {
             </div>
             <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider text-right">Payments</span>
           </div>
-          <p className="stat-value">{formatCurrency(45300)}</p>
-          <p className="text-xs text-dark-400 mt-1">8 batches awaiting approval</p>
+          <p className="stat-value">{formatCurrency(draftPaymentTotal)}</p>
+          <p className="text-xs text-dark-400 mt-1">{draftPayments.length} draft payment(s) awaiting posting</p>
         </div>
       </div>
 
@@ -179,7 +175,7 @@ export default function BankingPage() {
                   <option value="name">Name (A-Z)</option>
                   <option value="-name">Name (Z-A)</option>
                   <option value="account_number">Account # (A-Z)</option>
-                  <option value="-current_balance">Highest Balance</option>
+                  <option value="code">Code</option>
                 </select>
                 <button className="btn-ghost p-2 text-dark-400">
                   <Filter size={18} />
@@ -208,7 +204,7 @@ export default function BankingPage() {
                               <Landmark size={16} />
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-white">{account.code}</p>
+                              <p className="text-sm font-medium text-white">{account.code || account.name}</p>
                               <p className="text-[10px] text-dark-500 uppercase tracking-wider">{account.gl_account_name}</p>
                             </div>
                           </div>
@@ -293,7 +289,16 @@ export default function BankingPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
             >
-              <ReconciliationWorkspace accountId={accounts[0]?.id} />
+              <div className="mb-4 flex items-center gap-3">
+                <label className="text-[10px] font-bold text-dark-400 uppercase tracking-widest">Account</label>
+                <select className="form-input w-auto min-w-[260px]" aria-label="Account to reconcile"
+                  value={reconAccount} onChange={(e) => setReconAccountId(e.target.value)}>
+                  {accounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>{acc.code || acc.name} - {acc.bank_name} {acc.account_number}</option>
+                  ))}
+                </select>
+              </div>
+              <ReconciliationWorkspace accountId={reconAccount} />
             </motion.div>
           )}
 
@@ -329,19 +334,19 @@ export default function BankingPage() {
                     <tbody className="divide-y divide-white/5 text-xs">
                       {statements.map(stmt => (
                         <tr key={stmt.id} className="hover:bg-white/5 transition-colors">
-                          <td className="px-6 py-4 text-white font-medium">{stmt.account_name}</td>
+                          <td className="px-6 py-4 text-white font-medium">{stmt.bank_account_code || stmt.bank_account_name}<div className="text-[10px] text-dark-500 font-mono">{stmt.reference}</div></td>
                           <td className="px-6 py-4 text-dark-400">
-                            {formatDate(stmt.start_date)} — {formatDate(stmt.end_date)}
+                            {formatDate(stmt.statement_date)} · closing {formatCurrency(stmt.closing_balance)}
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`badge ${stmt.status === 'processed' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                            <span className={`badge ${stmt.status === 'reconciled' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>
                               {stmt.status}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-right text-white">{stmt.transaction_count} items</td>
+                          <td className="px-6 py-4 text-right text-white">{stmt.lines?.filter(l => l.is_reconciled).length || 0}/{stmt.lines?.length || 0} reconciled</td>
                           <td className="px-6 py-4 text-right">
                             <button 
-                              onClick={() => { setTab('reconciliation') }}
+                              onClick={() => { setReconAccountId(stmt.bank_account); setTab('reconciliation') }}
                               className="text-primary hover:text-white transition-colors"
                             >
                               View Details

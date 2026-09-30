@@ -1,9 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Calendar, Hash, User, Clock, CheckCircle2, FileText, Send, Mail, Edit2 } from 'lucide-react'
+import { Calendar, Hash, FileText, Send, Edit2 } from 'lucide-react'
 import { financeAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
+import DocumentActions from './DocumentActions'
+import { apiErrorMessage } from '@/services/api'
 
 export default function ARInvoiceDetailPanel({ invoice: initialInvoice }) {
   const queryClient = useQueryClient()
@@ -25,7 +27,7 @@ export default function ARInvoiceDetailPanel({ invoice: initialInvoice }) {
       closeSidePanel()
     },
     onError: (err) => {
-      toast.error(err.response?.data?.error || 'Failed to post invoice')
+      toast.error(apiErrorMessage(err, 'Failed to post invoice'))
     }
   })
 
@@ -59,7 +61,7 @@ export default function ARInvoiceDetailPanel({ invoice: initialInvoice }) {
         </div>
 
         <div>
-           <h2 className="text-xl font-semibold text-white">Sales Invoice</h2>
+           <h2 className="text-xl font-semibold text-white">{invoice.document_type === 'credit_note' ? 'Credit Note' : 'Sales Invoice'}</h2>
            <p className="text-dark-400 text-sm mt-1">{invoice.customer_name}</p>
         </div>
       </div>
@@ -175,9 +177,7 @@ export default function ARInvoiceDetailPanel({ invoice: initialInvoice }) {
            </div>
         )}
 
-        <button className="w-full btn-secondary py-3 flex items-center justify-center gap-2 text-dark-300">
-          <Mail size={16} /> Email to Customer
-        </button>
+        {invoice.status !== 'draft' && <DocumentActions side="ar" invoice={invoice} />}
       </div>
     </div>
   )

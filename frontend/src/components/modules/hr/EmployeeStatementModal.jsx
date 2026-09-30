@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import { useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Printer, X, FileText } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -179,15 +179,15 @@ const EmployeeStatementModal = ({ isOpen, onClose, employeeId }) => {
                       <div className="w-80 totals shadow-xl shadow-slate-200/50">
                         <div className="total-row">
                           <span className="total-label uppercase tracking-widest text-[10px]">Total Gross Earned</span>
-                          <span className="total-value">{formatCurrency(statement.summary.total_earnings, "USD")}</span>
+                          <span className="total-value">{formatCurrency(statement.summary.total_earnings, statement.summary.currency)}</span>
                         </div>
                         <div className="total-row">
                           <span className="total-label uppercase tracking-widest text-[10px]">Total Deductions</span>
-                          <span className="total-value text-rose-600">-{formatCurrency(statement.summary.total_deductions, "USD")}</span>
+                          <span className="total-value text-rose-600">-{formatCurrency(statement.summary.total_deductions, statement.summary.currency)}</span>
                         </div>
                         <div className="total-row net-pay">
                           <span className="total-label font-bold uppercase tracking-widest">Total Net Disbursed</span>
-                          <span className="total-value font-black text-emerald-700">{formatCurrency(statement.summary.total_net, "USD")}</span>
+                          <span className="total-value font-black text-emerald-700">{formatCurrency(statement.summary.total_net, statement.summary.currency)}</span>
                         </div>
                       </div>
                     </div>
