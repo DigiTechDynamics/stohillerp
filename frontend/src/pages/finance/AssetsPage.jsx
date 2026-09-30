@@ -1,10 +1,7 @@
-import React, { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { 
-  Plus, Search, Filter, Download, Box, TrendingUp, 
-  Settings, History, AlertCircle, Calendar, DollarSign
-} from 'lucide-react'
+import { Plus, Search, Box, TrendingUp, Settings, History, Calendar, DollarSign } from 'lucide-react'
 import { fixedAssetsAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
@@ -31,15 +28,6 @@ export default function AssetsPage() {
   const { data: categoriesData } = useQuery({
     queryKey: ['asset-categories'],
     queryFn: () => fixedAssetsAPI.categories.list(),
-  })
-
-  // Depreciation Run Mutation
-  const deprecationMutation = useMutation({
-    mutationFn: (data) => fixedAssetsAPI.assets.runDepreciation(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fixed-assets'] })
-      // Add notification here if available
-    }
   })
 
   const totalNBV = assetsData?.data?.results?.reduce((sum, asset) => {

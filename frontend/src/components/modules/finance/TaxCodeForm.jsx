@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Save, AlertCircle, Percent, Hash, FileText } from 'lucide-react'
+import { Save, AlertCircle, Percent, Hash } from 'lucide-react'
 import { financeAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'

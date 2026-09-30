@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Plus, TrendingUp, DollarSign, Briefcase, Filter, ArrowUpRight, FileText } from 'lucide-react'
+import { Search, Plus, TrendingUp, DollarSign, Briefcase, FileText } from 'lucide-react'
 import { salesAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'

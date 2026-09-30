@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Save, X, Trash2, AlertTriangle, DollarSign, Calendar } from 'lucide-react'
+import { X, Trash2, AlertTriangle, Calendar } from 'lucide-react'
 import { fixedAssetsAPI } from '@/services/api'
 import { formatCurrency } from '@/utils/format'
 

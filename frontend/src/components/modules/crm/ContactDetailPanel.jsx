@@ -1,13 +1,9 @@
 // Stohill Properties - Contact Detail Panel
 // Full contact record with enrichment fields, linked opportunities, activities, notes, and KYC documents
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  User, Mail, Phone, Globe, Linkedin, Building2, Star,
-  TrendingUp, Activity as ActivityIcon, MessageSquare,
-  Edit2, BarChart2, AlertCircle, Loader2, Calendar,
-  ChevronRight, MapPin, DollarSign, Flame, Snowflake, Thermometer,
-  FileText, ShieldCheck, Download, Trash2, Plus, Upload, CheckCircle2
+  User, Mail, Phone, Globe, Linkedin, Building2, TrendingUp, Activity as ActivityIcon, MessageSquare, Edit2, BarChart2, AlertCircle, Loader2, ChevronRight, MapPin, DollarSign, Flame, Snowflake, Thermometer, FileText, ShieldCheck, Download, Trash2, Plus, Upload, CheckCircle2
 } from 'lucide-react'
 import { apiErrorMessage, crmAPI, downloadPrivateFile } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'

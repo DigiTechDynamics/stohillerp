@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Search, FileText, ShoppingCart, Wallet, CreditCard, Settings2 } from 'lucide-react'
+import { Plus, Search, ShoppingCart, Wallet, CreditCard, Settings2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { financeAPI } from '@/services/api'
 import { formatCurrency } from '@/utils/format'

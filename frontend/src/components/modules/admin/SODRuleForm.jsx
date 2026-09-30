@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { X, Save, Wand2, AlertTriangle, Info } from 'lucide-react'
+import { X, Save, Wand2, AlertTriangle } from 'lucide-react'
 import { adminAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 
@@ -16,7 +16,7 @@ export default function SODRuleForm({ id, initialData }) {
     ...initialData
   })
 
-  const { data: modulesData, isLoading: isLoadingModules } = useQuery({
+  const { data: modulesData } = useQuery({
     queryKey: ['admin-modules'],
     queryFn: () => adminAPI.modules.list()
   })

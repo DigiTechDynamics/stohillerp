@@ -5,7 +5,6 @@ import {
 } from 'lucide-react'
 import { financeAPI } from '@/services/api'
 import { formatCurrency } from '@/utils/format'
-import { motion, AnimatePresence } from 'framer-motion'
 import { useUIStore } from '@/stores/authStore'
 import AccountCombobox from '@/components/common/AccountCombobox'
 import CurrencySelect from '@/components/common/CurrencySelect'
@@ -16,7 +15,6 @@ export default function JournalEntryForm() {
   const [error, setError] = useState(null)
 
   const entry = sidePanelData?.entry
-  const isEditing = !!entry?.id
 
   // 1. Data Fetching
   const { data: journalsRes } = useQuery({

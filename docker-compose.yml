@@ -3,7 +3,8 @@
 #   docker compose up -d --build
 #   open http://localhost:8080
 #
-# Services: db (PostgreSQL 16) -> api (Django/gunicorn) -> web (nginx + SPA)
+# Services: db (PostgreSQL 16) -> api (Django/gunicorn) -> web (nginx + SPA),
+#           scheduler (daily jobs), backup (daily database dumps)
 
 name: stohill-erp
 
@@ -54,6 +55,8 @@ services:
       PAYNOW_INTEGRATION_ID: ${PAYNOW_INTEGRATION_ID:-}
       PAYNOW_INTEGRATION_KEY: ${PAYNOW_INTEGRATION_KEY:-}
       ONLINE_PAYMENTS_BANK_ACCOUNT: ${ONLINE_PAYMENTS_BANK_ACCOUNT:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
     volumes:
       - media:/app/media
 
@@ -86,8 +89,35 @@ services:
       PAYNOW_INTEGRATION_ID: ${PAYNOW_INTEGRATION_ID:-}
       PAYNOW_INTEGRATION_KEY: ${PAYNOW_INTEGRATION_KEY:-}
       ONLINE_PAYMENTS_BANK_ACCOUNT: ${ONLINE_PAYMENTS_BANK_ACCOUNT:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
     volumes:
       - media:/app/media
+
+  # Daily database backup to BACKUP_DIR on the host, verified, kept
+  # BACKUP_KEEP_DAYS days. Copy that folder off the server. See ops/backup/backup.sh.
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["sh", "/ops/backup.sh"]
+    healthcheck:
+      # Unhealthy if the last backup failed or none has succeeded in 26 hours.
+      test: ["CMD-SHELL", "grep -q '^ok' /backups/LAST_STATUS && find /backups -maxdepth 1 -name '*.dump' -mmin -1560 | grep -q ."]
+      interval: 5m
+      start_period: 2m
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stohill_erp}
+      POSTGRES_USER: ${POSTGRES_USER:-stohill}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      BACKUP_AT: ${BACKUP_AT:-01:30}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      TZ: ${TIME_ZONE:-Africa/Harare}
+    volumes:
+      - ./ops/backup/backup.sh:/ops/backup.sh:ro
+      - ${BACKUP_DIR:-./backups}:/backups
 
   web:
     build: ./frontend

@@ -3,8 +3,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  DollarSign, PieChart, TrendingUp, ArrowRightLeft,
-  FileText, Search, Plus, Filter, Download, ListChecks, Calendar, Settings, Box
+  DollarSign, PieChart, TrendingUp, ArrowRightLeft, FileText, Search, Plus, ListChecks, Calendar, Settings
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { financeAPI } from '@/services/api'

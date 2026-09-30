@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Building2, Plus, Edit2, Users } from 'lucide-react'
+import { Building2, Plus, Edit2, Users, User } from 'lucide-react'
 import { hrAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 

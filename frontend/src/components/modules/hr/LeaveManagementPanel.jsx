@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Calendar, Clock, CheckCircle2, XCircle, Plus, AlertCircle, User } from 'lucide-react'
 import { hrAPI } from '@/services/api'
 import { formatDate } from '@/utils/format'
-import { useUIStore } from '@/stores/authStore'
 
 export default function LeaveManagementPanel() {
   const queryClient = useQueryClient()

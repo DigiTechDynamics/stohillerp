@@ -1,13 +1,13 @@
-import React, { useState } from 'react'
-import { User, Briefcase, Mail, Phone, CreditCard, Calendar, ShieldCheck, MapPin } from 'lucide-react'
-import { formatCurrency, formatDate } from '@/utils/format'
+import { useState } from 'react'
+import { Briefcase, Mail, CreditCard, Calendar, ShieldCheck } from 'lucide-react'
+import { formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import EmployeeStatementModal from './EmployeeStatementModal'
 
 export default function EmployeeDetailPanel({ employee }) {
   const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
-  if (!employee) return null
   const openSidePanel = useUIStore((s) => s.openSidePanel)
+  if (!employee) return null
 
   const Section = ({ title, icon: Icon, children }) => (
     <div className="space-y-3">

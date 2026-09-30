@@ -1,7 +1,6 @@
 // Stohill Properties - route-level loading state.
 // Shown while a lazily-loaded page chunk downloads. Occupies the content area
 // only, so the sidebar and header stay interactive.
-import React from 'react'
 
 export default function PageLoader() {
   return (

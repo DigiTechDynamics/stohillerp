@@ -7,6 +7,7 @@ import AccountCombobox from '@/components/common/AccountCombobox'
 export default function PostingProfileForm({ profile, onClose }) {
   const queryClient = useQueryClient()
   const isEditing = !!profile
+  const [error, setError] = useState('')
 
   const [formData, setFormData] = useState({
     name: '',
@@ -72,6 +73,7 @@ export default function PostingProfileForm({ profile, onClose }) {
       return
     }
 
+    setError('')
     mutation.mutate(formData)
   }
 
@@ -94,6 +96,12 @@ export default function PostingProfileForm({ profile, onClose }) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-8">
+        {error && (
+          <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-start gap-3" role="alert">
+            <AlertCircle className="text-red-400 shrink-0" size={18} />
+            <div className="text-sm text-red-100">{error}</div>
+          </div>
+        )}
         {mutation.isError && (
           <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-start gap-3">
             <AlertCircle className="text-red-400 shrink-0" size={18} />

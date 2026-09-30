@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Building2, Mail, Phone, MapPin, Hash, ShieldCheck, ShieldAlert, Edit3, Trash2, Clock, DollarSign } from 'lucide-react'
+import { Building2, Mail, Phone, MapPin, ShieldCheck, ShieldAlert, Edit3, Trash2, DollarSign } from 'lucide-react'
 import { financeAPI } from '@/services/api'
-import { formatCurrency, formatDate } from '@/utils/format'
+import { formatCurrency } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
 

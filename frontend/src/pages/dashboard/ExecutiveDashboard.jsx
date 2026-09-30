@@ -4,13 +4,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import {
-  Building2, TrendingUp, Home, Award, Users, DollarSign,
-  ArrowUpRight, ArrowDownRight, AlertTriangle, BarChart3,
-  RefreshCw, Calendar
+  Building2, TrendingUp, Home, Award, Users, ArrowUpRight, ArrowDownRight, AlertTriangle, BarChart3, RefreshCw
 } from 'lucide-react'
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from 'recharts'
 import { dashboardAPI } from '@/services/api'
 import { formatCurrency, formatNumber } from '@/utils/format'

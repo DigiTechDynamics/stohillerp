@@ -1,11 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { 
-  Plus, Search, Percent, Edit3, Trash2, FileText, 
-  Download, AlertCircle, ShoppingCart, Calendar, 
-  Eye, Loader2, ArrowRight, ShieldCheck, Calculator
+import {
+  Plus, Search, Percent, Edit3, Trash2, FileText, Download, AlertCircle, Loader2, ArrowRight, ShieldCheck, Calculator
 } from 'lucide-react'
-import { financeAPI } from '@/services/api'
+import { apiErrorMessage, financeAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
 import { formatCurrency } from '@/utils/format'
@@ -249,6 +247,11 @@ export default function TaxReportsPage() {
                 <Loader2 size={48} className="text-primary animate-spin mb-4" />
                 <p className="text-white font-medium">Calculating Tax Liabilities...</p>
                 <p className="text-xs text-dark-500 mt-2">Scanning journal entries and tax transactions</p>
+              </div>
+            ) : returnError ? (
+              <div className="h-full card flex flex-col items-center justify-center p-12 text-center" role="alert">
+                <p className="text-white font-medium">The VAT return could not be calculated.</p>
+                <p className="text-xs text-dark-400 mt-2">{apiErrorMessage(returnError, 'Check the dates and try again.')}</p>
               </div>
             ) : vatReturn ? (
               <div className="space-y-6">

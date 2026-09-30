@@ -1,14 +1,11 @@
 // Stohill Properties - Unified CRM Dashboard (Odoo-parity)
-import React, { useState, useCallback } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Search, Plus, User, Mail, Filter,
-  Columns, Edit2, Trash2, TrendingUp, LayoutGrid, List,
-  BarChart2, SlidersHorizontal, CheckSquare, Calendar as CalendarIcon
+  Search, Plus, User, Mail, Edit2, Trash2, TrendingUp, LayoutGrid, List, BarChart2, SlidersHorizontal, CheckSquare, Calendar as CalendarIcon
 } from 'lucide-react'
 import { crmAPI } from '@/services/api'
-import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
@@ -47,7 +44,7 @@ export default function CRMPage() {
     queryFn: () => crmAPI.pipelines.list()
   })
 
-  const { data: contactsRes, isLoading: contactsLoading, refetch: refetchContacts } = useQuery({
+  const { data: contactsRes, refetch: refetchContacts } = useQuery({
     queryKey: ['crm-contacts', { search, page }],
     queryFn: () => crmAPI.contacts.list({ search, page }),
     enabled: activeTab === 'contacts'

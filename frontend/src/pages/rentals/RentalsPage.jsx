@@ -3,9 +3,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Search, Plus, Home, Key, Wrench, Calendar, Filter,
-  AlertTriangle, FileText, Building2, DollarSign,
-  TrendingUp, MapPin, Users, Receipt, Edit2, Trash2, Landmark
+  Search, Plus, Key, Wrench, AlertTriangle, Building2, DollarSign, MapPin, Users, Receipt, Edit2, Trash2, Landmark
 } from 'lucide-react'
 import { rentalsAPI, propertiesAPI, crmAPI } from '@/services/api'
 import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { Plus, Trash2, Save, AlertCircle, FileText, Calculator } from 'lucide-react'
 import { financeAPI } from '@/services/api'
@@ -31,13 +31,6 @@ export default function CustomerInvoiceForm() {
       { description: '', revenue_account: '', quantity: 1, unit_price: '0.00', tax_code: '', tax_amount: '0.00', line_total: '0.00' }
     ]
   })
-
-  // Ensure lines are correctly structured if editing
-  useEffect(() => {
-    if (invoice && invoice.lines && formData.lines.length === invoice.lines.length) {
-       // already initialized or manually edited
-    }
-  }, [invoice])
 
   // Fetch Customers
   const { data: customersData } = useQuery({
@@ -132,7 +125,7 @@ export default function CustomerInvoiceForm() {
     }
   })
 
-  const handleSubmit = (e) => {
+  const handleSubmit = () => {
     if (!formData.customer) {
       setError('Please select a customer.')
       return

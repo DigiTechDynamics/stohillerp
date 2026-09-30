@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Save, X, Calendar, DollarSign, Tag, Info, Layers } from 'lucide-react'
-import { fixedAssetsAPI, propertiesAPI } from '@/services/api'
+import { fixedAssetsAPI } from '@/services/api'
 import CurrencySelect from '@/components/common/CurrencySelect'
 
 export default function AssetForm({ asset, onClose }) {
@@ -34,11 +34,6 @@ export default function AssetForm({ asset, onClose }) {
   })
   const categories = categoriesData?.data?.results || []
 
-  const { data: propertiesData } = useQuery({
-    queryKey: ['properties-list'],
-    queryFn: () => propertiesAPI.list(),
-  })
-  const properties = propertiesData?.data?.results || []
 
   const mutation = useMutation({
     mutationFn: (data) => 

@@ -5,6 +5,26 @@
 Branch `chore/production-hardening`. Every bug below has a regression test in
 `backend/tests/`.
 
+### Production readiness: backups, monitoring, lint
+
+- **Backups.** A `backup` Compose service takes a daily database dump, verifies
+  it, keeps 14 days, and reports unhealthy if backups stop. A test restore
+  was run.
+- **Error monitoring.** Sentry integration, switched on by `SENTRY_DSN`. It
+  captures unhandled errors and failed scheduled jobs, and sends no personal
+  data.
+- **Frontend lint.** ESLint 10 with the React hooks rules, run in CI with zero
+  warnings allowed. It found real bugs, now fixed:
+  - Three panels (property, employee, sale) called hooks after an early
+    return. That crashes React when the record changes.
+  - Saving a tenant, opening a department with a manager, and a posting
+    profile with unmapped accounts each crashed on an undefined name.
+  - VAT return failures showed a blank page.
+  - The bank account form's error message was empty. This was introduced in
+    the pass 4 edit.
+  - Dead queries were removed, including a 1,000-account fetch on the journal
+    entry page. 193 unused imports were removed.
+
 ### ERP gap closure, pass 4: open items
 
 Tests are in `backend/tests/test_banking.py`, `test_procurement_projects.py`

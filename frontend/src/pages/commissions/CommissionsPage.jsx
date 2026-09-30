@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, DollarSign, Award, Users, Filter, CheckCircle2, Clock, Calculator } from 'lucide-react'
+import { Search, DollarSign, Award, CheckCircle2, Clock, Calculator } from 'lucide-react'
 import { commissionsAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'

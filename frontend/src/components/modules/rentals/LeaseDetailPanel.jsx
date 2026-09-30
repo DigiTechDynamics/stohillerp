@@ -1,10 +1,7 @@
 // Stohill Properties - Lease Detail Panel
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import {
-  Key, Building2, User, Calendar, DollarSign, TrendingUp,
-  FileText, Edit3, AlertTriangle, CheckCircle2
-} from 'lucide-react'
+import { Key, FileText, Edit3 } from 'lucide-react'
 import { rentalsAPI } from '@/services/api'
 import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
@@ -20,7 +17,7 @@ function InfoRow({ label, value, accent }) {
 }
 
 export default function LeaseDetailPanel() {
-  const { sidePanelData, openSidePanel, closeSidePanel } = useUIStore()
+  const { sidePanelData, openSidePanel } = useUIStore()
   const queryClient = useQueryClient()
   const lease = sidePanelData?.lease
   const [adjusting, setAdjusting] = useState(false)

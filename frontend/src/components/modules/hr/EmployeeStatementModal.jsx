@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import { useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Printer, X, FileText } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';

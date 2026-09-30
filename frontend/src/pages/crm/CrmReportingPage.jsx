@@ -1,12 +1,10 @@
 // Stohill Properties - CRM Reporting & Analytics Page
 // Pipeline summary, Win/Loss funnel, Revenue Forecast, Activity Summary
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import {
-  TrendingUp, Trophy, XCircle, BarChart2, Calendar,
-  DollarSign, Percent, AlertCircle, Activity, Loader2,
-  Users, Target
+  Trophy, BarChart2, Calendar, DollarSign, Percent, AlertCircle, Activity, Users, Target
 } from 'lucide-react'
 import { crmAPI } from '@/services/api'
 import { formatCurrency } from '@/utils/format'
@@ -14,7 +12,7 @@ import { formatCurrency } from '@/utils/format'
 // ─────────────────────────────────────────────────────────────────────────────
 // KPI Card
 // ─────────────────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, sub, icon: Icon, color = 'primary', trend }) {
+function KpiCard({ label, value, sub, icon: Icon, color = 'primary' }) {
   const colors = {
     primary: 'bg-primary/10 text-primary border-primary/20',
     green: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',

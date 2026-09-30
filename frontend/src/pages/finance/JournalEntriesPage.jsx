@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Plus, ArrowRightLeft, Calendar, User, CheckCircle } from 'lucide-react'
 import { financeAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
-import { useUIStore } from '@/stores/authStore'
 import Pagination from '@/components/common/Pagination'
 
 export default function JournalEntriesPage() {
@@ -13,7 +12,6 @@ export default function JournalEntriesPage() {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('-created_at')
   const [page, setPage] = useState(1)
-  const openPanel = useUIStore((s) => s.openSidePanel) // Could open a batch detail later
 
   const { data, isLoading } = useQuery({
     queryKey: ['journal-batches', { search, ordering: sort, page }],

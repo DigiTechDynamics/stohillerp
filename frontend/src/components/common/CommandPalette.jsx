@@ -4,9 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import {
-  Search, Building2, Users, TrendingUp, Home,
-  DollarSign, Award, FileText, UserCog, LayoutDashboard,
-  ArrowRight, BookOpen, FileBarChart, X, Landmark
+  Search, Building2, Users, TrendingUp, Home, Award, FileText, UserCog, LayoutDashboard, ArrowRight, BookOpen, FileBarChart, X, Landmark
 } from 'lucide-react'
 import { useUIStore } from '@/stores/authStore'
 

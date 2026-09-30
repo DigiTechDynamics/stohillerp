@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Shield, CheckCircle2, AlertCircle, Clock, Search, Filter, Info, X } from 'lucide-react'
+import { Shield, CheckCircle2, AlertCircle, Clock, Info, X } from 'lucide-react'
 import { documentsAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import { motion } from 'framer-motion'
@@ -7,7 +7,7 @@ import { motion } from 'framer-motion'
 export default function ComplianceAuditPanel() {
   const { closeSidePanel } = useUIStore()
   
-  const { data, isLoading } = useQuery({
+  const { data } = useQuery({
     queryKey: ['compliance-audit'],
     queryFn: () => documentsAPI.compliance.list(),
   })

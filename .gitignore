@@ -51,3 +51,6 @@ tmp/
 
 # NOTE: image files are intentionally NOT ignored. The old "*.png" rule kept
 # the brand logo out of git and broke fresh builds. Commit assets you need.
+
+# Database backups (docker compose backup service)
+backups/

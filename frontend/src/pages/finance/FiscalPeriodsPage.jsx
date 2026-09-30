@@ -1,11 +1,9 @@
 // Stohill Properties - Fiscal Periods Management
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Calendar, Lock, Unlock, CheckCircle2, AlertCircle, 
-  Plus, ChevronRight, Settings2, ShieldCheck, RefreshCw,
-  CalendarDays, Trash2
+import {
+  Calendar, Lock, Unlock, CheckCircle2, AlertCircle, Plus, Settings2, RefreshCw, CalendarDays, Trash2
 } from 'lucide-react'
 import { financeAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
@@ -20,7 +18,7 @@ export default function FiscalPeriodsPage() {
     queryKey: ['fiscal-years'],
     queryFn: () => financeAPI.fiscalYears.list(),
   })
-  const years = yearsRes?.data?.results || []
+  const years = useMemo(() => yearsRes?.data?.results || [], [yearsRes])
 
   // Auto-select first year if none selected
   useEffect(() => {

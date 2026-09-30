@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Search, FileText, Download, TrendingUp, DollarSign } from 'lucide-react'
+import { Plus, Search, FileText, Download, TrendingUp } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { apiErrorMessage, financeAPI, saveBlobResponse } from '@/services/api'
 import { toast } from 'react-hot-toast'
@@ -202,7 +202,7 @@ export default function AccountsReceivablePage() {
                       <div className="flex items-center justify-end gap-1">
                         <button 
                           className="btn-ghost p-1.5 text-dark-400 hover:text-white"
-                          onClick={(e) => { e.stopPropagation(); financeAPI.ar.invoices.email(inv.id).then(() => alert(`Emailed ${inv.invoice_number} successfully!`)).catch(err => alert('Failed to email invoice.')); }}
+                          onClick={(e) => { e.stopPropagation(); financeAPI.ar.invoices.email(inv.id).then(() => toast.success(`Emailed ${inv.invoice_number}.`)).catch(err => toast.error(apiErrorMessage(err, 'Failed to email invoice.'))); }}
                           title="Email Invoice to Customer"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>

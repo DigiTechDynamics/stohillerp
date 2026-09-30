@@ -1,7 +1,6 @@
 // Stohill Properties - Commission Structure Form
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { X, Plus, Trash2, Award, Percent } from 'lucide-react'
+import { X, Plus, Trash2, Percent } from 'lucide-react'
 import { useUIStore } from '@/stores/authStore'
 import { commissionsAPI } from '@/services/api'
 import { useMutation, useQueryClient } from '@tanstack/react-query'

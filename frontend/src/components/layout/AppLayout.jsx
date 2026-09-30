@@ -1,11 +1,9 @@
 // Stohill Properties - Main Application Layout
 import React, { Suspense, useState } from 'react'
-import { Outlet, NavLink, useLocation } from 'react-router-dom'
+import { Outlet, NavLink } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  LayoutDashboard, Building2, Users, TrendingUp, Home, DollarSign,
-  Award, FileText, UserCog, ChevronLeft, ChevronRight, Search,
-  Bell, LogOut, Settings, Zap, Menu, X, Landmark, Briefcase, FileSearch, Box, ShoppingCart, HardHat, SlidersHorizontal
+  LayoutDashboard, Building2, Users, TrendingUp, Home, Award, FileText, UserCog, ChevronLeft, ChevronRight, Search, Bell, LogOut, Zap, Menu, X, Landmark, Briefcase, FileSearch, Box, ShoppingCart, HardHat, SlidersHorizontal
 } from 'lucide-react'
 import { useAuthStore, useUIStore } from '@/stores/authStore'
 import CommandPalette from '@/components/common/CommandPalette'

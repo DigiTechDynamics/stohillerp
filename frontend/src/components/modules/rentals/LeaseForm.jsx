@@ -1,7 +1,7 @@
 // Stohill Properties - Lease Form (Create/Edit)
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Save, AlertCircle, Key, Calendar } from 'lucide-react'
+import { Save, AlertCircle, Key } from 'lucide-react'
 import { rentalsAPI, propertiesAPI, crmAPI, hrAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import CurrencySelect from '@/components/common/CurrencySelect'

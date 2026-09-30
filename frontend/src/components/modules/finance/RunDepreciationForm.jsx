@@ -1,9 +1,8 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Calendar, Play, AlertCircle, Info, Calculator, CheckCircle2 } from 'lucide-react'
 import { fixedAssetsAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
-import { formatDate } from '@/utils/format'
 import { toast } from 'react-hot-toast'
 
 export default function RunDepreciationForm() {
@@ -20,7 +19,7 @@ export default function RunDepreciationForm() {
 
   const mutation = useMutation({
     mutationFn: (data) => fixedAssetsAPI.assets.runDepreciation(data),
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fixed-assets'] })
       queryClient.invalidateQueries({ queryKey: ['asset-transactions'] })
       queryClient.invalidateQueries({ queryKey: ['finance-entries'] })

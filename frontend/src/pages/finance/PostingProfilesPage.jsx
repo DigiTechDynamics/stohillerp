@@ -1,9 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { 
-  Settings, Plus, Search, MoreVertical, Edit2, Trash2, 
-  CheckCircle2, AlertCircle, ArrowLeft
-} from 'lucide-react'
+import { Settings, Plus, Search, Edit2, Trash2, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { financeAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'

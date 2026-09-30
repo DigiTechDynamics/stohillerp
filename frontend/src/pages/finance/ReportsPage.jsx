@@ -1,11 +1,9 @@
 // Stohill Properties - Financial Reports Page
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { 
-  FileText, Download, Eye, Calendar, Building2, 
-  TrendingUp, PieChart, Landmark, ArrowLeft,
-  Printer, Share2, Loader2, AlertCircle, ChevronRight
+import {
+  FileText, Download, Eye, Calendar, Building2, TrendingUp, PieChart, Landmark, ArrowLeft, Loader2, AlertCircle, ChevronRight
 } from 'lucide-react'
 import { financeAPI, propertiesAPI } from '@/services/api'
 import { formatCurrency } from '@/utils/format'

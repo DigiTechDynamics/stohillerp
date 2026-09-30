@@ -3,8 +3,7 @@ import { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import {
-  Plus, TrendingUp, Calendar, CheckSquare, Square,
-  Flame, Snowflake, Thermometer, AlertCircle, Clock
+  Plus, TrendingUp, CheckSquare, Square, Flame, Snowflake, Thermometer, AlertCircle, Clock
 } from 'lucide-react'
 import {
   DndContext,
@@ -251,7 +250,7 @@ function KanbanColumn({ column, isLead, selectedIds, onToggleSelect, onCardClick
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Kanban Board
 // ─────────────────────────────────────────────────────────────────────────────
-export default function KanbanBoard({ pipelineId, isLead = false, selectedIds = [], onToggleSelect, onClearSelection, filters = {} }) {
+export default function KanbanBoard({ pipelineId, isLead = false, selectedIds = [], onToggleSelect, filters = {} }) {
   const queryClient = useQueryClient()
   const openPanel = useUIStore(s => s.openSidePanel)
   const [activeCard, setActiveCard] = useState(null)

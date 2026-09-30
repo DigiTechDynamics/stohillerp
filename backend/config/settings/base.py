@@ -300,3 +300,18 @@ LOGGING = {
         "stohill": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
     },
 }
+
+# ─── Error monitoring ────────────────────────────────────────────────────────
+# Unhandled errors and ERROR-level log records (including failed scheduled jobs)
+# go to Sentry when SENTRY_DSN is set. Personal data is not sent.
+SENTRY_DSN = env("SENTRY_DSN", default="")
+if SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=env("SENTRY_ENVIRONMENT", default="production"),
+        release=env("APP_RELEASE", default=None),
+        send_default_pii=False,
+        traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
+    )

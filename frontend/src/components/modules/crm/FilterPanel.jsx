@@ -1,9 +1,9 @@
 // Stohill Properties - CRM Filter Panel
 // Slide-in drawer for advanced kanban/table filtering
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
-import { Filter, X, RotateCcw, ChevronDown } from 'lucide-react'
+import { Filter, X, RotateCcw } from 'lucide-react'
 import { crmAPI, hrAPI } from '@/services/api'
 
 const PRIORITY_OPTIONS = [

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
-import { Save, AlertCircle, Landmark, CreditCard, DollarSign } from 'lucide-react'
-import { bankingAPI, financeAPI } from '@/services/api'
+import { Save, AlertCircle, Landmark, DollarSign } from 'lucide-react'
+import { apiErrorMessage, bankingAPI, financeAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import CurrencySelect from '@/components/common/CurrencySelect'
 
@@ -41,10 +41,7 @@ export default function BankAccountForm() {
       closeSidePanel()
     },
     onError: (err) => {
-      const message = err.response?.data?.error?.message
-      setError(typeof message === 'string' ? message
-        : message ? Object.entries(message).map(([k, v]) => `: `).join('; ')
-        : 'Failed to save bank account.')
+      setError(apiErrorMessage(err, 'Failed to save bank account.'))
     }
   })
 

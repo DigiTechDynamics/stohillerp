@@ -166,11 +166,35 @@ Backend settings come from environment variables (or `backend/.env`); see
 | `PAYNOW_INTEGRATION_ID` / `PAYNOW_INTEGRATION_KEY` | empty | Paynow must reach `/api/v1/payments/paynow/result/` |
 | `ONLINE_PAYMENTS_BANK_ACCOUNT` | first active bank account | Bank account code that online payments are receipted to |
 | `PO_PRICE_TOLERANCE_PCT` | 2 | Invoice vs PO price difference still accepted by the 3-way match |
+| `SENTRY_DSN` / `SENTRY_ENVIRONMENT` | off | Reports unhandled errors and failed scheduled jobs to Sentry; no personal data is sent |
+| `BACKUP_DIR` / `BACKUP_AT` / `BACKUP_KEEP_DAYS` | `./backups`, 01:30, 14 | Compose `backup` service (see *Backups*) |
 
 Production (`config.settings.production`) refuses to start without a strong
 secret key and a database URL. It enables HTTPS redirect, HSTS, secure cookies
 and hashed static files. TLS is expected to terminate at a load balancer or
 proxy in front of nginx that sets `X-Forwarded-Proto`.
+
+### Backups
+
+The `backup` service in `docker-compose.yml` dumps the database every day at
+`BACKUP_AT` into `BACKUP_DIR` on the host (custom format, checked with
+`pg_restore -l` before it is kept) and deletes dumps older than
+`BACKUP_KEEP_DAYS`. It also backs up at start-up if there is no dump from
+today. The service turns *unhealthy* if the last backup failed or none has
+succeeded in 26 hours. **Copy `BACKUP_DIR` off the server**: a backup on the
+same disk doesn't survive losing the disk.
+
+Restore (replaces the current data):
+
+```bash
+docker compose exec backup pg_restore --clean --if-exists -d stohill_erp /backups/<file>.dump
+```
+
+### Monitoring
+
+Set `SENTRY_DSN` to report errors and failed scheduled jobs. Point an uptime
+monitor at `/api/v1/health/` (returns 503 when the database is unreachable),
+and alert on the `backup` service's health.
 
 ---
 
@@ -197,6 +221,8 @@ pytest -m smoke           # just the endpoint sweep
 pytest --cov=apps --cov=utils
 ruff check .
 ```
+
+Frontend lint: `cd frontend && npm run lint` (ESLint 10 with the React hooks rules, zero warnings allowed; also run in CI).
 
 The suite seeds the same data as `seed_demo` once per session. Each test runs
 in a rolled-back transaction. It covers:

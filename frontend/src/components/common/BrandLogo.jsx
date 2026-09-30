@@ -7,7 +7,6 @@
 // import.meta.glob resolves at build time and returns {} when no file matches,
 // so the app builds either way: with the real asset it renders the image,
 // without it it renders a typographic monogram in the brand colour.
-import React from 'react'
 
 const logoModules = import.meta.glob('../../assets/logo.{svg,png,webp}', {
   eager: true,

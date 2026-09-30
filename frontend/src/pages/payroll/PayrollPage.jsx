@@ -1,17 +1,13 @@
 import { useState, useEffect } from 'react'
 import {
-  Landmark, Plus, Search, Filter, MoreVertical,
-  Play, CheckCircle, RefreshCcw, DollarSign,
-  User, Calendar, ArrowRight, Banknote,
-  Settings, FileText, ExternalLink
+  Landmark, Plus, MoreVertical, Play, CheckCircle, RefreshCcw, DollarSign, User, Calendar, ArrowRight, Banknote, Settings, FileText, ExternalLink
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useUIStore } from '@/stores/authStore'
 import { apiErrorMessage, payrollAPI } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import PayrollRunTools from '@/components/modules/payroll/PayrollRunTools'
-import PayrollRunForm from '@/components/modules/payroll/PayrollRunForm'
 import PayslipModal from '@/components/modules/payroll/PayslipModal'
 import DeductionSettingsView from '@/components/modules/payroll/DeductionSettingsView'
 import Pagination from '@/components/common/Pagination'

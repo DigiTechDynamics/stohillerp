@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { DollarSign, Calendar, TrendingUp, User, Home, Edit2, Trash2, Mail, Clock } from 'lucide-react'
-import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
+import { DollarSign, TrendingUp, User, Edit2, Trash2, Mail, Clock } from 'lucide-react'
+import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 
 export default function OpportunityTable({ opportunities, isLoading }) {

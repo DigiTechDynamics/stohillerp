@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Save, AlertCircle, Briefcase, User } from 'lucide-react'
+import { Save, AlertCircle, Briefcase } from 'lucide-react'
 import { hrAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 

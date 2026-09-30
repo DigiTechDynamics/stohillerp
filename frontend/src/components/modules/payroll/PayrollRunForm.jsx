@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Landmark, Calendar, Save, Trash2, X } from 'lucide-react'
+import { Landmark, Calendar, Save, X } from 'lucide-react'
 import { useUIStore } from '@/stores/authStore'
 import { payrollAPI } from '@/services/api'
 

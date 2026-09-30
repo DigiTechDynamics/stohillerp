@@ -1,18 +1,14 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Landmark, Plus, RefreshCw, Wallet, 
-  TrendingUp, ArrowRightLeft, MoreVertical,
-  CheckCircle2, AlertCircle, Search, Filter,
-  Upload
+import {
+  Landmark, Plus, RefreshCw, Wallet, ArrowRightLeft, MoreVertical, CheckCircle2, Search, Filter, Upload
 } from 'lucide-react'
 import { bankingAPI, financeAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import Pagination from '@/components/common/Pagination'
 import ReconciliationWorkspace from './ReconciliationWorkspace'
-import { useQueryClient } from '@tanstack/react-query'
 
 export default function BankingPage() {
   const [tab, setTab] = useState('accounts')
@@ -20,7 +16,6 @@ export default function BankingPage() {
   const [sort, setSort] = useState('name')
   const [page, setPage] = useState(1)
   const [reconAccountId, setReconAccountId] = useState('')
-  const queryClient = useQueryClient()
   const { openSidePanel } = useUIStore.getState()
 
   const { data: accountsData, isLoading, refetch } = useQuery({

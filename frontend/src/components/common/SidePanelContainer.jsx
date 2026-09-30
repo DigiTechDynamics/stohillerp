@@ -2,12 +2,12 @@
 // Slide-in contextual panels for record details
 import { Suspense, lazy } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, Building2, MapPin, BedDouble, Bath, Square, Calendar, DollarSign, Briefcase, FileText, User, Mail, Phone, ExternalLink, Trash2, Edit2, Loader2, Key, MessageSquare, CheckCircle, Plus } from 'lucide-react'
-import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query'
+import { X, Building2, MapPin, BedDouble, Bath, Square, DollarSign, Briefcase, FileText, Trash2, Edit2, Loader2 } from 'lucide-react'
+import { useQueryClient, useMutation } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
-import { propertiesAPI, crmAPI } from '@/services/api'
+import { propertiesAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
-import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
+import { formatCurrency, getStatusColor } from '@/utils/format'
 // Module forms/panels load on demand: importing them eagerly pulled every
 // module's UI into the initial bundle for every user.
 const AccountForm = lazy(() => import('@/components/modules/finance/AccountForm'))
@@ -40,7 +40,6 @@ const APInvoiceDetailPanel = lazy(() => import('@/components/modules/finance/API
 const SupplierDetailPanel = lazy(() => import('@/components/modules/finance/SupplierDetailPanel'))
 const TaxCodeForm = lazy(() => import('@/components/modules/finance/TaxCodeForm'))
 const PostingProfileForm = lazy(() => import('@/components/modules/finance/PostingProfileForm'))
-import Chatter from '@/components/common/Chatter'
 const AssetForm = lazy(() => import('@/components/modules/finance/AssetForm'))
 const AssetCategoryForm = lazy(() => import('@/components/modules/finance/AssetCategoryForm'))
 const AssetDetailPanel = lazy(() => import('@/components/modules/finance/AssetDetailPanel'))
@@ -71,8 +70,6 @@ function PropertyDetailPanel({ property }) {
   const queryClient = useQueryClient()
   const openPanel = useUIStore(s => s.openSidePanel)
   const closePanel = useUIStore(s => s.closeSidePanel)
-  
-  if (!property) return null
 
   const deleteMutation = useMutation({
     mutationFn: () => propertiesAPI.delete(property.id),
@@ -81,10 +78,12 @@ function PropertyDetailPanel({ property }) {
       toast.success('Property archived successfully')
       closePanel()
     },
-    onError: (err) => {
+    onError: () => {
       toast.error('Failed to archive property')
     }
   })
+
+  if (!property) return null
 
   const handleArchive = () => {
     if (window.confirm('Are you sure you want to archive this property record?')) {
@@ -184,151 +183,6 @@ function PropertyDetailPanel({ property }) {
           {deleteMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
           Archive
         </button>
-      </div>
-    </div>
-  )
-}
-
-function ContactDetailPanel({ contact }) {
-  const openPanel = useUIStore(s => s.openSidePanel)
-  
-  const { data: activitiesRes, isLoading: activitiesLoading } = useQuery({
-    queryKey: ['crm-activities', contact?.id],
-    queryFn: () => crmAPI.activities.list({ contact: contact?.id }),
-    enabled: !!contact?.id
-  })
-  
-  const activities = activitiesRes?.data?.results || []
-
-  if (!contact) return null
-
-  const getActivityIcon = (type) => {
-    switch(type) {
-      case 'call': return <Phone size={14} className="text-blue-400" />
-      case 'email': return <Mail size={14} className="text-amber-400" />
-      case 'meeting': return <User size={14} className="text-purple-400" />
-      case 'viewing': return <Building2 size={14} className="text-emerald-400" />
-      case 'whatsapp': return <MessageSquare size={14} className="text-green-400" />
-      default: return <FileText size={14} className="text-dark-400" />
-    }
-  }
-
-  return (
-    <div className="p-6 space-y-8">
-      {/* Profile Header */}
-      <div className="flex items-start gap-5">
-        <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold border border-primary/20">
-          {contact.first_name?.[0]}{contact.last_name?.[0]}
-        </div>
-        <div className="flex-1 min-w-0 py-1">
-          <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-2xl font-semibold text-white truncate">{contact.first_name} {contact.last_name}</h2>
-            <span className="badge-primary text-[10px] py-0.5 px-2">{contact.contact_type}</span>
-          </div>
-          <p className="text-dark-400 flex items-center gap-1.5">
-            <Briefcase size={14} /> {contact.company || 'Individual Client'}
-          </p>
-        </div>
-      </div>
-
-      {/* Contact Info */}
-      <div className="grid grid-cols-1 gap-4">
-        <div className="bg-dark-800/50 border border-white/5 rounded-xl p-4 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-dark-400">
-            <Mail size={18} />
-          </div>
-          <div>
-            <p className="text-[10px] text-dark-500 uppercase font-bold tracking-wider">Email Address</p>
-            <p className="text-white text-sm">{contact.email || '—'}</p>
-          </div>
-        </div>
-        <div className="bg-dark-800/50 border border-white/5 rounded-xl p-4 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-dark-400">
-            <Phone size={18} />
-          </div>
-          <div>
-            <p className="text-[10px] text-dark-500 uppercase font-bold tracking-wider">Mobile Number</p>
-            <p className="text-white text-sm">{contact.phone_mobile || '—'}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Linked Properties Section */}
-      <div className="space-y-4">
-        <h3 className="text-xs font-bold text-dark-500 uppercase tracking-widest flex items-center gap-2">
-          <Building2 size={14} /> Linked Properties
-        </h3>
-        
-        {contact.active_leases?.length > 0 ? (
-          <div className="space-y-3">
-            {contact.active_leases.map(lease => (
-              <div 
-                key={lease.id}
-                className="group relative p-4 rounded-xl bg-dark-800/80 border border-white/5 hover:border-primary/30 transition-all"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                      <Key size={18} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-white group-hover:text-primary transition-colors">
-                        {lease.property_name}
-                      </p>
-                      <p className="text-[10px] text-dark-500 font-mono mt-0.5">
-                        {lease.property_ref} · Lease {lease.lease_number}
-                      </p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => openPanel('property-detail', { property: { id: lease.property_id, name: lease.property_name, reference_number: lease.property_ref } })}
-                    className="p-2 rounded-lg bg-white/5 text-dark-400 hover:text-white hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100"
-                    title="View Property Profile"
-                  >
-                    <ExternalLink size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="border border-dashed border-white/10 rounded-xl p-8 text-center bg-white/2">
-            <Building2 size={32} className="mx-auto text-dark-700 mb-2" />
-            <p className="text-xs text-dark-500">No active property leases found for this contact.</p>
-          </div>
-        )}
-      </div>
-
-      {/* Guarantor Info */}
-      {contact.guarantor_name && (
-        <div className="space-y-4">
-          <h3 className="text-xs font-bold text-amber-500 uppercase tracking-widest flex items-center gap-2">
-            <User size={14} /> Guarantor Information
-          </h3>
-          <div className="bg-amber-500/5 border border-amber-500/10 rounded-xl p-4 space-y-3">
-            <div className="flex justify-between items-center border-b border-amber-500/10 pb-2">
-              <span className="text-xs text-dark-400">Name</span>
-              <span className="text-sm font-medium text-white">{contact.guarantor_name}</span>
-            </div>
-            <div className="flex justify-between items-center border-b border-amber-500/10 pb-2">
-              <span className="text-xs text-dark-400">Relationship</span>
-              <span className="text-sm font-medium text-amber-400">{contact.guarantor_relationship || 'Not Specified'}</span>
-            </div>
-            <div className="flex justify-between items-center border-b border-amber-500/10 pb-2">
-              <span className="text-xs text-dark-400">Email</span>
-              <span className="text-sm font-medium text-white">{contact.guarantor_email || '—'}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-dark-400">Phone</span>
-              <span className="text-sm font-medium text-white">{contact.guarantor_phone || '—'}</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Unified Chatter & Activities */}
-      <div className="border-t border-white/5 -mx-6 pt-6">
-        <Chatter contactId={contact.id} contactData={contact} />
       </div>
     </div>
   )

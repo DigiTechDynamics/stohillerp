@@ -1,12 +1,10 @@
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Users, Shield, LayoutGrid, Wand2, Plus, 
-  Search, Filter, ShieldCheck, ShieldAlert,
-  UserPlus, Edit2, Trash2, CheckCircle2, AlertTriangle, Key
+import {
+  Users, Shield, LayoutGrid, Wand2, Plus, Search, ShieldCheck, ShieldAlert, UserPlus, Edit2, AlertTriangle, Key
 } from 'lucide-react'
-import { authAPI, financeAPI, adminAPI } from '@/services/api'
+import { adminAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import Pagination from '@/components/common/Pagination'
 import PasswordResetModal from '@/components/modules/admin/PasswordResetModal'
@@ -16,7 +14,6 @@ export default function UserAccessPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [resetModalUser, setResetModalUser] = useState(null)
-  const queryClient = useQueryClient()
   const openPanel = useUIStore(s => s.openSidePanel)
 
   const tabs = [
@@ -97,7 +94,7 @@ export default function UserAccessPage() {
 
 function UserList({ search, setSearch, page, setPage, onResetPassword }) {
   const openPanel = useUIStore(s => s.openSidePanel)
-  const { data: usersData, isLoading } = useQuery({
+  const { data: usersData } = useQuery({
     queryKey: ['admin-users', { search, page }],
     queryFn: () => adminAPI.users.list({ search, page })
   })
@@ -219,7 +216,7 @@ function UserList({ search, setSearch, page, setPage, onResetPassword }) {
 
 function RoleList({ page, setPage }) {
   const openPanel = useUIStore(s => s.openSidePanel)
-  const { data: rolesData, isLoading } = useQuery({
+  const { data: rolesData } = useQuery({
     queryKey: ['admin-roles', { page }],
     queryFn: () => adminAPI.roles.list({ page })
   })
@@ -289,7 +286,7 @@ function RoleList({ page, setPage }) {
 }
 
 function ModuleList({ page, setPage }) {
-  const { data: modulesData, isLoading } = useQuery({
+  const { data: modulesData } = useQuery({
     queryKey: ['admin-modules', { page }],
     queryFn: () => adminAPI.modules.list({ page })
   })
@@ -329,7 +326,7 @@ function ModuleList({ page, setPage }) {
 
 function SODMatrix({ page, setPage }) {
   const openPanel = useUIStore(s => s.openSidePanel)
-  const { data: rulesData, isLoading } = useQuery({
+  const { data: rulesData } = useQuery({
     queryKey: ['admin-sod-rules', { page }],
     queryFn: () => adminAPI.sodRules.list({ page })
   })

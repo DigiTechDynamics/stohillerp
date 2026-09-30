@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Save, Send, AlertCircle, Info, Calculator, ChevronLeft, Calendar } from 'lucide-react'
+import { Plus, Trash2, Save, Send, ChevronLeft } from 'lucide-react'
 import { financeAPI } from '@/services/api'
 import { formatCurrency } from '@/utils/format'
 import { motion } from 'framer-motion'
@@ -16,7 +16,6 @@ export default function JournalBatchGrid() {
   const isEditing = !!id
 
   const { data: journalsRes } = useQuery({ queryKey: ['finance-journals'], queryFn: () => financeAPI.journals.list() })
-  const { data: accountsRes } = useQuery({ queryKey: ['finance-accounts-compact'], queryFn: () => financeAPI.accounts.list({ page_size: 1000 }) })
   const { data: currenciesRes } = useQuery({ queryKey: ['currencies'], queryFn: () => financeAPI.currencies.list() })
   
   const { data: batchRes, isLoading: isLoadingBatch } = useQuery({
@@ -33,7 +32,6 @@ export default function JournalBatchGrid() {
   })
 
   const journals = journalsRes?.data?.results || []
-  const accounts = accountsRes?.data?.results || []
   const currencies = currenciesRes?.data?.results || []
   const baseCurrency = currencies.find(c => c.is_base)
 
