@@ -167,6 +167,15 @@ html.light .ring-dark-900 { --tw-ring-color: var(--bg-card) !important; }
            transition-all duration-150 shadow-gold hover:shadow-gold-lg;
   }
 
+  .btn-primary:disabled,
+  .btn-secondary:disabled,
+  .btn-ghost:disabled {
+    @apply opacity-50 cursor-not-allowed shadow-none;
+  }
+  .btn-primary:disabled:hover {
+    @apply bg-primary;
+  }
+
   .btn-secondary {
     @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
            transition-all duration-150;
