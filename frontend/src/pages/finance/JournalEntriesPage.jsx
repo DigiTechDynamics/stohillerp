@@ -6,6 +6,7 @@ import { Search, Plus, ArrowRightLeft, Calendar, User, CheckCircle } from 'lucid
 import { financeAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import Pagination from '@/components/common/Pagination'
+import RecordActions from '@/components/common/RecordActions'
 
 export default function JournalEntriesPage() {
   const navigate = useNavigate()
@@ -79,7 +80,7 @@ export default function JournalEntriesPage() {
               <th className="text-right">Total Debit</th>
               <th>Maker</th>
               <th>Status</th>
-              <th className="w-10"></th>
+              <th className="w-24"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -121,10 +122,10 @@ export default function JournalEntriesPage() {
                       {batch.status.replace('_', ' ')}
                     </span>
                   </td>
-                  <td className="px-5 py-4">
-                     <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold uppercase tracking-widest">
-                         Open
-                     </span>
+                  <td className="px-5 py-4 text-right">
+                    <RecordActions record={batch} label="journal batch"
+                      onEdit={() => navigate(`/finance/entries/${batch.id}/edit`)}
+                      deleteFn={financeAPI.batches.delete} invalidate={['journal-batches']} />
                   </td>
                 </motion.tr>
               ))}

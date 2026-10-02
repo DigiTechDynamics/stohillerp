@@ -241,13 +241,13 @@ export default function SidePanelContainer() {
                     activeSidePanel === 'rental-invoice-form' ? 'New Rental Invoice' :
                     activeSidePanel === 'rental-payment-form' ? 'Record Payment' :
                     activeSidePanel === 'tenant-form' ? 'New Tenant' :
-                    activeSidePanel === 'maintenance-form' ? 'Log Maintenance' :
+                    activeSidePanel === 'maintenance-form' ? (sidePanelData?.ticket ? 'Edit Maintenance Ticket' : 'Log Maintenance') :
                     activeSidePanel === 'property-form' ? (sidePanelData?.property ? 'Edit Property' : 'New Property Record') :
-                    activeSidePanel === 'new-customer' ? 'New Customer' :
-                    activeSidePanel === 'new-ar-invoice' ? 'New sales Invoice' :
+                    activeSidePanel === 'new-customer' ? (sidePanelData?.customer ? 'Edit Customer' : 'New Customer') :
+                    activeSidePanel === 'new-ar-invoice' ? (sidePanelData?.invoice ? 'Edit Sales Invoice' : 'New Sales Invoice') :
                     activeSidePanel === 'new-ar-receipt' ? 'New Customer Receipt' :
-                    activeSidePanel === 'new-supplier' ? 'New Supplier' :
-                    activeSidePanel === 'new-ap-invoice' ? 'New Purchase Invoice' :
+                    activeSidePanel === 'new-supplier' ? (sidePanelData?.supplier ? 'Edit Supplier' : 'New Supplier') :
+                    activeSidePanel === 'new-ap-invoice' ? (sidePanelData?.invoice ? 'Edit Purchase Invoice' : 'New Purchase Invoice') :
                     activeSidePanel === 'new-ap-payment' ? 'New Supplier Payment' :
                     activeSidePanel === 'customer-receipt-detail' ? 'Receipt Details' :
                     activeSidePanel === 'supplier-payment-detail' ? 'Payment Details' :
@@ -262,10 +262,10 @@ export default function SidePanelContainer() {
                     activeSidePanel === 'asset-disposal' ? 'Asset Disposal' :
                     activeSidePanel === 'run-depreciation' ? 'Execute Depreciation Run' :
                     activeSidePanel === 'currency-form' ? (sidePanelData?.currency ? 'Edit Currency' : 'New Currency') :
-                    activeSidePanel === 'exchange-rate-form' ? (sidePanelData?.rate ? 'Capture Exchange Rate' : 'Capture Exchange Rate') :
+                    activeSidePanel === 'exchange-rate-form' ? (sidePanelData?.rate ? 'Edit Exchange Rate' : 'Capture Exchange Rate') :
                     activeSidePanel === 'opportunity-form' ? (sidePanelData?.opportunity ? 'Edit Opportunity' : 'New Opportunity') :
                     activeSidePanel === 'crm-detail' ? (sidePanelData?.type === 'lead' ? 'Lead Profile' : 'Opportunity Profile') :
-                    activeSidePanel === 'activity-form' ? 'Log New Activity' :
+                    activeSidePanel === 'activity-form' ? (sidePanelData?.activity ? 'Edit Activity' : 'Log New Activity') :
                     activeSidePanel === 'contact-detail' ? 'Contact Profile' :
                     activeSidePanel === 'bank-account-form' ? (sidePanelData?.account ? 'Edit Bank Account' : 'New Bank Account') :
                     activeSidePanel === 'bank-transaction-view' ? 'Bank Account Transactions' :

@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from decimal import Decimal
 from django_filters.rest_framework import DjangoFilterBackend
 from apps.hr.models import Employee, Department, LeaveRequest, JobPosition, EmployeeContract, Attendance, LeaveAllocation
+from utils.record_rules import RecordRulesMixin
 
 class EmployeeViewSet(viewsets.ModelViewSet):
     queryset = Employee.objects.select_related('department', 'reports_to')
@@ -82,7 +83,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
         from apps.hr.serializers import DepartmentSerializer
         return DepartmentSerializer
 
-class LeaveRequestViewSet(viewsets.ModelViewSet):
+class LeaveRequestViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = LeaveRequest.objects.select_related('employee')
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['status', 'leave_type', 'employee']

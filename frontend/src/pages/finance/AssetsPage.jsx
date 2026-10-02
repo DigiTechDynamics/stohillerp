@@ -5,6 +5,7 @@ import { Plus, Search, Box, TrendingUp, Settings, History, Calendar, DollarSign 
 import { fixedAssetsAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
+import RecordActions from '@/components/common/RecordActions'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
 import Pagination from '@/components/common/Pagination'
 
@@ -170,12 +171,13 @@ export default function AssetsPage() {
                 <th className="px-6 py-4 text-right">Acc. Depr</th>
                 <th className="px-6 py-4 text-right">NBV (Statutory)</th>
                 <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {isLoading ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-20 text-center">
+                  <td colSpan="8" className="px-6 py-20 text-center">
                     <div className="flex justify-center flex-col items-center gap-3">
                       <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                       <span className="text-dark-400 text-sm">Loading asset register...</span>
@@ -224,12 +226,16 @@ export default function AssetsPage() {
                         {asset.status}
                       </span>
                     </td>
+                    <td className="px-6 py-4 text-right">
+                      <RecordActions record={asset} label="asset" onEdit={() => openSidePanel('asset-form', { asset })}
+                        deleteFn={fixedAssetsAPI.assets.delete} invalidate={['fixed-assets']} />
+                    </td>
                   </tr>
                 )
               })}
               {assets.length === 0 && (
                 <tr>
-                  <td colSpan="7" className="px-6 py-20 text-center">
+                  <td colSpan="8" className="px-6 py-20 text-center">
                     <Box size={40} className="mx-auto text-dark-700 mb-3" />
                     <p className="text-white font-medium">No assets found</p>
                     <p className="text-xs text-dark-500 mt-1">Start by adding your first fixed asset to the register.</p>

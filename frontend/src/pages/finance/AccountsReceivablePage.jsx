@@ -3,6 +3,7 @@ import { Plus, Search, FileText, Download, TrendingUp } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { apiErrorMessage, financeAPI, saveBlobResponse } from '@/services/api'
 import { toast } from 'react-hot-toast'
+import RecordActions from '@/components/common/RecordActions'
 import { formatCurrency } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
@@ -176,7 +177,7 @@ export default function AccountsReceivablePage() {
                   <th className="text-right">Amount</th>
                   <th className="text-right">Balance Due</th>
                   <th className="w-24">Status</th>
-                  <th className="w-16"></th>
+                  <th className="w-40"></th>
                 </tr>
               </thead>
               <tbody>
@@ -214,6 +215,9 @@ export default function AccountsReceivablePage() {
                         >
                           <Download size={14} />
                         </button>
+                        <RecordActions record={inv} label="invoice"
+                          onEdit={() => openPanel('new-ar-invoice', { invoice: inv })}
+                          deleteFn={financeAPI.ar.invoices.delete} invalidate={['ar-invoices', 'ar-aging-total']} />
                       </div>
                     </td>
                   </tr>
@@ -244,7 +248,7 @@ export default function AccountsReceivablePage() {
                   <th>AR Account</th>
                   <th className="text-right">Credit Limit</th>
                   <th className="text-right">Balance</th>
-                  <th className="w-24"></th>
+                  <th className="w-48"></th>
                 </tr>
               </thead>
               <tbody>
@@ -262,6 +266,8 @@ export default function AccountsReceivablePage() {
                         onClick={(e) => handleStatement(e, c)}>
                         <Download size={14} /> Statement
                       </button>
+                      <RecordActions record={c} label="customer" onEdit={() => openPanel('new-customer', { customer: c })}
+                        deleteFn={financeAPI.ar.customers.delete} invalidate={['ar-customers']} />
                     </td>
                   </tr>
                 ))}
@@ -293,6 +299,7 @@ export default function AccountsReceivablePage() {
                   <th>Bank Account</th>
                   <th className="text-right">Amount</th>
                   <th className="w-24">Status</th>
+                  <th className="w-16"></th>
                 </tr>
               </thead>
               <tbody>
@@ -309,11 +316,15 @@ export default function AccountsReceivablePage() {
                         {r.status}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-right">
+                      <RecordActions record={r} label="receipt" deleteFn={financeAPI.ar.receipts.delete}
+                        invalidate={['ar-receipts', 'ar-aging-total']} />
+                    </td>
                   </tr>
                 ))}
                 {receipts.length === 0 && !loadingReceipts && (
                   <tr>
-                    <td colSpan={6} className="text-center py-16 text-dark-400">
+                    <td colSpan={7} className="text-center py-16 text-dark-400">
                       <div className="flex flex-col items-center">
                         <FileText size={48} className="text-dark-600 mb-4" />
                         <p>No receipts found. Log a payment to see receipt entries.</p>

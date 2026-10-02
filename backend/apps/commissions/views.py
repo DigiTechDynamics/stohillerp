@@ -4,8 +4,9 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from apps.commissions.models import CommissionRecord, CommissionStructure
+from utils.record_rules import RecordRulesMixin
 
-class CommissionRecordViewSet(viewsets.ModelViewSet):
+class CommissionRecordViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = CommissionRecord.objects.select_related('agent', 'property')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'agent', 'transaction_type']

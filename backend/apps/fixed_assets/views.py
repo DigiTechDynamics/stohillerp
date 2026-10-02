@@ -10,6 +10,7 @@ from .serializers import (
     AssetLocationSerializer, AssetTransactionSerializer
 )
 from .services.depreciation import DepreciationService
+from utils.record_rules import RecordRulesMixin
 
 class AssetCategoryViewSet(viewsets.ModelViewSet):
     queryset = AssetCategory.objects.all()
@@ -17,7 +18,7 @@ class AssetCategoryViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'code']
 
-class FixedAssetViewSet(viewsets.ModelViewSet):
+class FixedAssetViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = FixedAsset.objects.all().prefetch_related('books')
     serializer_class = FixedAssetSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]

@@ -8,6 +8,7 @@ import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
 import AccountCombobox from '@/components/common/AccountCombobox'
 import ApprovalBox from '@/components/common/ApprovalBox'
 import Pagination from '@/components/common/Pagination'
+import RecordActions from '@/components/common/RecordActions'
 
 const today = () => new Date().toISOString().split('T')[0]
 const rows = (res) => res?.data?.results || res?.data || []
@@ -34,9 +35,19 @@ function useRun() {
   return [run, busy]
 }
 
-function OrderForm({ onDone }) {
+const formFromOrder = (o) => ({
+  supplier: o.supplier, order_date: o.order_date, expected_date: o.expected_date || '', project: o.project || '',
+  notes: o.notes || '',
+  lines: o.lines.map(l => ({
+    description: l.description, expense_account: l.expense_account, quantity: l.quantity, unit_price: l.unit_price,
+    picked: { type: 'account', id: l.expense_account, display: l.expense_account_code },
+  })),
+})
+
+function OrderForm({ order, onDone }) {
   const [run, busy] = useRun()
-  const [form, setForm] = useState({ supplier: '', order_date: today(), expected_date: '', project: '', notes: '', lines: [blankLine()] })
+  const [form, setForm] = useState(order ? formFromOrder(order)
+    : { supplier: '', order_date: today(), expected_date: '', project: '', notes: '', lines: [blankLine()] })
   const { data: suppliersRes } = useQuery({ queryKey: ['ap-suppliers-picker'], queryFn: () => financeAPI.ap.suppliers.list({ page_size: 200 }) })
   const { data: projectsRes } = useQuery({ queryKey: ['projects-picker'], queryFn: () => projectsAPI.list({ status: 'active', page_size: 200 }) })
   const setLine = (i, patch) => setForm({ ...form, lines: form.lines.map((ln, j) => (j === i ? { ...ln, ...patch } : ln)) })
@@ -47,14 +58,16 @@ function OrderForm({ onDone }) {
       ...form, expected_date: form.expected_date || null, project: form.project || null,
       lines: form.lines.filter(l => l.description && l.expense_account).map(({ picked, ...l }) => l),
     }
-    const order = await run(() => procurementAPI.orders.create(payload), d => `Created ${d.number}.`)
-    if (order) onDone(order)
+    const saved = order
+      ? await run(() => procurementAPI.orders.update(order.id, payload), d => `Updated ${d.number}.`)
+      : await run(() => procurementAPI.orders.create(payload), d => `Created ${d.number}.`)
+    if (saved) onDone(saved)
   }
 
   return (
     <div className="card p-5 space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-white font-semibold">New purchase order</h2>
+        <h2 className="text-white font-semibold">{order ? `Edit ${order.number}` : 'New purchase order'}</h2>
         <button className="btn-ghost p-1" aria-label="Close" onClick={() => onDone(null)}><X size={16} /></button>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -97,7 +110,7 @@ function OrderForm({ onDone }) {
   )
 }
 
-function OrderDetail({ id, onClose }) {
+function OrderDetail({ id, onClose, onEdit }) {
   const [run, busy] = useRun()
   const { data } = useQuery({ queryKey: ['purchase-order', id], queryFn: () => procurementAPI.orders.detail(id) })
   const { data: receiptsRes } = useQuery({ queryKey: ['goods-receipts', id], queryFn: () => procurementAPI.receipts.list({ order: id }) })
@@ -131,6 +144,8 @@ function OrderDetail({ id, onClose }) {
         </div>
         <div className="flex items-center gap-2">
           <span className={`badge text-[10px] uppercase font-bold ${getStatusColor(order.status)}`}>{order.status.replace(/_/g, ' ')}</span>
+          <RecordActions record={order} label="purchase order" onEdit={onEdit}
+            deleteFn={procurementAPI.orders.delete} invalidate={['purchase-orders']} onDeleted={onClose} />
           <button className="btn-ghost p-1" aria-label="Close" onClick={onClose}><X size={16} /></button>
         </div>
       </div>
@@ -231,7 +246,7 @@ export default function PurchasingPage() {
   const [status, setStatus] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const [creating, setCreating] = useState(false)
+  const [creating, setCreating] = useState(null)   // null, 'new', or the order being edited
   const [selected, setSelected] = useState(null)
   const { data, isLoading } = useQuery({
     queryKey: ['purchase-orders', { status, search, page }],
@@ -246,13 +261,16 @@ export default function PurchasingPage() {
           <h1 className="font-display text-2xl text-white">Purchasing</h1>
           <p className="text-dark-400 text-sm mt-1">Purchase orders, goods receipts and supplier invoice matching</p>
         </div>
-        <button className="btn-primary flex items-center gap-2" onClick={() => { setCreating(true); setSelected(null) }}>
+        <button className="btn-primary flex items-center gap-2" onClick={() => { setCreating('new'); setSelected(null) }}>
           <Plus size={16} /> New Purchase Order
         </button>
       </div>
 
-      {creating && <OrderForm onDone={(order) => { setCreating(false); if (order) setSelected(order.id) }} />}
-      {selected && <OrderDetail id={selected} onClose={() => setSelected(null)} />}
+      {creating && (
+        <OrderForm key={creating === 'new' ? 'new' : creating.id} order={creating === 'new' ? null : creating}
+          onDone={(order) => { setCreating(null); if (order) setSelected(order.id) }} />
+      )}
+      {selected && !creating && <OrderDetail id={selected} onClose={() => setSelected(null)} onEdit={(order) => setCreating(order)} />}
 
       <div className="flex items-center gap-3 max-w-2xl">
         <input className="form-input flex-1" placeholder="Search number, supplier..." aria-label="Search orders" value={search}
@@ -265,20 +283,25 @@ export default function PurchasingPage() {
 
       <div className="card overflow-hidden">
         <table className="data-table">
-          <thead><tr><th>PO #</th><th>Supplier</th><th>Date</th><th>Project</th><th>Status</th><th className="text-right">Total</th></tr></thead>
+          <thead><tr><th>PO #</th><th>Supplier</th><th>Date</th><th>Project</th><th>Status</th><th className="text-right">Total</th><th className="w-24"></th></tr></thead>
           <tbody>
             {orders.map(o => (
-              <tr key={o.id} className={`cursor-pointer hover:bg-white/2 ${selected === o.id ? 'bg-primary/5' : ''}`} onClick={() => { setSelected(o.id); setCreating(false) }}>
+              <tr key={o.id} className={`cursor-pointer hover:bg-white/2 ${selected === o.id ? 'bg-primary/5' : ''}`} onClick={() => { setSelected(o.id); setCreating(null) }}>
                 <td className="px-4 py-3 font-mono text-xs text-primary">{o.number}</td>
                 <td className="px-4 py-3 text-sm text-white">{o.supplier_name}</td>
                 <td className="px-4 py-3 text-xs text-dark-400">{formatDate(o.order_date)}</td>
                 <td className="px-4 py-3 text-xs text-dark-400">{o.project_code || '—'}</td>
                 <td className="px-4 py-3"><span className={`badge text-[10px] uppercase font-bold ${getStatusColor(o.status)}`}>{o.status.replace(/_/g, ' ')}</span></td>
                 <td className="px-4 py-3 text-sm text-right text-white">{formatCurrency(o.total_amount)}</td>
+                <td className="px-4 py-3 text-right">
+                  <RecordActions record={o} label="purchase order" onEdit={() => { setSelected(null); setCreating(o) }}
+                    deleteFn={procurementAPI.orders.delete} invalidate={['purchase-orders']}
+                    onDeleted={() => setSelected(s => (s === o.id ? null : s))} />
+                </td>
               </tr>
             ))}
             {!isLoading && orders.length === 0 && (
-              <tr><td colSpan={6} className="text-center py-16">
+              <tr><td colSpan={7} className="text-center py-16">
                 <ShoppingCart size={40} className="mx-auto mb-3 text-dark-600" />
                 <p className="text-dark-400">No purchase orders.</p>
               </td></tr>

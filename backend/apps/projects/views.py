@@ -17,6 +17,7 @@ from rest_framework.response import Response
 
 from apps.projects import services
 from apps.projects.models import Project
+from utils.record_rules import RecordRulesMixin
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -39,7 +40,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         return services.create_project(**validated_data)
 
 
-class ProjectViewSet(viewsets.ModelViewSet):
+class ProjectViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = Project.objects.select_related('property', 'cost_center', 'wip_account')
     serializer_class = ProjectSerializer
     filterset_fields = ['status', 'property']

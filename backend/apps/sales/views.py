@@ -5,9 +5,10 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from apps.sales.models import SaleTransaction
 from apps.sales.stats import base_totals, pct_change
+from utils.record_rules import RecordRulesMixin
 
 
-class SaleTransactionViewSet(viewsets.ModelViewSet):
+class SaleTransactionViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = SaleTransaction.objects.select_related('property', 'buyer', 'listing_agent', 'selling_agent')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'listing_agent', 'selling_agent']

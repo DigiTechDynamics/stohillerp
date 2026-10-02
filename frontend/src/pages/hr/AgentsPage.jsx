@@ -2,12 +2,13 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Plus, User, MapPin, Mail, Phone, MoreVertical } from 'lucide-react'
+import { Search, Plus, User, MapPin, Mail, Phone } from 'lucide-react'
 import { hrAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 
 import DataManagementButtons from '@/components/common/DataManagementButtons'
 import Pagination from '@/components/common/Pagination'
+import RecordActions from '@/components/common/RecordActions'
 import { useQueryClient } from '@tanstack/react-query'
 
 export default function AgentsPage() {
@@ -82,7 +83,7 @@ export default function AgentsPage() {
               <th>Role</th>
               <th>Location</th>
               <th>Status</th>
-              <th className="w-10"></th>
+              <th className="w-24"></th>
             </tr>
           </thead>
           <tbody>
@@ -124,10 +125,9 @@ export default function AgentsPage() {
                       {emp.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <button className="p-1 hover:text-white transition-colors">
-                      <MoreVertical size={16} />
-                    </button>
+                  <td className="px-4 py-3 text-right">
+                    <RecordActions record={emp} label="employee" onEdit={() => openPanel('employee-form', { employee: emp })}
+                      deleteFn={hrAPI.employees.delete} invalidate={['hr-employees']} />
                   </td>
                 </motion.tr>
               ))}

@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Users, Shield, LayoutGrid, Wand2, Plus, Search, ShieldCheck, ShieldAlert, UserPlus, Edit2, AlertTriangle, Key
+  Users, Shield, LayoutGrid, Wand2, Plus, Search, ShieldCheck, ShieldAlert, UserPlus, AlertTriangle, Key
 } from 'lucide-react'
 import { adminAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import Pagination from '@/components/common/Pagination'
+import RecordActions from '@/components/common/RecordActions'
 import PasswordResetModal from '@/components/modules/admin/PasswordResetModal'
 
 export default function UserAccessPage() {
@@ -190,12 +191,9 @@ function UserList({ search, setSearch, page, setPage, onResetPassword }) {
                     >
                       <Key size={14} />
                     </button>
-                    <button 
-                      className="p-2 text-dark-500 hover:text-white transition-colors"
-                      onClick={() => openPanel('user-form', { id: user.id, initialData: user })}
-                    >
-                      <Edit2 size={14} />
-                    </button>
+                    <RecordActions record={user} label="user"
+                      onEdit={() => openPanel('user-form', { id: user.id, initialData: user })}
+                      deleteFn={adminAPI.users.delete} invalidate={['admin-users']} />
                   </div>
                 </td>
               </tr>
@@ -236,12 +234,9 @@ function RoleList({ page, setPage }) {
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
               <Shield size={20} />
             </div>
-            <button 
-              className="p-2 text-dark-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
-              onClick={() => openPanel('role-form', { id: role.id, initialData: role })}
-            >
-              <Edit2 size={14} />
-            </button>
+            <RecordActions record={role} label="role" className="opacity-0 group-hover:opacity-100 transition-opacity"
+              onEdit={() => openPanel('role-form', { id: role.id, initialData: role })}
+              deleteFn={adminAPI.roles.delete} invalidate={['admin-roles']} />
           </div>
           <div>
             <h3 className="text-white font-medium">{role.name}</h3>
@@ -357,12 +352,9 @@ function SODMatrix({ page, setPage }) {
                 <span className={`badge-${rule.severity === 'critical' ? 'red' : 'orange'} text-[10px] uppercase font-bold`}>
                   {rule.severity}
                 </span>
-                <button 
-                  className="p-1 text-dark-500 hover:text-white transition-colors"
-                  onClick={() => openPanel('sod-rule-form', { id: rule.id, initialData: rule })}
-                >
-                  <Edit2 size={12} />
-                </button>
+                <RecordActions record={rule} label="segregation-of-duties rule" size={12}
+                  onEdit={() => openPanel('sod-rule-form', { id: rule.id, initialData: rule })}
+                  deleteFn={adminAPI.sodRules.delete} invalidate={['admin-sod-rules']} />
               </div>
             </div>
             <div className="flex items-center gap-3 py-2">

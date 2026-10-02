@@ -9,16 +9,18 @@ export default function ActivityForm() {
   const { closeSidePanel, sidePanelData } = useUIStore()
   const initialContact = sidePanelData?.contact
   const initialOpportunity = sidePanelData?.opportunity
-  
+  const activity = sidePanelData?.activity
+  const isEdit = !!activity?.id
+
   const [error, setError] = useState(null)
   const [formData, setFormData] = useState({
-    subject: '',
-    activity_type: 'call',
-    status: 'completed',
-    description: '',
-    due_date: new Date().toISOString().split('T')[0],
-    contact: initialContact?.id || '',
-    opportunity: initialOpportunity?.id || '',
+    subject: activity?.subject || '',
+    activity_type: activity?.activity_type || 'call',
+    status: activity?.status || 'completed',
+    description: activity?.description || '',
+    due_date: (activity?.due_date || new Date().toISOString()).split('T')[0],
+    contact: activity?.contact || initialContact?.id || '',
+    opportunity: activity?.opportunity || initialOpportunity?.id || '',
   })
 
   // Fetch Contacts for selection if not provided
@@ -30,7 +32,7 @@ export default function ActivityForm() {
   const contacts = contactsData?.data?.results || []
 
   const mutation = useMutation({
-    mutationFn: (data) => crmAPI.activities.create(data),
+    mutationFn: (data) => (isEdit ? crmAPI.activities.update(activity.id, data) : crmAPI.activities.create(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['crm-activities'] })
       queryClient.invalidateQueries({ queryKey: ['kanban'] })
@@ -62,7 +64,7 @@ export default function ActivityForm() {
               <Clock size={24} />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Log Activity</h3>
+              <h3 className="text-lg font-semibold text-white">{isEdit ? 'Edit Activity' : 'Log Activity'}</h3>
               <p className="text-xs text-dark-500">Record an interaction with a client or prospect.</p>
             </div>
           </div>
@@ -158,7 +160,7 @@ export default function ActivityForm() {
           disabled={mutation.isPending}
           className="flex-1 btn-primary py-3 flex items-center justify-center gap-2"
         >
-          {mutation.isPending ? 'Logging...' : <><CheckCircle size={18} /> Log Activity</>}
+          {mutation.isPending ? 'Saving...' : <><CheckCircle size={18} /> {isEdit ? 'Save Changes' : 'Log Activity'}</>}
         </button>
         <button type="button" onClick={closeSidePanel} className="btn-secondary px-8 py-3">
           Cancel

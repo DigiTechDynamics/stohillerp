@@ -7,6 +7,7 @@ import { documentsAPI, downloadPrivateFile } from '@/services/api'
 import { formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import Pagination from '@/components/common/Pagination'
+import RecordActions from '@/components/common/RecordActions'
 
 export default function DocumentsPage() {
   const [search, setSearch] = useState('')
@@ -96,7 +97,7 @@ export default function DocumentsPage() {
               <th>Reference</th>
               <th>Modified</th>
               <th>Size</th>
-              <th className="w-10"></th>
+              <th className="w-24"></th>
             </tr>
           </thead>
           <tbody>
@@ -132,6 +133,7 @@ export default function DocumentsPage() {
                     >
                       <DownloadIcon size={16} />
                     </button>
+                    <RecordActions record={doc} label="document" deleteFn={documentsAPI.delete} invalidate={['documents']} />
                   </td>
                 </motion.tr>
               ))}

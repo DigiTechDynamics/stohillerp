@@ -7,6 +7,7 @@ import { useUIStore } from '@/stores/authStore'
 import { useNavigate } from 'react-router-dom'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
 import Pagination from '@/components/common/Pagination'
+import RecordActions from '@/components/common/RecordActions'
 import { useQueryClient } from '@tanstack/react-query'
 
 export default function AccountsPayablePage() {
@@ -163,6 +164,7 @@ export default function AccountsPayablePage() {
                   <th className="text-right">Amount</th>
                   <th className="text-right">Balance Due</th>
                   <th className="w-24">Status</th>
+                  <th className="w-24"></th>
                 </tr>
               </thead>
               <tbody>
@@ -184,11 +186,15 @@ export default function AccountsPayablePage() {
                         {inv.status}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-right">
+                      <RecordActions record={inv} label="invoice" onEdit={() => openPanel('new-ap-invoice', { invoice: inv })}
+                        deleteFn={financeAPI.ap.invoices.delete} invalidate={['ap-invoices', 'ap-aging-total']} />
+                    </td>
                   </tr>
                 ))}
                 {invoices.length === 0 && !loadingInvoices && (
                   <tr>
-                    <td colSpan={7} className="text-center py-16 text-dark-400">
+                    <td colSpan={8} className="text-center py-16 text-dark-400">
                       <div className="flex flex-col items-center">
                         <ShoppingCart size={48} className="text-dark-600 mb-4" />
                         <p>No purchase invoices found. Record a bill to get started.</p>
@@ -212,6 +218,7 @@ export default function AccountsPayablePage() {
                   <th>AP Account</th>
                   <th>Terms</th>
                   <th className="text-right">Balance Owed</th>
+                  <th className="w-24"></th>
                 </tr>
               </thead>
               <tbody>
@@ -219,14 +226,18 @@ export default function AccountsPayablePage() {
                   <tr key={s.id} className="hover:bg-white/2 cursor-pointer transition-colors group"
                       onClick={() => openPanel('supplier-detail', { supplier: s })}>
                     <td className="px-4 py-3 text-sm text-white font-medium">{s.name}</td>
-                    <td className="px-4 py-3 text-xs text-dark-300">AP Control Account</td>
+                    <td className="px-4 py-3 text-xs text-dark-300">{s.ap_account_code ? `${s.ap_account_code} ${s.ap_account_name}` : '—'}</td>
                     <td className="px-4 py-3 text-xs text-dark-300">{s.payment_terms_days} Days</td>
                     <td className="px-4 py-3 text-sm text-white font-semibold text-right">{formatCurrency(s.balance || 0, s.currency_code)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <RecordActions record={s} label="supplier" onEdit={() => openPanel('new-supplier', { supplier: s })}
+                        deleteFn={financeAPI.ap.suppliers.delete} invalidate={['ap-suppliers']} />
+                    </td>
                   </tr>
                 ))}
                 {suppliers.length === 0 && !loadingSuppliers && (
                   <tr>
-                    <td colSpan={4} className="text-center py-16 text-dark-400">
+                    <td colSpan={5} className="text-center py-16 text-dark-400">
                       <div className="flex flex-col items-center">
                         <ShoppingCart size={48} className="text-dark-600 mb-4" />
                         <p>No suppliers found. Create a new supplier record.</p>
@@ -252,6 +263,7 @@ export default function AccountsPayablePage() {
                   <th>Bank Account</th>
                   <th className="text-right">Amount</th>
                   <th className="w-24">Status</th>
+                  <th className="w-16"></th>
                 </tr>
               </thead>
               <tbody>
@@ -261,18 +273,22 @@ export default function AccountsPayablePage() {
                     <td className="px-4 py-3 font-mono text-xs text-primary">{p.payment_reference}</td>
                     <td className="px-4 py-3 text-sm text-white font-medium">{p.supplier_name}</td>
                     <td className="px-4 py-3 text-xs text-dark-300">{p.payment_date}</td>
-                    <td className="px-4 py-3 text-xs text-dark-300">Default Bank</td>
+                    <td className="px-4 py-3 text-xs text-dark-300">{p.bank_account_name || '—'}</td>
                     <td className="px-4 py-3 text-sm text-red-400 font-semibold text-right">-{formatCurrency(p.amount, p.currency_code)}</td>
                     <td className="px-4 py-3">
                       <span className={`badge-${p.status === 'posted' ? 'primary' : 'secondary'} text-[10px] uppercase`}>
                         {p.status}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-right">
+                      <RecordActions record={p} label="payment" deleteFn={financeAPI.ap.payments.delete}
+                        invalidate={['ap-payments', 'ap-aging-total']} />
+                    </td>
                   </tr>
                 ))}
                 {payments.length === 0 && !loadingPayments && (
                   <tr>
-                    <td colSpan={6} className="text-center py-16 text-dark-400">
+                    <td colSpan={7} className="text-center py-16 text-dark-400">
                       <div className="flex flex-col items-center">
                         <Wallet size={48} className="text-dark-600 mb-4" />
                         <p>No payments found. Record a payment to see history.</p>

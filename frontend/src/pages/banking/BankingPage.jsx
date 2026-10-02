@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Landmark, Plus, RefreshCw, Wallet, ArrowRightLeft, MoreVertical, CheckCircle2, Search, Filter, Upload
+  Landmark, Plus, RefreshCw, Wallet, ArrowRightLeft, CheckCircle2, Search, Filter, Upload
 } from 'lucide-react'
 import { bankingAPI, financeAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import Pagination from '@/components/common/Pagination'
+import RecordActions from '@/components/common/RecordActions'
 import ReconciliationWorkspace from './ReconciliationWorkspace'
 
 export default function BankingPage() {
@@ -192,7 +193,7 @@ export default function BankingPage() {
                       <th>Type</th>
                       <th className="text-right">Balance</th>
                       <th className="text-center">Status</th>
-                      <th className="w-10"></th>
+                      <th className="w-48"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -244,13 +245,9 @@ export default function BankingPage() {
                             >
                               <ArrowRightLeft size={16} />
                             </button>
-                            <button 
-                              onClick={() => openSidePanel('bank-account-form', { account })}
-                              className="p-2 text-dark-500 hover:text-white transition-colors"
-                              title="Edit Account"
-                            >
-                              <MoreVertical size={16} />
-                            </button>
+                            <RecordActions record={account} label="bank account" size={16}
+                              onEdit={() => openSidePanel('bank-account-form', { account })}
+                              deleteFn={bankingAPI.accounts.delete} invalidate={['banking-accounts']} />
                           </div>
                         </td>
                       </tr>
@@ -345,12 +342,14 @@ export default function BankingPage() {
                           </td>
                           <td className="px-6 py-4 text-right text-white">{stmt.lines?.filter(l => l.is_reconciled).length || 0}/{stmt.lines?.length || 0} reconciled</td>
                           <td className="px-6 py-4 text-right">
-                            <button 
+                            <button
                               onClick={() => { setReconAccountId(stmt.bank_account); setTab('reconciliation') }}
                               className="text-primary hover:text-white transition-colors"
                             >
                               View Details
                             </button>
+                            <RecordActions record={stmt} label="statement" deleteFn={bankingAPI.statements.delete}
+                              invalidate={['bank-statements']} className="ml-2 align-middle" />
                           </td>
                         </tr>
                       ))}

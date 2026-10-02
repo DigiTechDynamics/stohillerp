@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Calendar, Clock, CheckCircle2, XCircle, Plus, AlertCircle, User } from 'lucide-react'
 import { hrAPI } from '@/services/api'
 import { formatDate } from '@/utils/format'
+import RecordActions from '@/components/common/RecordActions'
 
 export default function LeaveManagementPanel() {
   const queryClient = useQueryClient()
@@ -172,6 +173,8 @@ export default function LeaveManagementPanel() {
                       leave.status === 'rejected' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'}`}>
                     {leave.status_display || leave.status}
                   </span>
+                  <RecordActions record={leave} label="leave request" deleteFn={hrAPI.leave.delete}
+                    invalidate={['hr-leaves', 'hr-employees']} />
                 </div>
 
                 <div className="flex items-center gap-6 text-[11px] text-dark-500">
