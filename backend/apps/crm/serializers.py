@@ -50,7 +50,8 @@ class EmailTemplateSerializer(serializers.ModelSerializer):
 class ContactSerializer(SensitiveFieldsMixin, serializers.ModelSerializer):
     # Identity and affordability data only for modules that deal with the
     # client directly; finance and documents see the contact as a lookup.
-    sensitive_fields = ('id_number', 'passport_number', 'annual_income', 'affordability', 'credit_rating')
+    sensitive_fields = ('id_number', 'passport_number', 'annual_income', 'affordability', 'credit_rating',
+                        'bank_name', 'bank_branch_code', 'bank_account_number', 'bank_account_name')
     sensitive_modules = {'crm', 'rentals', 'sales'}
     full_name = serializers.ReadOnlyField()
     currency_code = serializers.ReadOnlyField(source='currency.code')

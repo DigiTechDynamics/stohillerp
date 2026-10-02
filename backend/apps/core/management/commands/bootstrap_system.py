@@ -15,6 +15,7 @@ from apps.core import seeds as core_seeds
 from apps.crm.seeds import seed_crm_defaults
 from apps.finance.seeds import seed_finance_defaults
 from apps.payroll.seeds import seed_payroll_config
+from apps.propman.seeds import seed_arrears_stages
 
 # Order matters: later steps depend on earlier ones (e.g. payroll brackets
 # need currencies; role-module mapping needs modules).
@@ -26,6 +27,7 @@ STEPS = [
     ("Chart of accounts, journals, posting profile, current fiscal year", seed_finance_defaults),
     ("Payroll configuration (ZW)", seed_payroll_config),
     ("CRM pipeline & lost reasons", seed_crm_defaults),
+    ("Arrears collection stages", seed_arrears_stages),
 ]
 
 

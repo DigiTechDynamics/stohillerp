@@ -14,7 +14,7 @@ class LeaseViewSet(RecordRulesMixin, viewsets.ModelViewSet):
         'property', 'property__property_type', 'tenant', 'unit', 'managing_agent'
     )
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status', 'lease_type', 'managing_agent']
+    filterset_fields = ['status', 'lease_type', 'managing_agent', 'property', 'unit', 'tenant']
     search_fields = ['lease_number', 'tenant__last_name', 'tenant__first_name', 'property__reference_number', 'property__name']
     ordering_fields = ['start_date', 'monthly_rental', 'created_at', 'lease_number']
 
@@ -136,9 +136,12 @@ class LeaseViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def refund_deposit(self, request, pk=None):
         """
-        Release the deposit: apply part to the tenant's unpaid rent (oldest
-        invoices first) and refund the rest.
-        Body: {"applied_to_arrears": "0.00", "date": "YYYY-MM-DD"}
+        Release the deposit: keep damages found at the outgoing inspection,
+        apply part to the tenant's unpaid rent (oldest invoices first) and
+        refund the rest.
+        Body: {"applied_to_arrears": "0.00", "applied_to_damages": "0.00"?, "date": "YYYY-MM-DD"}
+        applied_to_damages defaults to the repair costs recorded on the latest
+        completed outgoing inspection of the lease.
         """
         from datetime import date
         from django.db import transaction  # type: ignore
@@ -149,22 +152,32 @@ class LeaseViewSet(RecordRulesMixin, viewsets.ModelViewSet):
         lease = self.get_object()
         if not lease.deposit_paid:
             return Response({'error': 'No deposit is held for this lease.'}, status=400)
+        from apps.properties.models import PropertyInspection  # type: ignore
+
+        outgoing = lease.inspections.filter(
+            inspection_type=PropertyInspection.InspectionType.OUTGOING,
+            status=PropertyInspection.InspectionStatus.COMPLETED,
+        ).order_by('-completed_date').first()
         try:
             applied = Decimal(str(request.data.get('applied_to_arrears', '0')))
+            damages = Decimal(str(request.data['applied_to_damages'])) if request.data.get('applied_to_damages') \
+                not in (None, '') else (outgoing.damage_total if outgoing else Decimal('0'))
             on = date.fromisoformat(request.data['date']) if request.data.get('date') else timezone.localdate()
         except (ValueError, ArithmeticError):
-            return Response({'error': 'applied_to_arrears must be a number and date YYYY-MM-DD'}, status=400)
+            return Response({'error': 'Amounts must be numbers and date YYYY-MM-DD'}, status=400)
+        damages = min(damages, lease.deposit_amount)
         open_invoices = lease.invoices.filter(balance_due__gt=0).exclude(
             status__in=[RentalInvoice.InvoiceStatus.DRAFT, RentalInvoice.InvoiceStatus.CANCELLED]
         ).order_by('period_start')
         arrears = open_invoices.aggregate(total=Sum('balance_due'))['total'] or Decimal('0')
-        if applied < 0 or applied > lease.deposit_amount or applied > arrears:
-            return Response({'error': f'applied_to_arrears must be between 0 and the lower of the deposit '
-                                      f'({lease.deposit_amount}) and the arrears ({arrears}).'}, status=400)
+        if damages < 0 or applied < 0 or applied > lease.deposit_amount - damages or applied > arrears:
+            return Response({'error': f'applied_to_arrears must be between 0 and the lower of what is left of the '
+                                      f'deposit after damages ({lease.deposit_amount - damages}) and the arrears '
+                                      f'({arrears}).'}, status=400)
         try:
             with transaction.atomic():
                 entry = AccountingService(user=request.user).post_deposit_refund(
-                    lease, lease.deposit_amount - applied, applied, on)
+                    lease, lease.deposit_amount - applied - damages, applied, on, applied_to_damages=damages)
                 remaining = applied
                 for inv in open_invoices:
                     if remaining <= 0:
@@ -182,8 +195,24 @@ class LeaseViewSet(RecordRulesMixin, viewsets.ModelViewSet):
                 lease.save(update_fields=['deposit_paid'])
         except AccountingError as e:
             return Response({'error': str(e)}, status=400)
-        return Response({'status': 'deposit_released', 'refunded': str(lease.deposit_amount - applied),
-                         'applied_to_arrears': str(applied), 'journal_entry': entry.reference})
+        return Response({'status': 'deposit_released', 'refunded': str(lease.deposit_amount - applied - damages),
+                         'applied_to_arrears': str(applied), 'applied_to_damages': str(damages),
+                         'journal_entry': entry.reference})
+
+    @action(detail=True, methods=['post'])
+    def send_for_signature(self, request, pk=None):
+        """Send the lease to the tenant for signature (provider hook: SIGNATURE_BACKEND)."""
+        from apps.propman.services.lettings import send_for_signature
+        lease = send_for_signature(self.get_object(), request.user)
+        return Response({'signature_status': lease.signature_status, 'status': lease.status})
+
+    @action(detail=True, methods=['post'])
+    def mark_signed(self, request, pk=None):
+        """{"signed": true|false} - record the signed (or declined) lease."""
+        from apps.propman.services.lettings import mark_signed
+        signed = request.data.get('signed', True) not in (False, 'false', 'False', '0', 0)
+        lease = mark_signed(self.get_object(), signed, request.user)
+        return Response({'signature_status': lease.signature_status, 'signed_at': lease.signature_signed_at})
 
     @action(detail=True, methods=['post'])
     def adjust_rental(self, request, pk=None):

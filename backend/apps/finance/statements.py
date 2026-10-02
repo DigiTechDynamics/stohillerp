@@ -34,18 +34,26 @@ def _dates(params):
     return from_date, to_date
 
 
-def build_statement(lines_qs, sign, from_date, to_date, party, aging):
-    """sign=+1: balance = debits - credits (AR); -1: credits - debits (AP)."""
+def build_statement(lines_qs, sign, from_date, to_date, party, aging, weight=None):
+    """
+    sign=+1: balance = debits - credits (AR); -1: credits - debits (AP).
+    weight(line) -> fraction scales each line (an owner's share of a property).
+    """
     ledger = lines_qs.filter(entry__status__in=JournalEntry.LEDGER_STATUSES)
-    opening = ledger.filter(entry__entry_date__lt=from_date).aggregate(
-        dr=Sum('amount', filter=Q(side='debit')), cr=Sum('amount', filter=Q(side='credit')))
-    balance = ((opening['dr'] or ZERO) - (opening['cr'] or ZERO)) * sign
+    if weight is None:
+        opening = ledger.filter(entry__entry_date__lt=from_date).aggregate(
+            dr=Sum('amount', filter=Q(side='debit')), cr=Sum('amount', filter=Q(side='credit')))
+        balance = ((opening['dr'] or ZERO) - (opening['cr'] or ZERO)) * sign
+    else:
+        balance = sum(((ln.amount if ln.side == 'debit' else -ln.amount) * weight(ln)
+                       for ln in ledger.filter(entry__entry_date__lt=from_date)), ZERO).quantize(ZERO) * sign
     opening_balance = balance
     out = []
     for line in ledger.filter(entry__entry_date__range=(from_date, to_date)).select_related('entry') \
             .order_by('entry__entry_date', 'entry__posted_at', 'entry__reference'):
-        dr = line.amount if line.side == 'debit' else ZERO
-        cr = line.amount if line.side == 'credit' else ZERO
+        factor = weight(line) if weight else 1
+        dr = (line.amount * factor).quantize(ZERO) if line.side == 'debit' else ZERO
+        cr = (line.amount * factor).quantize(ZERO) if line.side == 'credit' else ZERO
         balance += (dr - cr) * sign
         out.append({
             'date': line.entry.entry_date.isoformat(),

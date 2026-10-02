@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Building2, Mail, Phone, MapPin, ShieldCheck, ShieldAlert, Edit3, Trash2, DollarSign } from 'lucide-react'
-import { financeAPI } from '@/services/api'
+import { apiErrorMessage, financeAPI } from '@/services/api'
 import { formatCurrency } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
@@ -36,6 +36,12 @@ export default function SupplierDetailPanel({ supplier: initialSupplier }) {
     onError: (err) => {
       toast.error(err.response?.data?.error || 'Failed to delete supplier. Ensure they have no transactions.')
     }
+  })
+
+  const inviteMutation = useMutation({
+    mutationFn: () => financeAPI.ap.suppliers.inviteToPortal(supplier.id),
+    onSuccess: (res) => toast.success(`Contractor portal invitation emailed to ${res.data.email}.`),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Could not send the invitation.')),
   })
 
   if (isLoading) return <div className="p-20 text-center text-dark-400">Loading details...</div>
@@ -117,7 +123,15 @@ export default function SupplierDetailPanel({ supplier: initialSupplier }) {
         >
           {supplier.is_active ? <><ShieldAlert size={16} /> Deactivate</> : <><ShieldCheck size={16} /> Activate</>}
         </button>
-        <button 
+        <button
+          onClick={() => inviteMutation.mutate()}
+          disabled={inviteMutation.isPending || !supplier.email}
+          title={supplier.email ? 'Email the contractor a link to the contractor portal (jobs, quotes)' : 'Add an email address first'}
+          className="btn-secondary py-3 flex items-center justify-center gap-2 h-11 col-span-2 disabled:opacity-40"
+        >
+          <Mail size={16} /> {inviteMutation.isPending ? 'Sending...' : 'Invite to contractor portal'}
+        </button>
+        <button
           onClick={() => {
             if(window.confirm('Are you sure you want to delete this supplier? This action cannot be undone.')) {
               deleteMutation.mutate()

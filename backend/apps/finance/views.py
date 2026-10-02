@@ -35,6 +35,7 @@ from apps.finance.approval_views import ApprovalActions  # type: ignore
 from apps.procurement.match_views import InvoiceMatchActions  # type: ignore
 from apps.finance.services import approvals  # type: ignore
 from utils.record_rules import RecordRulesMixin
+from apps.portal.views import InviteSupplierToPortalActions
 
 logger = logging.getLogger('stohill.finance')
 
@@ -740,7 +741,7 @@ class ReportExportView(APIView):
 
 from apps.finance.models import Supplier, SupplierInvoice, SupplierPayment  # type: ignore
 
-class SupplierViewSet(SupplierStatementActions, viewsets.ModelViewSet):
+class SupplierViewSet(SupplierStatementActions, InviteSupplierToPortalActions, viewsets.ModelViewSet):
     queryset = Supplier.objects.all().order_by('name')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['is_active']

@@ -22,6 +22,7 @@ export default function LeaseActions({ lease }) {
   const [busy, setBusy] = useState(false)
   const [deposit, setDeposit] = useState({ amount: lease.deposit_amount || '', date: today() })
   const [arrears, setArrears] = useState('0')
+  const [damages, setDamages] = useState('')
   const [renewal, setRenewal] = useState({ end_date: '', monthly_rental: '' })
   const [termination, setTermination] = useState({ termination_date: today(), reason: '' })
   const [charge, setCharge] = useState({ description: '', monthly_amount: '', charge_type: 'service_charge', vat_applicable: false })
@@ -79,13 +80,17 @@ export default function LeaseActions({ lease }) {
           </div>
         ) : (
           <div className="space-y-2">
-            <p className="text-xs text-dark-400">Held: {formatCurrency(lease.deposit_amount)}. Release it, keeping part against unpaid rent.</p>
-            <div className="grid grid-cols-2 gap-2">
+            <p className="text-xs text-dark-400">Held: {formatCurrency(lease.deposit_amount)}. Release it, keeping part against unpaid rent and damages.
+              Damages default to the repair costs on the completed outgoing inspection.</p>
+            <div className="grid grid-cols-3 gap-2">
               <input type="number" step="0.01" className="form-input text-xs" aria-label="Apply to arrears"
                 placeholder="Apply to arrears" value={arrears} onChange={e => setArrears(e.target.value)} />
+              <input type="number" step="0.01" className="form-input text-xs" aria-label="Keep for damages"
+                placeholder="Damages (from inspection)" value={damages} onChange={e => setDamages(e.target.value)} />
               <button className="btn-secondary text-xs" disabled={busy}
-                onClick={() => run(() => rentalsAPI.leases.refundDeposit(lease.id, { applied_to_arrears: arrears || '0', date: today() }),
-                  d => `Refunded ${d.refunded}, applied ${d.applied_to_arrears} to arrears.`)}>Release deposit</button>
+                onClick={() => run(() => rentalsAPI.leases.refundDeposit(lease.id, {
+                  applied_to_arrears: arrears || '0', date: today(), ...(damages !== '' ? { applied_to_damages: damages } : {}),
+                }), d => `Refunded ${d.refunded}, applied ${d.applied_to_arrears} to arrears and ${d.applied_to_damages} to damages.`)}>Release deposit</button>
             </div>
           </div>
         )}

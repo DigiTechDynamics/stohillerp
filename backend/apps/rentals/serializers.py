@@ -1,9 +1,11 @@
 """Stohil Properties - Rentals Serializers"""
 from rest_framework import serializers
+from apps.properties.serializers import CustomFieldsMixin
 from apps.rentals.models import Lease, RentalInvoice, RentalPayment, MaintenanceRequest
 
 
-class LeaseSerializer(serializers.ModelSerializer):
+class LeaseSerializer(CustomFieldsMixin, serializers.ModelSerializer):
+    custom_field_entity = 'lease'
     tenant_name = serializers.CharField(source='tenant.full_name', read_only=True)
     property_ref = serializers.CharField(source='property.reference_number', read_only=True)
     property_name = serializers.CharField(source='property.name', read_only=True)

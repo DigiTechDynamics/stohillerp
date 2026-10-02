@@ -63,6 +63,8 @@ STOHILL_APPS = [
     "apps.projects",
     "apps.procurement",
     "apps.portal",
+    "apps.notifications",
+    "apps.propman",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + STOHILL_APPS
@@ -260,6 +262,17 @@ ONLINE_PAYMENTS_BANK_ACCOUNT = env("ONLINE_PAYMENTS_BANK_ACCOUNT", default="")
 # The in-app test gateway completes payments without money moving: dev/tests only.
 PAYMENT_TEST_GATEWAY_ENABLED = env.bool("PAYMENT_TEST_GATEWAY_ENABLED", default=DEBUG)
 
+# Property management (apps/propman).
+# SMS gateway: dotted path to a class with send(to, text). The default only logs.
+SMS_BACKEND = env("SMS_BACKEND", default="apps.notifications.services.LogSMSBackend")
+# Annual % credited to tenants' deposits each month; 0 switches deposit interest off.
+DEPOSIT_INTEREST_RATE = env.float("DEPOSIT_INTEREST_RATE", default=0.0)
+# Days before a lease ends (and before option deadlines) that alerts go out.
+LEASE_EXPIRY_ALERT_DAYS = [int(d) for d in env.list("LEASE_EXPIRY_ALERT_DAYS", default=["90", "60", "30"])]
+# Maintenance quotes above this need the owner's approval on managed properties.
+MAINTENANCE_OWNER_APPROVAL_LIMIT = env.float("MAINTENANCE_OWNER_APPROVAL_LIMIT", default=500.0)
+# Email tenants their invoice as soon as billing raises it.
+EMAIL_INVOICES_ON_BILLING = env.bool("EMAIL_INVOICES_ON_BILLING", default=False)
 # Purchasing: largest % difference between invoice and PO price that still matches.
 PO_PRICE_TOLERANCE_PCT = env.float("PO_PRICE_TOLERANCE_PCT", default=2.0)
 

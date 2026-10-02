@@ -32,7 +32,23 @@ POLICY = {
     "dashboard/": (ANY, ANY),
     # Tenant self-service: views only ever return the caller's own records.
     "portal/": (ANY, ANY),
+    # Owner and contractor self-service: views return only the caller's own records.
+    "owner-portal/": (ANY, ANY),
+    "contractor-portal/": (ANY, ANY),
     "payments/": (ANY, ANY),   # gateway webhooks (views allow anonymous)
+
+    # Message history (read-only).
+    "notifications/": ({"rentals", "crm", "properties", "finance_ar", "admin"}, set()),
+
+    # Property-management operations (apps/propman).
+    "propman/owner-payment-runs/": ({"rentals", "properties", "finance_ap", "finance_gl"}, {"finance_ap", "finance_gl"}),
+    "propman/debit-batches/": ({"rentals", "finance_ar", "finance_gl", "banking"}, {"rentals", "finance_ar"}),
+    "propman/maintenance-quotes/": ({"rentals", "properties", "procurement"} | FINANCE, {"rentals", "procurement"}),
+    "propman/cpi/": ({"rentals", "properties", "finance_gl"}, {"rentals", "finance_gl"}),
+    "propman/reports/": ({"rentals", "properties", "finance_ar", "finance_gl", "commissions"}, {"rentals", "properties"}),
+    "propman/saved-reports/": ({"rentals", "properties", "finance_ar", "finance_gl"},
+                               {"rentals", "properties", "finance_ar", "finance_gl"}),
+    "propman/": ({"rentals", "properties", "finance_ar", "finance_gl"}, {"rentals"}),
 
     "core/me/": (ANY, ANY),
     "core/company/": (ANY, ANY),
@@ -98,8 +114,21 @@ POLICY = {
     "finance/": (GL, GL),  # entries, batches, periods, fiscal years, posting profiles, reports, budgets
 }
 
-# The only API paths a tenant (portal-only) login may use.
-PORTAL_PATHS = ('portal/', 'auth/', 'core/me/', 'core/company/')
+# The only API paths an external (portal-only) login may use, by portal module.
+COMMON_PORTAL_PATHS = ('auth/', 'core/me/', 'core/company/')
+PORTAL_MODULE_PATHS = {
+    'portal': ('portal/',),
+    'owner_portal': ('owner-portal/',),
+    'contractor_portal': ('contractor-portal/',),
+}
+PORTAL_PATHS = ('portal/',) + COMMON_PORTAL_PATHS   # kept for callers that only know the tenant portal
+
+
+def portal_paths_for(modules):
+    """Allowed path prefixes for a login whose modules are all portal modules, else None."""
+    if not modules or not set(modules) <= set(PORTAL_MODULE_PATHS):
+        return None
+    return COMMON_PORTAL_PATHS + tuple(p for m in modules for p in PORTAL_MODULE_PATHS[m])
 
 # Longest prefix first so specific entries win over their parents.
 _ORDERED = sorted(POLICY.items(), key=lambda kv: len(kv[0]), reverse=True)
@@ -135,11 +164,12 @@ class HasModuleAccess(BasePermission):
         if user.is_superuser:
             return True
 
-        # Tenant logins are fenced into the portal: every other endpoint
-        # (including the dashboard) is refused, whatever the policy says.
-        if user_modules(user) == {'portal'}:
+        # Tenant, owner and contractor logins are fenced into their portals:
+        # every other endpoint (including the dashboard) is refused.
+        fence = portal_paths_for(user_modules(user))
+        if fence is not None:
             rel = request.path[len(API_PREFIX):] if request.path.startswith(API_PREFIX) else ''
-            return rel.startswith(PORTAL_PATHS)
+            return rel.startswith(fence)
 
         rule = resolve_policy(request.path)
         if rule is None:

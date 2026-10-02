@@ -29,7 +29,7 @@ vi.mock('@/services/api', () => {
 
 import { PortalInvoices, PortalPaymentReturn } from './PortalPages'
 import { portalAPI } from '@/services/api'
-import { isPortalUser } from '@/utils/portal'
+import { hasPortal, homePathFor, isPortalUser } from '@/utils/portal'
 
 function renderAt(path, element, routePath = '*') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -78,10 +78,21 @@ describe('payment return page', () => {
 })
 
 describe('isPortalUser', () => {
-  it('is true only for logins whose sole module is the portal', () => {
+  it('is true only for logins that have nothing but portal modules', () => {
     expect(isPortalUser({ accessible_modules: ['portal'] })).toBe(true)
+    expect(isPortalUser({ accessible_modules: ['owner_portal'] })).toBe(true)
+    expect(isPortalUser({ accessible_modules: ['portal', 'owner_portal'] })).toBe(true)
     expect(isPortalUser({ accessible_modules: ['portal', 'finance_ar'] })).toBe(false)
     expect(isPortalUser({ accessible_modules: [] })).toBe(false)
     expect(isPortalUser(null)).toBe(false)
+  })
+
+  it('sends each external login to its own portal', () => {
+    expect(homePathFor({ accessible_modules: ['portal'] })).toBe('/portal')
+    expect(homePathFor({ accessible_modules: ['owner_portal'] })).toBe('/owner')
+    expect(homePathFor({ accessible_modules: ['contractor_portal'] })).toBe('/contractor')
+    expect(homePathFor({ accessible_modules: ['rentals', 'crm'] })).toBe('/dashboard')
+    expect(hasPortal({ accessible_modules: ['portal', 'owner_portal'] }, 'owner')).toBe(true)
+    expect(hasPortal({ accessible_modules: ['portal'] }, 'contractor')).toBe(false)
   })
 })

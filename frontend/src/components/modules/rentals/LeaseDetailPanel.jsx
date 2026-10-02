@@ -6,6 +6,7 @@ import { rentalsAPI } from '@/services/api'
 import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import LeaseActions from './LeaseActions'
+import LeaseTerms from './LeaseTerms'
 
 function InfoRow({ label, value, accent }) {
   return (
@@ -161,6 +162,7 @@ export default function LeaseDetailPanel() {
         </div>
 
         <LeaseActions lease={lease} />
+        <LeaseTerms lease={lease} />
 
         {/* Notes */}
         {lease.notes && (

@@ -1,6 +1,110 @@
 # Changelog
 
-## [Unreleased] - production-hardening
+## [Unreleased] - property-management gaps
+
+Branch `feat/property-management-gaps`. Closes the partial and missing items
+from the comparison with MRI MDA Property Manager (sectional title is out of
+scope for now). Tests are in `backend/tests/test_property_management.py` and
+the new frontend `*.test.jsx` files.
+
+### Properties
+- **Property workspace** (`/properties/:id`): tabs for overview, units,
+  photos, valuations, inspections, owners, meters, recoveries and planned
+  maintenance. Open it from the property side panel.
+- **Units**: unit type, gross lettable area (GLA) and market rent. A unit's
+  occupancy follows its active lease.
+- **Photos**: upload photos and pick the cover photo.
+- **Valuations**: valuation history. The latest valuation becomes the
+  current value.
+- **Inspections**:
+  - Ingoing, outgoing and routine inspections with a standard checklist.
+  - Per-item condition, photo and repair cost.
+  - A PDF report.
+  - An outgoing inspection can be compared with the ingoing one.
+  - Repair costs are kept from the deposit when it is released.
+- **Co-ownership**: owner shares per property. Owner funds, statements and
+  payouts are split by share.
+- **Portfolios and custom fields**: user-defined fields for properties,
+  units, leases and contacts.
+- **Agency fees**: letting and procurement fees are charged to the owner.
+
+### Leases
+- Escalation can be fixed, stepped (a schedule) or CPI-linked with a margin.
+  CPI values are entered under Property settings.
+- Options and break clauses, with deadline alerts.
+- Guarantees and sureties.
+- Turnover rent for retail leases.
+- E-signature workflow: send for signature, mark signed.
+- Debit-order mandates.
+
+### Operations
+- **Utilities**:
+  - Flat or stepped tariffs.
+  - Unit and bulk meters, with readings recharged on the next rent invoice.
+  - Bulk-meter loss reconciliation.
+- **Recoveries**:
+  - Operating costs, rates and insurance, apportioned by area, a fixed % or
+    equally.
+  - Billed monthly on account.
+  - Reconciled at year end, with invoices or credit notes for the
+    difference.
+- **Arrears**:
+  - Configurable stages: reminder, letter of demand, final demand, legal.
+  - A case per lease with a history.
+  - Promises to pay and hand-over to attorneys.
+  - Runs daily or on demand.
+- **Collections**:
+  - Debit-order batches with a bank file and paid/unpaid results. Paid items
+    are receipted.
+  - Monthly deposit interest.
+- **Owner payment runs**: pay every owner's available balance in one run and
+  download a bulk-payment bank file.
+- **Lettings**: tenant applications with a credit check, rent-to-income
+  ratio, approval and conversion to a draft lease.
+- **Maintenance**:
+  - Contractor quotes. Accepting a quote raises a purchase order.
+  - Quotes above `MAINTENANCE_OWNER_APPROVAL_LIMIT` wait for the owner's
+    approval.
+  - Planned and preventive jobs are raised automatically.
+- **Reports**:
+  - Rent roll, lease expiry, vacancy, aged arrears and income per property,
+    each exportable as CSV.
+  - Saved reports, e-mailed weekly or monthly.
+- **Messages**:
+  - Bulk e-mail and SMS to tenants or owners.
+  - E-mailing of invoices and statements.
+  - A message log.
+  - SMS is pluggable (`SMS_BACKEND`) and is only logged until a provider is
+    configured.
+
+### Portals
+- **Owner portal** (`/owner`): balances, properties (owner's share),
+  statement with PDF, maintenance, and quote approvals.
+- **Contractor portal** (`/contractor`): assigned jobs (status, notes,
+  report done), open jobs to quote for, and the contractor's quotes.
+- **Invitations**: invite owners from the contact panel and contractors from
+  the supplier panel. Logins go to their own portal, and a person with
+  several roles can switch between portals.
+
+### Integrations
+- Credit bureau, e-signature and the CPI feed run through hooks in
+  `apps/propman/integrations.py`:
+  - `CREDIT_BUREAU_BACKEND`
+  - `SIGNATURE_BACKEND`
+  - `CPI_FEED_BACKEND`
+- Each hook defaults to manual entry until a provider adapter is written.
+
+### Settings
+- New environment variables, in `.env.example` and docker-compose:
+  - `SMS_BACKEND`
+  - `DEPOSIT_INTEREST_RATE`
+  - `LEASE_EXPIRY_ALERT_DAYS`
+  - `MAINTENANCE_OWNER_APPROVAL_LIMIT`
+  - `EMAIL_INVOICES_ON_BILLING`
+- A new page, **Property Settings**, manages tariffs, CPI, arrears stages,
+  custom fields and portfolios.
+
+## production-hardening
 
 Branch `chore/production-hardening`. Every bug below has a regression test in
 `backend/tests/`.

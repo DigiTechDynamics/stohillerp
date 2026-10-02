@@ -23,33 +23,69 @@ OPEN = (CustomerInvoice.InvoiceStatus.POSTED, CustomerInvoice.InvoiceStatus.PART
 
 # ─── access ──────────────────────────────────────────────────────────────────
 
-@transaction.atomic
-def invite(contact, invited_by=None) -> User:
-    """Create (or re-send) the tenant's portal login and email an activation link."""
-    if not contact.email:
-        raise AccountingError('The contact needs an email address to use the portal.')
-    user = User.objects.filter(contact=contact).first() or User.objects.filter(email__iexact=contact.email).first()
-    if user and user.contact_id not in (None, contact.pk):
+PORTAL_KINDS = {
+    # kind: (role type, portal name, what they can do)
+    'tenant': (Role.RoleType.TENANT, 'tenant portal',
+               'view your statement, pay rent online and log maintenance requests'),
+    'owner': (Role.RoleType.OWNER, 'owner portal',
+              'view your statements, the performance of your properties and approve maintenance quotes'),
+    'contractor': (Role.RoleType.CONTRACTOR, 'contractor portal',
+                   'see the jobs assigned to you, update their progress and submit quotes'),
+}
+
+
+def _send_activation(user, first_name, kind):
+    _role, portal_name, can_do = PORTAL_KINDS[kind]
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    link = f"{settings.PORTAL_BASE_URL.rstrip('/')}/portal/activate?uid={uid}&token={token}"
+    EmailMessage(subject=f"Your {settings.COMPANY_CONFIG['name']} {portal_name}",
+                 body=f"Dear {first_name},\n\nYou can now {can_do}. Set your password here:\n\n{link}\n\n"
+                      f"The link works once and expires in a few days.\n",
+                 to=[user.email]).send()
+
+
+def _external_user(email, first_name, last_name, existing, link_field, link_value):
+    """Find or create the portal login for an email, refusing staff logins and logins owned by someone else."""
+    user = existing or User.objects.filter(email__iexact=email).first()
+    if user and getattr(user, f'{link_field}_id') not in (None, link_value.pk):
         raise AccountingError('That email address already belongs to another login.')
     if user and not user.is_portal_only and user.roles.exists():
         raise AccountingError('That email belongs to a staff login; use a different address for the portal.')
     if user is None:
-        user = User.objects.create_user(email=contact.email, password=secrets.token_urlsafe(24),
-                                        first_name=contact.first_name, last_name=contact.last_name,
-                                        status=User.UserStatus.PENDING, contact=contact)
-    elif user.contact_id is None:
-        user.contact = contact
-        user.save(update_fields=['contact'])
-    user.roles.add(Role.objects.get(role_type=Role.RoleType.TENANT))
+        user = User.objects.create_user(email=email, password=secrets.token_urlsafe(24), first_name=first_name,
+                                        last_name=last_name, status=User.UserStatus.PENDING,
+                                        **{link_field: link_value})
+    elif getattr(user, f'{link_field}_id') is None:
+        setattr(user, link_field, link_value)
+        user.save(update_fields=[link_field])
+    return user
 
-    uid = urlsafe_base64_encode(force_bytes(user.pk))
-    token = default_token_generator.make_token(user)
-    link = f"{settings.PORTAL_BASE_URL.rstrip('/')}/portal/activate?uid={uid}&token={token}"
-    EmailMessage(subject=f"Your {settings.COMPANY_CONFIG['name']} tenant portal",
-                 body=f"Dear {contact.first_name},\n\nYou can now view your statement, pay rent online and log "
-                      f"maintenance requests. Set your password here:\n\n{link}\n\n"
-                      f"The link works once and expires in a few days.\n",
-                 to=[contact.email]).send()
+
+@transaction.atomic
+def invite(contact, invited_by=None, kind='tenant') -> User:
+    """Create (or re-send) a tenant's or owner's portal login and email an activation link."""
+    if kind not in ('tenant', 'owner'):
+        raise AccountingError('Contacts can be invited as a tenant or an owner.')
+    if not contact.email:
+        raise AccountingError('The contact needs an email address to use the portal.')
+    user = _external_user(contact.email, contact.first_name, contact.last_name,
+                          User.objects.filter(contact=contact).first(), 'contact', contact)
+    user.roles.add(Role.objects.get(role_type=PORTAL_KINDS[kind][0]))
+    _send_activation(user, contact.first_name, kind)
+    return user
+
+
+@transaction.atomic
+def invite_supplier(supplier, invited_by=None) -> User:
+    """Create (or re-send) a contractor's portal login for a supplier."""
+    email = getattr(supplier, 'email', '')
+    if not email:
+        raise AccountingError('The supplier needs an email address to use the contractor portal.')
+    first, _, last = (getattr(supplier, 'contact_person', '') or supplier.name).partition(' ')
+    user = _external_user(email, first, last, User.objects.filter(supplier=supplier).first(), 'supplier', supplier)
+    user.roles.add(Role.objects.get(role_type=Role.RoleType.CONTRACTOR))
+    _send_activation(user, first, 'contractor')
     return user
 
 
