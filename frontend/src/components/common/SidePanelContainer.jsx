@@ -1,6 +1,7 @@
 // Stohill Properties - Side Panel Container
 // Slide-in contextual panels for record details
 import { Suspense, lazy } from 'react'
+import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { X, Building2, MapPin, BedDouble, Bath, Square, DollarSign, Briefcase, FileText, Trash2, Edit2, Loader2 } from 'lucide-react'
 import { useQueryClient, useMutation } from '@tanstack/react-query'
@@ -93,6 +94,9 @@ function PropertyDetailPanel({ property }) {
 
   return (
     <div className="p-6 space-y-6">
+      <Link to={`/properties/${property.id}`} onClick={closePanel} className="btn-primary w-full justify-center">
+        Open property workspace (units, photos, inspections, meters...)
+      </Link>
       {/* Hero */}
       <div className="h-48 rounded-xl bg-dark-700 overflow-hidden border border-white/5">
         {property.primary_image ? (

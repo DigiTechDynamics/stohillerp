@@ -27,6 +27,7 @@ CENT = Decimal('0.01')
 @dataclass
 class BillingResult:
     created: list = field(default_factory=list)   # invoice numbers
+    invoices: list = field(default_factory=list)  # the invoice objects, for distribution
     escalated: list = field(default_factory=list)  # lease numbers
     errors: list = field(default_factory=list)     # (lease number, message)
 
@@ -80,13 +81,22 @@ def generate_invoices_for_lease(lease: Lease, as_of: date, result: BillingResult
 
         with transaction.atomic():
             if not RentalInvoice.objects.filter(lease=lease, period_start=period_start).exists():
-                if apply_escalation(lease, period_start):
+                from apps.propman.services.lease_terms import (
+                    apply_lease_escalation, mark_turnover_billed, turnover_charge_lines,
+                )
+                from apps.propman.services.recoveries import recovery_charge_lines
+                from apps.propman.services.utilities import utility_charge_lines
+
+                if apply_lease_escalation(lease, period_start):
                     result.escalated.append(lease.lease_number)
                 # The final period is billed only for the days the lease runs.
                 factor = proration_factor(period_start, period_end)
                 rent = (lease.monthly_rental * factor).quantize(CENT)
                 vat = (rent * _vat_rate()).quantize(CENT) if lease.vat_applicable else Decimal('0.00')
-                charges = charge_lines(lease, period_start, factor)
+                utility_lines, readings = utility_charge_lines(lease, period_start, period_end, _vat_rate())
+                turnover_lines, turnover_reports = turnover_charge_lines(lease, period_start)
+                charges = (charge_lines(lease, period_start, factor) + utility_lines
+                           + recovery_charge_lines(lease, period_start, factor, _vat_rate()) + turnover_lines)
                 other = sum((Decimal(c['amount']) + Decimal(c['vat']) for c in charges), Decimal('0.00'))
                 invoice = RentalInvoice.objects.create(
                     lease=lease,
@@ -106,7 +116,12 @@ def generate_invoices_for_lease(lease: Lease, as_of: date, result: BillingResult
                 # reported (RentalInvoice.save() only logs sync errors).
                 RentalFinanceSyncService.sync_rental_invoice_to_ar(invoice)
                 RentalInvoice.objects.filter(pk=invoice.pk).update(status=RentalInvoice.InvoiceStatus.SENT)
+                for reading in readings:
+                    reading.billed_invoice = invoice
+                    reading.save(update_fields=['billed_invoice'])
+                mark_turnover_billed(turnover_reports, invoice)
                 result.created.append(invoice.invoice_number)
+                result.invoices.append(invoice)
                 lease.last_invoiced_date = period_start
 
             next_date = period_start + relativedelta(months=1)

@@ -34,11 +34,42 @@ def _recurring_journals():
     return run_recurring_journals(timezone.localdate())
 
 
+def _arrears():
+    from apps.propman.services.arrears import run_arrears
+    return run_arrears()
+
+
+def _lease_alerts():
+    from apps.propman.services.lease_terms import run_lease_alerts
+    return run_lease_alerts()
+
+
+def _planned_maintenance():
+    from apps.propman.services.maintenance import raise_planned_jobs
+    return raise_planned_jobs()
+
+
+def _deposit_interest():
+    # Credits last month's interest; idempotent per lease and month.
+    from apps.propman.services.collections import credit_deposit_interest
+    return credit_deposit_interest()
+
+
+def _scheduled_reports():
+    from apps.propman.services.reports import send_scheduled_reports
+    return send_scheduled_reports()
+
+
 JOBS = [
     ('Rental billing', lambda: call_command('generate_rental_invoices')),
     ('Rental overdue processing', lambda: call_command('process_rental_overdue')),
+    ('Arrears collections', _arrears),
+    ('Lease expiry, option and guarantee alerts', _lease_alerts),
+    ('Planned maintenance', _planned_maintenance),
+    ('Deposit interest', _deposit_interest),
     ('Depreciation', _depreciate_to_last_month_end),
     ('Recurring and reversing journals', _recurring_journals),
+    ('Scheduled reports', _scheduled_reports),
 ]
 
 

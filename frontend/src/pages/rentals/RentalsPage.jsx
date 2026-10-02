@@ -3,7 +3,8 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Search, Plus, Key, Wrench, AlertTriangle, Building2, DollarSign, MapPin, Users, Receipt, Landmark
+  Search, Plus, Key, Wrench, AlertTriangle, Building2, DollarSign, MapPin, Users, Receipt, Landmark,
+  Gavel, ClipboardList, CreditCard, BarChart3, MessageSquare,
 } from 'lucide-react'
 import { rentalsAPI, propertiesAPI, crmAPI } from '@/services/api'
 import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
@@ -12,6 +13,9 @@ import DataManagementButtons from '@/components/common/DataManagementButtons'
 import Pagination from '@/components/common/Pagination'
 import { MaintenanceComplete, OwnersTab } from '@/components/modules/rentals/RentalsExtras'
 import RecordActions from '@/components/common/RecordActions'
+import {
+  ArrearsTab, ApplicationsTab, CollectionsTab, OwnerPaymentRuns, ReportsTab, MessagesTab, MaintenanceQuotes,
+} from '@/pages/propman/RentalsOps'
 import { useQueryClient } from '@tanstack/react-query'
 
 const TABS = [
@@ -21,7 +25,14 @@ const TABS = [
   { id: 'invoices', label: 'Invoices', icon: Receipt },
   { id: 'maintenance', label: 'Maintenance', icon: Wrench },
   { id: 'owners', label: 'Owners', icon: Landmark },
+  { id: 'arrears', label: 'Arrears', icon: Gavel },
+  { id: 'lettings', label: 'Applications', icon: ClipboardList },
+  { id: 'collections', label: 'Collections', icon: CreditCard },
+  { id: 'reports', label: 'Reports', icon: BarChart3 },
+  { id: 'messages', label: 'Messages', icon: MessageSquare },
 ]
+// Tabs with their own toolbar (no shared search / sort / pagination).
+const OWN_TOOLBAR = ['owners', 'arrears', 'lettings', 'collections', 'reports', 'messages']
 
 export default function RentalsPage() {
   const [activeTab, setActiveTab] = useState('properties')
@@ -208,7 +219,7 @@ export default function RentalsPage() {
       </div>
 
       {/* Search and Sort */}
-      {activeTab !== 'owners' && <div className="flex items-center gap-3 w-full max-w-2xl">
+      {!OWN_TOOLBAR.includes(activeTab) && <div className="flex items-center gap-3 w-full max-w-2xl">
         <div className="relative flex-1">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-400" />
           <input
@@ -539,6 +550,7 @@ export default function RentalsPage() {
                   {ticket.actual_cost && <span>Actual: {formatCurrency(parseFloat(ticket.actual_cost))}</span>}
                 </div>
                 <MaintenanceComplete ticket={ticket} />
+                <MaintenanceQuotes ticket={ticket} />
               </div>
             </div>
           ))}
@@ -551,9 +563,14 @@ export default function RentalsPage() {
         </div>
       )}
 
-      {activeTab === 'owners' && <OwnersTab />}
+      {activeTab === 'owners' && <><OwnersTab /><OwnerPaymentRuns /></>}
+      {activeTab === 'arrears' && <ArrearsTab />}
+      {activeTab === 'lettings' && <ApplicationsTab />}
+      {activeTab === 'collections' && <CollectionsTab />}
+      {activeTab === 'reports' && <ReportsTab />}
+      {activeTab === 'messages' && <MessagesTab />}
 
-      {activeTab !== 'owners' && (
+      {!OWN_TOOLBAR.includes(activeTab) && (
         <Pagination 
           currentPage={page}
           totalPages={

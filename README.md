@@ -7,6 +7,16 @@ development projects, fixed assets, commissions, documents/KYC, HR, Zimbabwe
 payroll (PAYE, AIDS levy, NSSA in USD and ZWG), and a tenant self-service
 portal with online payment (Paynow).
 
+Property management covers:
+
+- Units, inspections, multi-owner trust accounting and owner payment runs.
+- Utilities and recoveries.
+- Stepped and CPI escalations.
+- Arrears workflow, debit orders and lettings.
+- Contractor quotes.
+- Owner and contractor portals.
+- Reports, and bulk e-mail and SMS.
+
 | Layer    | Stack |
 |----------|-------|
 | API      | Python 3.12, Django 5, Django REST Framework, SimpleJWT |
@@ -49,6 +59,8 @@ stohillerp/
 │   │   ├── procurement/        # purchase orders, goods receipts, 3-way match
 │   │   ├── projects/           # development projects, WIP capitalisation
 │   │   ├── portal/             # tenant portal API, online payments (Paynow)
+│   │   ├── propman/            # property-management operations, owner & contractor portals
+│   │   ├── notifications/      # e-mail / SMS sending and the message log
 │   │   └── */seeds.py          # idempotent reference data per app
 │   ├── utils/                  # middleware (request id, logging), errors, pagination
 │   ├── tests/                  # pytest suite
@@ -169,6 +181,11 @@ Backend settings come from environment variables (or `backend/.env`); see
 | `PO_PRICE_TOLERANCE_PCT` | 2 | Invoice vs PO price difference still accepted by the 3-way match |
 | `SENTRY_DSN` / `SENTRY_ENVIRONMENT` | off | Reports unhandled errors and failed scheduled jobs to Sentry; no personal data is sent |
 | `BACKUP_DIR` / `BACKUP_AT` / `BACKUP_KEEP_DAYS` | `./backups`, 01:30, 14 | Compose `backup` service (see *Backups*) |
+| `SMS_BACKEND` | log only | Dotted path to an SMS gateway class with `send(to, text)` |
+| `DEPOSIT_INTEREST_RATE` | 0 (off) | Annual % credited monthly to deposits held in trust |
+| `LEASE_EXPIRY_ALERT_DAYS` | 90,60,30 | When lease-expiry and option-deadline alerts are sent |
+| `MAINTENANCE_OWNER_APPROVAL_LIMIT` | 500 | Quotes above this need the owner's approval (managed properties) |
+| `EMAIL_INVOICES_ON_BILLING` | False | E-mail tenants each invoice as billing raises it |
 
 Production (`config.settings.production`) refuses to start without a strong
 secret key and a database URL. It enables HTTPS redirect, HSTS, secure cookies
@@ -207,7 +224,7 @@ and alert on the `backup` service's health.
 | `seed_demo [--force]` | ❌ | Bootstrap plus demo properties, CRM, leases, sales, HR, banking. Refuses when `DEBUG=False` unless `--force`. |
 | `generate_rental_invoices [--as-of]` | ✅ | Bills active leases up to a date, applies annual escalation, posts to AR/GL. Idempotent (schedule daily, before the overdue job). |
 | `process_rental_overdue` | ✅ | Rent reminders; applies and posts late fees on overdue rental invoices (schedule daily). |
-| `run_daily_jobs` | ✅ | Billing, overdue processing, depreciation to last month-end, recurring and auto-reversing journals. Idempotent. |
+| `run_daily_jobs` | ✅ | Billing, overdue processing, the arrears workflow, lease-expiry and option alerts, planned maintenance, deposit interest, scheduled reports, depreciation to last month-end, recurring and auto-reversing journals. Idempotent. |
 | `run_scheduler [--at HH:MM]` | ✅ | Runs `run_daily_jobs` once a day; the `scheduler` service in `docker-compose.yml` uses it. |
 
 ---

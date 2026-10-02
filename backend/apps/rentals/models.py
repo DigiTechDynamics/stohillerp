@@ -8,6 +8,21 @@ from django.db import models, transaction  # type: ignore
 from apps.core.models import AuditedModel, TimeStampedModel  # type: ignore
 
 
+def sync_unit_occupancy(unit_id):
+    """A unit with an active lease is occupied; when its last active lease ends it is available again."""
+    if not unit_id:
+        return
+    from apps.properties.models import PropertyUnit  # type: ignore
+
+    occupied = Lease.objects.filter(unit_id=unit_id, status=Lease.LeaseStatus.ACTIVE).exists()
+    if occupied:
+        PropertyUnit.objects.filter(pk=unit_id).exclude(status=PropertyUnit.UnitStatus.OCCUPIED) \
+            .update(status=PropertyUnit.UnitStatus.OCCUPIED)
+    else:
+        PropertyUnit.objects.filter(pk=unit_id, status=PropertyUnit.UnitStatus.OCCUPIED) \
+            .update(status=PropertyUnit.UnitStatus.AVAILABLE)
+
+
 class Lease(AuditedModel):
     """
     Rental lease agreement between a tenant and a property/unit.
@@ -66,6 +81,37 @@ class Lease(AuditedModel):
     )
 
     notes = models.TextField(blank=True)
+    # Values for user-defined fields (properties.CustomFieldDefinition, entity "lease").
+    custom_fields = models.JSONField(default=dict, blank=True)
+
+    # Escalation: a fixed annual %, scheduled steps (propman.EscalationStep),
+    # or CPI-linked on each anniversary (propman.CPIIndex) plus a margin.
+    class EscalationType(models.TextChoices):
+        FIXED = 'fixed', 'Fixed annual %'
+        STEPPED = 'stepped', 'Stepped schedule'
+        CPI = 'cpi', 'CPI-linked'
+        NONE = 'none', 'No escalation'
+
+    escalation_type = models.CharField(max_length=10, choices=EscalationType.choices, default=EscalationType.FIXED)
+    cpi_margin = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'),
+                                     help_text='% added to CPI growth for CPI-linked escalation')
+    # Retail: % of monthly turnover payable to the extent it exceeds the base rent.
+    turnover_rent_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    # Electronic signature (provider adapters in apps/propman/integrations.py).
+    class SignatureStatus(models.TextChoices):
+        NOT_SENT = 'not_sent', 'Not sent'
+        SENT = 'sent', 'Sent for signature'
+        SIGNED = 'signed', 'Signed'
+        DECLINED = 'declined', 'Declined'
+
+    signature_status = models.CharField(max_length=10, choices=SignatureStatus.choices,
+                                        default=SignatureStatus.NOT_SENT)
+    signature_provider = models.CharField(max_length=40, blank=True)
+    signature_reference = models.CharField(max_length=100, blank=True)
+    signature_sent_at = models.DateTimeField(null=True, blank=True)
+    signature_signed_at = models.DateTimeField(null=True, blank=True)
+    letting_fee_charged = models.BooleanField(default=False)
 
     class Meta:
         db_table = 'rentals_leases'
@@ -83,10 +129,20 @@ class Lease(AuditedModel):
             from apps.core.services.number_sequence import NumberSequenceService  # type: ignore
             self.lease_number = NumberSequenceService.get_next_number("Lease Agreement", prefix="LSE-", padding=5)
         with transaction.atomic():
+            previous_unit_id = None
+            if self.pk:
+                previous_unit_id = Lease.objects.filter(pk=self.pk).values_list('unit_id', flat=True).first()
             super().save(*args, **kwargs)
             if self.tenant_id:
                 from apps.rentals.services.finance_sync import RentalFinanceSyncService  # type: ignore
                 RentalFinanceSyncService.sync_tenant_to_customer(self.tenant)
+            sync_unit_occupancy(self.unit_id)
+            if previous_unit_id and previous_unit_id != self.unit_id:
+                sync_unit_occupancy(previous_unit_id)
+            if self.status == self.LeaseStatus.ACTIVE and not self.letting_fee_charged \
+                    and self.property.is_managed and self.property.letting_fee_percent:
+                from apps.propman.services.fees import charge_letting_fee  # type: ignore
+                charge_letting_fee(self)
 
 
 class RentalInvoice(AuditedModel):

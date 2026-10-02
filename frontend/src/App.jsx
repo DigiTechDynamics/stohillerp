@@ -7,7 +7,7 @@ import { useAuthStore, useUIStore } from '@/stores/authStore'
 import AppLayout from '@/components/layout/AppLayout'
 import PageLoader from '@/components/common/PageLoader'
 import LoginPage from '@/pages/LoginPage'
-import { isPortalUser } from '@/utils/portal'
+import { hasPortal, homePathFor, isPortalUser } from '@/utils/portal'
 
 // Page imports: lazy-loaded so each module is its own chunk, downloaded on
 // first visit. LoginPage stays eager because it's the entry screen.
@@ -44,21 +44,39 @@ const PortalInvoices = lazy(() => import('@/pages/portal/PortalPages').then(m =>
 const PortalStatement = lazy(() => import('@/pages/portal/PortalPages').then(m => ({ default: m.PortalStatement })))
 const PortalMaintenance = lazy(() => import('@/pages/portal/PortalPages').then(m => ({ default: m.PortalMaintenance })))
 const PortalPaymentReturn = lazy(() => import('@/pages/portal/PortalPages').then(m => ({ default: m.PortalPaymentReturn })))
+const OwnerHome = lazy(() => import('@/pages/portal/OwnerPortal').then(m => ({ default: m.OwnerHome })))
+const OwnerProperties = lazy(() => import('@/pages/portal/OwnerPortal').then(m => ({ default: m.OwnerProperties })))
+const OwnerStatement = lazy(() => import('@/pages/portal/OwnerPortal').then(m => ({ default: m.OwnerStatement })))
+const OwnerMaintenance = lazy(() => import('@/pages/portal/OwnerPortal').then(m => ({ default: m.OwnerMaintenance })))
+const ContractorJobs = lazy(() => import('@/pages/portal/ContractorPortal').then(m => ({ default: m.ContractorJobs })))
+const ContractorOpenJobs = lazy(() => import('@/pages/portal/ContractorPortal').then(m => ({ default: m.ContractorOpenJobs })))
+const ContractorQuotes = lazy(() => import('@/pages/portal/ContractorPortal').then(m => ({ default: m.ContractorQuotes })))
+const PropertyWorkspace = lazy(() => import('@/pages/properties/PropertyWorkspace'))
+const PropertySettingsPage = lazy(() => import('@/pages/propman/PropertySettingsPage'))
 
-// Auth guard for the ERP. Tenant (portal-only) logins are sent to the portal.
+// Auth guard for the ERP. Portal-only logins (tenants, owners, contractors) go to their portal.
 function PrivateRoute({ children }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const user = useAuthStore((s) => s.user)
   if (!isAuthenticated) return <Navigate to="/login" replace />
-  if (isPortalUser(user)) return <Navigate to="/portal" replace />
+  if (isPortalUser(user)) return <Navigate to={homePathFor(user)} replace />
   return <>{children}</>
 }
 
-// Auth guard for the tenant portal.
-function PortalRoute({ children }) {
+// Auth guard for a portal. A portal-only login without this portal goes to its own.
+function PortalRoute({ kind, children }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />
+  const user = useAuthStore((s) => s.user)
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (isPortalUser(user) && !hasPortal(user, kind)) return <Navigate to={homePathFor(user)} replace />
+  return <>{children}</>
 }
+
+const portal = (kind) => (
+  <PortalRoute kind={kind}>
+    <Suspense fallback={<PageLoader />}><PortalLayout kind={kind} /></Suspense>
+  </PortalRoute>
+)
 
 export default function App() {
   const theme = useUIStore((s) => s.theme)
@@ -75,14 +93,18 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/portal/activate" element={<Suspense fallback={<PageLoader />}><PortalActivatePage /></Suspense>} />
-      <Route
-        path="/portal"
-        element={
-          <PortalRoute>
-            <Suspense fallback={<PageLoader />}><PortalLayout /></Suspense>
-          </PortalRoute>
-        }
-      >
+      <Route path="/owner" element={portal('owner')}>
+        <Route index element={<OwnerHome />} />
+        <Route path="properties" element={<OwnerProperties />} />
+        <Route path="statement" element={<OwnerStatement />} />
+        <Route path="maintenance" element={<OwnerMaintenance />} />
+      </Route>
+      <Route path="/contractor" element={portal('contractor')}>
+        <Route index element={<ContractorJobs />} />
+        <Route path="open" element={<ContractorOpenJobs />} />
+        <Route path="quotes" element={<ContractorQuotes />} />
+      </Route>
+      <Route path="/portal" element={portal('tenant')}>
         <Route index element={<PortalHome />} />
         <Route path="invoices" element={<PortalInvoices />} />
         <Route path="statement" element={<PortalStatement />} />
@@ -100,6 +122,8 @@ export default function App() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<ExecutiveDashboard />} />
         <Route path="properties" element={<PropertiesPage />} />
+        <Route path="properties/settings" element={<PropertySettingsPage />} />
+        <Route path="properties/:id" element={<PropertyWorkspace />} />
         <Route path="crm" element={<CRMPage />} />
         <Route path="sales" element={<SalesPage />} />
         <Route path="rentals" element={<RentalsPage />} />

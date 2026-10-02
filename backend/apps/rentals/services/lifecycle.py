@@ -136,6 +136,11 @@ def complete_maintenance(job: MaintenanceRequest, actual_cost: Decimal, contract
         expense_account=ChartOfAccount.objects.get(code=expense_code), unit_price=actual_cost,
         line_total=actual_cost, property_ref=prop)
 
+    if managed and not bill_to_tenant:
+        # Agency's fee for arranging the work, from the owner's trust balance.
+        from apps.propman.services.fees import charge_procurement_fee
+        charge_procurement_fee(prop, actual_cost, job, user)
+
     recharge = None
     if bill_to_tenant:
         if not (job.lease_id and job.lease.tenant_id):

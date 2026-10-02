@@ -4,6 +4,7 @@ Core property management: listings, units, valuations, inspections.
 Properties are the central entity linking all other modules.
 """
 
+import builtins
 import uuid
 from decimal import Decimal
 
@@ -98,6 +99,11 @@ class Property(AuditedModel):
                               related_name='owned_properties', help_text='Landlord, for managed properties')
     management_fee_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('10.00'),
                                               help_text='% of rent retained as management fee (managed properties)')
+    # One-off agency fees charged to the owner (managed properties).
+    letting_fee_percent = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'),
+                                              help_text="% of the first month's rent, charged when a new lease starts")
+    procurement_fee_percent = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'),
+                                                  help_text='% of maintenance cost charged for arranging the work')
 
     @property
     def is_managed(self):
@@ -107,6 +113,11 @@ class Property(AuditedModel):
     description = models.TextField(blank=True)
     features = models.JSONField(default=list, blank=True, help_text='List of feature strings')
     notes = models.TextField(blank=True)
+    # Values for user-defined fields (CustomFieldDefinition, entity "property").
+    custom_fields = models.JSONField(default=dict, blank=True)
+    # Optional grouping for reporting (fund, portfolio, region...).
+    portfolio = models.ForeignKey('properties.Portfolio', null=True, blank=True, on_delete=models.SET_NULL,
+                                  related_name='properties')
 
     # Assigned agent
     primary_agent = models.ForeignKey(
@@ -152,15 +163,29 @@ class PropertyUnit(AuditedModel):
         UNDER_MAINTENANCE = 'maintenance', 'Under Maintenance'
         RESERVED = 'reserved', 'Reserved'
 
+    class UnitType(models.TextChoices):
+        RESIDENTIAL = 'residential', 'Residential'
+        OFFICE = 'office', 'Office'
+        RETAIL = 'retail', 'Retail / Shop'
+        INDUSTRIAL = 'industrial', 'Industrial / Warehouse'
+        PARKING = 'parking', 'Parking'
+        STORAGE = 'storage', 'Storage'
+        OTHER = 'other', 'Other'
+
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='units')
     unit_number = models.CharField(max_length=50)
+    unit_type = models.CharField(max_length=20, choices=UnitType.choices, default=UnitType.RESIDENTIAL)
     floor = models.PositiveSmallIntegerField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=UnitStatus.choices, default=UnitStatus.AVAILABLE)
-    floor_size = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    # Gross lettable area (m²): the basis for area-apportioned recoveries.
+    floor_size = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+                                     help_text='Gross lettable area (m²)')
     bedrooms = models.PositiveSmallIntegerField(null=True, blank=True)
     bathrooms = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
-    monthly_rental = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    monthly_rental = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+                                         help_text='Asking (market) rent')
     notes = models.TextField(blank=True)
+    custom_fields = models.JSONField(default=dict, blank=True)
 
     class Meta:
         db_table = 'properties_units'
@@ -237,7 +262,104 @@ class PropertyInspection(AuditedModel):
     findings = models.TextField(blank=True)
     action_required = models.TextField(blank=True)
     report_document = models.FileField(upload_to='inspections/%Y/%m/', null=True, blank=True)
+    lease = models.ForeignKey('rentals.Lease', null=True, blank=True, on_delete=models.SET_NULL,
+                              related_name='inspections')
 
     class Meta:
         db_table = 'properties_inspections'
         ordering = ['-scheduled_date']
+
+    @builtins.property      # property is a field name in this class
+    def damage_total(self):
+        return sum((i.repair_cost for i in self.items.all()), Decimal('0.00'))
+
+
+class InspectionItem(models.Model):
+    """One checklist line of an inspection: an item in an area and its condition."""
+
+    class Condition(models.TextChoices):
+        GOOD = 'good', 'Good'
+        FAIR = 'fair', 'Fair'
+        POOR = 'poor', 'Poor'
+        DAMAGED = 'damaged', 'Damaged'
+        MISSING = 'missing', 'Missing'
+        NOT_APPLICABLE = 'na', 'Not applicable'
+
+    inspection = models.ForeignKey(PropertyInspection, on_delete=models.CASCADE, related_name='items')
+    area = models.CharField(max_length=100, help_text='e.g. Kitchen, Bedroom 1')
+    item = models.CharField(max_length=150, help_text='e.g. Walls, Stove, Windows')
+    condition = models.CharField(max_length=10, choices=Condition.choices, default=Condition.GOOD)
+    notes = models.TextField(blank=True)
+    photo = models.ImageField(upload_to='inspections/photos/%Y/%m/', null=True, blank=True)
+    # Estimated cost to repair damage the tenant is liable for (outgoing inspections).
+    repair_cost = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        db_table = 'properties_inspection_items'
+        ordering = ['sort_order', 'id']
+
+
+class Portfolio(TimeStampedModel):
+    """A grouping of properties (fund, portfolio, region) for reporting."""
+    name = models.CharField(max_length=150, unique=True)
+    description = models.TextField(blank=True)
+
+    class Meta:
+        db_table = 'properties_portfolios'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class PropertyOwnership(TimeStampedModel):
+    """
+    A share of a managed property held by one owner. When a property has
+    ownership shares, owner funds, statements and payouts are split by them;
+    otherwise the property's single `owner` holds 100%.
+    """
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='ownerships')
+    owner = models.ForeignKey('crm.Contact', on_delete=models.PROTECT, related_name='property_shares')
+    share_percent = models.DecimalField(max_digits=6, decimal_places=3)
+
+    class Meta:
+        db_table = 'properties_ownerships'
+        unique_together = ['property', 'owner']
+
+    def __str__(self):
+        return f'{self.owner} {self.share_percent}% of {self.property}'
+
+
+class CustomFieldDefinition(TimeStampedModel):
+    """A user-defined field shown on properties, units, leases or contacts."""
+
+    class Entity(models.TextChoices):
+        PROPERTY = 'property', 'Property'
+        UNIT = 'unit', 'Unit'
+        LEASE = 'lease', 'Lease'
+        CONTACT = 'contact', 'Contact'
+
+    class FieldType(models.TextChoices):
+        TEXT = 'text', 'Text'
+        NUMBER = 'number', 'Number'
+        DATE = 'date', 'Date'
+        BOOLEAN = 'boolean', 'Yes / No'
+        CHOICE = 'choice', 'Choice'
+
+    entity = models.CharField(max_length=20, choices=Entity.choices)
+    key = models.SlugField(max_length=60, help_text='Stored name, e.g. "erf_number"')
+    label = models.CharField(max_length=100)
+    field_type = models.CharField(max_length=10, choices=FieldType.choices, default=FieldType.TEXT)
+    choices = models.JSONField(default=list, blank=True, help_text='Options for a choice field')
+    required = models.BooleanField(default=False)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'properties_custom_fields'
+        unique_together = ['entity', 'key']
+        ordering = ['entity', 'sort_order', 'label']
+
+    def __str__(self):
+        return f'{self.get_entity_display()}: {self.label}'

@@ -122,6 +122,8 @@ class Role(TimeStampedModel):
         EXECUTIVE = 'executive', 'Executive / Director'
         VIEWER = 'viewer', 'Read-Only Viewer'
         TENANT = 'tenant', 'Tenant (self-service portal)'
+        OWNER = 'owner', 'Property owner (owner portal)'
+        CONTRACTOR = 'contractor', 'Contractor (contractor portal)'
 
     name = models.CharField(max_length=100)
     role_type = models.CharField(max_length=50, choices=RoleType.choices, unique=True)
@@ -162,6 +164,14 @@ class UserManager(BaseUserManager):
 
 # ─── User Model ───────────────────────────────────────────────────────────────
 
+# External logins: each role type is fenced into its own portal module.
+EXTERNAL_ROLE_MODULES = {
+    'tenant': 'portal',
+    'owner': 'owner_portal',
+    'contractor': 'contractor_portal',
+}
+
+
 class User(AbstractBaseUser, PermissionsMixin, UUIDModel):
     """
     Custom User model for Stohil Properties.
@@ -193,6 +203,9 @@ class User(AbstractBaseUser, PermissionsMixin, UUIDModel):
     # Tenant portal: the CRM contact this login belongs to.
     contact = models.OneToOneField('crm.Contact', null=True, blank=True, on_delete=models.SET_NULL,
                                    related_name='portal_user')
+    # Contractor portal: the supplier this login works for.
+    supplier = models.OneToOneField('finance.Supplier', null=True, blank=True, on_delete=models.SET_NULL,
+                                    related_name='portal_user')
 
     # Metadata
     last_login_ip = models.GenericIPAddressField(null=True, blank=True)
@@ -235,9 +248,10 @@ class User(AbstractBaseUser, PermissionsMixin, UUIDModel):
         if self.is_superuser or self.has_role(Role.RoleType.SUPER_ADMIN):
             return list(Module.objects.values_list('code', flat=True))
 
-        # Tenants see only their self-service portal (not even the dashboard).
+        # Tenants, owners and contractors see only their portals (not even the dashboard).
         if self.is_portal_only:
-            return ['portal']
+            types = set(self.roles.values_list('role_type', flat=True))
+            return sorted(EXTERNAL_ROLE_MODULES[t] for t in types)
         
         # 2. Get all modules assigned to user's roles
         # Note: We removed the global 'admin' bypass here. 
@@ -252,11 +266,11 @@ class User(AbstractBaseUser, PermissionsMixin, UUIDModel):
 
     @property
     def is_portal_only(self):
-        """A tenant login with no staff role."""
+        """A tenant, owner or contractor login with no staff role."""
         if self.is_superuser:
             return False
         role_types = set(self.roles.values_list('role_type', flat=True))
-        return role_types == {Role.RoleType.TENANT}
+        return bool(role_types) and role_types <= set(EXTERNAL_ROLE_MODULES)
 
     def _enforce_critical_sod(self, module_codes):
         """

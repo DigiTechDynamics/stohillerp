@@ -243,7 +243,7 @@ export default function ContactDetailPanel({ contactId, contact: contactProp }) 
   })
 
   const inviteMutation = useMutation({
-    mutationFn: (id) => crmAPI.contacts.inviteToPortal(id),
+    mutationFn: ({ id, kind }) => crmAPI.contacts.inviteToPortal(id, kind),
     onSuccess: (res) => toast.success(`Portal invitation emailed to ${res.data.email}.`),
     onError: (err) => toast.error(apiErrorMessage(err, 'Could not send the invitation.')),
   })
@@ -313,9 +313,19 @@ export default function ContactDetailPanel({ contactId, contact: contactProp }) 
                 <ScoreIcon size={9} />
                 {scoreData.label} • {contact.lead_score}
               </button>
+              {['landlord', 'investor', 'seller'].includes(contact.contact_type) && (
+                <button
+                  onClick={() => inviteMutation.mutate({ id: contact.id, kind: 'owner' })}
+                  disabled={inviteMutation.isPending || !contact.email}
+                  className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest border border-primary/30 text-primary hover:bg-primary/10 transition-all disabled:opacity-40"
+                  title={contact.email ? 'Email the owner a link to set up their owner-portal login (statements, properties, quote approvals)' : 'Add an email address first'}
+                >
+                  {inviteMutation.isPending ? 'Sending...' : 'Invite to owner portal'}
+                </button>
+              )}
               {contact.contact_type === 'tenant' && (
                 <button
-                  onClick={() => inviteMutation.mutate(contact.id)}
+                  onClick={() => inviteMutation.mutate({ id: contact.id, kind: 'tenant' })}
                   disabled={inviteMutation.isPending || !contact.email}
                   className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest border border-primary/30 text-primary hover:bg-primary/10 transition-all disabled:opacity-40"
                   title={contact.email ? 'Email the tenant a link to set up their portal login (re-sends if already invited)' : 'Add an email address first'}

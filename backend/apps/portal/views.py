@@ -217,5 +217,15 @@ class InviteToPortalActions:
     def invite_to_portal(self, request, pk=None):
         # The activation link goes only to the tenant's email, never back to
         # staff, who could otherwise set the tenant's password themselves.
-        user = services.invite(self.get_object(), request.user)
+        # Body: {"kind": "tenant" (default) | "owner"}.
+        user = services.invite(self.get_object(), request.user, kind=request.data.get('kind') or 'tenant')
+        return Response({'status': 'invited', 'email': user.email})
+
+
+class InviteSupplierToPortalActions:
+    """Mixed into the supplier viewset: contractor portal login for a supplier."""
+
+    @action(detail=True, methods=['post'])
+    def invite_to_portal(self, request, pk=None):
+        user = services.invite_supplier(self.get_object(), request.user)
         return Response({'status': 'invited', 'email': user.email})

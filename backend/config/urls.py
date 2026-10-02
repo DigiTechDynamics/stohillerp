@@ -43,6 +43,10 @@ api_v1_patterns = [
     path('procurement/', include('apps.procurement.urls')),
     path('projects/', include('apps.projects.urls')),
     path('portal/', include('apps.portal.urls')),
+    path('owner-portal/', include('apps.propman.owner_portal_urls')),
+    path('contractor-portal/', include('apps.propman.contractor_portal_urls')),
+    path('propman/', include('apps.propman.urls')),
+    path('notifications/', include('apps.notifications.urls')),
     path('payments/paynow/result/', PaynowResultView.as_view(), name='paynow-result'),
     path('dashboard/', include('apps.dashboard.urls')),
 ]

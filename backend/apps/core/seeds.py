@@ -42,6 +42,8 @@ MODULES = [
     {"name": "Purchasing", "code": "procurement", "description": "Purchase orders, goods receipts and 3-way match", "icon": "ShoppingCart"},
     {"name": "Development Projects", "code": "projects", "description": "Project costs, WIP and capitalisation", "icon": "HardHat"},
     {"name": "Tenant Portal", "code": "portal", "description": "Tenant self-service: invoices, statements, payments, maintenance", "icon": "DoorOpen"},
+    {"name": "Owner Portal", "code": "owner_portal", "description": "Property owners: statements, property performance, approvals", "icon": "Landmark"},
+    {"name": "Contractor Portal", "code": "contractor_portal", "description": "Contractors: assigned jobs, status updates, quotes", "icon": "Wrench"},
 ]
 
 ROLES = [
@@ -55,6 +57,8 @@ ROLES = [
     {"name": "HR Manager", "role_type": "hr_manager", "description": "Employee and department management"},
     {"name": "Accountant", "role_type": "accountant", "description": "General ledger and accounting access"},
     {"name": "Tenant", "role_type": "tenant", "description": "Tenant self-service portal only"},
+    {"name": "Owner", "role_type": "owner", "description": "Owner portal only"},
+    {"name": "Contractor", "role_type": "contractor", "description": "Contractor portal only"},
 ]
 
 # Roles that get every module.
@@ -71,6 +75,8 @@ DEFAULT_ROLE_MODULES = {
     "hr_manager": ["dashboard", "hr", "documents"],
     "agent": ["dashboard", "crm", "properties"],
     "tenant": ["portal"],
+    "owner": ["owner_portal"],
+    "contractor": ["contractor_portal"],
 }
 
 

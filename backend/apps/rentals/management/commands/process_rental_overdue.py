@@ -19,27 +19,10 @@ class Command(BaseCommand):
         fee_rate = Decimal(str(settings.RENT_LATE_FEE_RATE))
         grace_days = settings.RENT_LATE_FEE_GRACE_DAYS
 
-        # 1. Rent Reminders (3 days before due date) for issued, unpaid invoices.
-        # This used to look for DRAFT invoices, which billing never leaves
-        # unsent, so no reminder was ever created.
-        reminder_date = today + timedelta(days=3)
-        upcoming_invoices = RentalInvoice.objects.filter(
-            due_date=reminder_date,
-            status__in=[RentalInvoice.InvoiceStatus.SENT, RentalInvoice.InvoiceStatus.PARTIAL],
-            balance_due__gt=0,
-        )
-        
-        for inv in upcoming_invoices:
-            # Create a reminder activity for the tenant
-            Activity.objects.get_or_create(
-                contact=inv.lease.tenant,
-                activity_type=Activity.ActivityType.EMAIL,
-                subject=f"Rent Reminder: Invoice {inv.invoice_number}",
-                description=f"Automated reminder: Rent for {inv.lease.lease_number} is due on {inv.due_date}. Amount: {inv.total_amount}",
-                status=Activity.ActivityStatus.PLANNED,
-                due_date=timezone.now()
-            )
-            self.stdout.write(self.style.SUCCESS(f"Created reminder for invoice {inv.invoice_number}"))
+        # 1. Rent reminders 3 days before the due date, actually emailed to the
+        #    tenant (they used to be logged as planned CRM activities only).
+        from apps.propman.services.arrears import send_rent_reminders
+        self.stdout.write(self.style.SUCCESS(send_rent_reminders(today)))
 
         # 2. Late fee (RENT_LATE_FEE_RATE of rent, once, after the grace period)
         interest_cutoff_date = today - timedelta(days=grace_days)

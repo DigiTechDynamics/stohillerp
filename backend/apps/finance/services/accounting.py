@@ -784,15 +784,18 @@ class AccountingService:
 
     @transaction.atomic
     def post_deposit_refund(self, lease, refund_amount: Decimal, applied_to_arrears: Decimal,
-                            entry_date: date = None) -> JournalEntry:
+                            entry_date: date = None, applied_to_damages: Decimal = Decimal('0')) -> JournalEntry:
         """
         Release a tenant deposit at lease end.
 
         Debit: Tenant Deposits (full amount released)
         Credit: Bank Trust (cash refunded)
         Credit: Accounts Receivable (portion kept against unpaid rent)
+        Credit: damages kept (outgoing inspection) - Owner Funds Held on a
+                managed property (the owner pays for the repairs), otherwise
+                Recoveries & Recharges income
         """
-        total = refund_amount + applied_to_arrears
+        total = refund_amount + applied_to_arrears + applied_to_damages
         posting = PostingData(
             description=f'Deposit release - {lease.tenant.full_name}',
             entry_date=entry_date or date.today(),
@@ -809,6 +812,10 @@ class AccountingService:
             posting.add_credit(self.ACCOUNTS['ACCOUNTS_RECEIVABLE'], applied_to_arrears,
                                'Deposit applied to arrears', property_ref=lease.property,
                                contact_ref=lease.tenant)
+        if applied_to_damages > 0:
+            damages_account = '2210' if lease.property.is_managed else '4920'
+            posting.add_credit(damages_account, applied_to_damages, 'Deposit kept for damages',
+                               property_ref=lease.property, contact_ref=lease.tenant)
 
         return self.post_entry(posting, journal_code='RJ')
 

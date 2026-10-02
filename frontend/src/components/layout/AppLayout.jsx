@@ -58,6 +58,7 @@ const navItems = [
   { path: '/crm', label: 'CRM Pipeline', icon: Users, group: 'Operations', module: 'crm' },
   { path: '/properties', label: 'Properties', icon: Building2, group: 'Operations', module: 'properties' },
   { path: '/rentals', label: 'Rental Management', icon: Home, group: 'Operations', module: 'rentals' },
+  { path: '/properties/settings', label: 'Property Settings', icon: SlidersHorizontal, group: 'Operations', module: 'rentals' },
   { path: '/sales', label: 'Sales & Deals', icon: TrendingUp, group: 'Operations', module: 'sales' },
   { path: '/procurement', label: 'Purchasing', icon: ShoppingCart, group: 'Operations', module: 'procurement' },
   { path: '/projects', label: 'Development Projects', icon: HardHat, group: 'Operations', module: 'projects' },

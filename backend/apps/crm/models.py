@@ -179,6 +179,13 @@ class Contact(AuditedModel):
 
     notes = models.TextField(blank=True)
     avatar = models.ImageField(upload_to='contacts/avatars/', null=True, blank=True)
+    # Banking details for paying the contact (owner payouts, deposit refunds).
+    bank_name = models.CharField(max_length=100, blank=True)
+    bank_branch_code = models.CharField(max_length=20, blank=True)
+    bank_account_number = models.CharField(max_length=40, blank=True)
+    bank_account_name = models.CharField(max_length=150, blank=True)
+    # Values for user-defined fields (properties.CustomFieldDefinition, entity "contact").
+    custom_fields = models.JSONField(default=dict, blank=True)
 
     # SLA Tracking
     last_activity_at = models.DateTimeField(null=True, blank=True)
