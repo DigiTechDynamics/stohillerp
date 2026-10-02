@@ -141,6 +141,7 @@ export const crmAPI = {
     list: (params) => api.get('crm/activities/', { params }),
     create: (data) => api.post('crm/activities/', data),
     update: (id, data) => api.patch(`crm/activities/${id}/`, data),
+    delete: (id) => api.delete(`crm/activities/${id}/`),
     complete: (id) => api.post(`crm/activities/${id}/complete/`),
   },
   tags: {
@@ -150,11 +151,13 @@ export const crmAPI = {
   notes: {
     list: (params) => api.get('crm/notes/', { params }),
     create: (data) => api.post('crm/notes/', data),
+    delete: (id) => api.delete(`crm/notes/${id}/`),
   },
   lostReasons: {
     list: () => api.get('crm/lost-reasons/'),
     create: (data) => api.post('crm/lost-reasons/', data),
     update: (id, data) => api.patch(`crm/lost-reasons/${id}/`, data),
+    delete: (id) => api.delete(`crm/lost-reasons/${id}/`),
   },
   emailTemplates: {
     list: () => api.get('crm/email-templates/'),
@@ -176,6 +179,7 @@ export const salesAPI = {
   detail: (id) => api.get(`sales/transactions/${id}/`),
   create: (data) => api.post('sales/transactions/', data),
   update: (id, data) => api.patch(`sales/transactions/${id}/`, data),
+  delete: (id) => api.delete(`sales/transactions/${id}/`),
   postToFinance: (id) => api.post(`sales/transactions/${id}/post_to_finance/`),
   confirmDeal: (id) => api.post(`sales/transactions/${id}/confirm_deal/`),
   stats: () => api.get('sales/transactions/stats/'),
@@ -187,6 +191,7 @@ export const rentalsAPI = {
     detail: (id) => api.get(`rentals/leases/${id}/`),
     create: (data) => api.post('rentals/leases/', data),
     update: (id, data) => api.patch(`rentals/leases/${id}/`, data),
+    delete: (id) => api.delete(`rentals/leases/${id}/`),
     adjustRental: (id, amount) => api.post(`rentals/leases/${id}/adjust_rental/`, { monthly_rental: amount }),
     generateInvoices: (id, asOf) => api.post(`rentals/leases/${id}/generate_invoices/`, { as_of: asOf }),
     recordDeposit: (id, data) => api.post(`rentals/leases/${id}/record_deposit/`, data),
@@ -200,6 +205,7 @@ export const rentalsAPI = {
     detail: (id) => api.get(`rentals/invoices/${id}/`),
     create: (data) => api.post('rentals/invoices/', data),
     update: (id, data) => api.patch(`rentals/invoices/${id}/`, data),
+    delete: (id) => api.delete(`rentals/invoices/${id}/`),
   },
   payments: {
     list: (params) => api.get('rentals/payments/', { params }),
@@ -209,6 +215,7 @@ export const rentalsAPI = {
     list: (params) => api.get('rentals/maintenance/', { params }),
     create: (data) => api.post('rentals/maintenance/', data),
     update: (id, data) => api.patch(`rentals/maintenance/${id}/`, data),
+    delete: (id) => api.delete(`rentals/maintenance/${id}/`),
     complete: (id, data) => api.post(`rentals/maintenance/${id}/complete/`, data),
   },
   charges: {
@@ -228,6 +235,7 @@ export const rentalsAPI = {
 export const financeAPI = {
   currencies: {
     list: (params) => api.get('finance/currencies/', { params }),
+    delete: (id) => api.delete(`finance/currencies/${id}/`),
   },
   accounts: {
     list: (params) => api.get('finance/accounts/', { params }),
@@ -235,6 +243,7 @@ export const financeAPI = {
     detail: (id) => api.get(`finance/accounts/${id}/`),
     create: (data) => api.post('finance/accounts/', data),
     update: (id, data) => api.patch(`finance/accounts/${id}/`, data),
+    delete: (id) => api.delete(`finance/accounts/${id}/`),
   },
   journals: {
     list: (params) => api.get('finance/journals/', { params }),
@@ -244,6 +253,7 @@ export const financeAPI = {
     detail: (id) => api.get(`finance/batches/${id}/`),
     create: (data) => api.post('finance/batches/', data),
     update: (id, data) => api.patch(`finance/batches/${id}/`, data),
+    delete: (id) => api.delete(`finance/batches/${id}/`),
     submit: (id) => api.post(`finance/batches/${id}/submit_for_approval/`),
     approve: (id) => api.post(`finance/batches/${id}/approve/`),
     post: (id) => api.post(`finance/batches/${id}/post_batch/`),
@@ -253,6 +263,7 @@ export const financeAPI = {
     detail: (id) => api.get(`finance/entries/${id}/`),
     create: (data) => api.post('finance/entries/', data),
     update: (id, data) => api.patch(`finance/entries/${id}/`, data),
+    delete: (id) => api.delete(`finance/entries/${id}/`),
     post: (id) => api.post(`finance/entries/${id}/post_entry/`),
     reverse: (id) => api.post(`finance/entries/${id}/reverse/`),
   },
@@ -264,6 +275,7 @@ export const financeAPI = {
     list: (params) => api.get('finance/cost-centers/', { params }),
     create: (data) => api.post('finance/cost-centers/', data),
     update: (id, data) => api.patch(`finance/cost-centers/${id}/`, data),
+    delete: (id) => api.delete(`finance/cost-centers/${id}/`),
   },
   recurringJournals: {
     list: (params) => api.get('finance/recurring-journals/', { params }),
@@ -291,6 +303,7 @@ export const financeAPI = {
     list: (params) => api.get('finance/fiscal-years/', { params }),
     create: (data) => api.post('finance/fiscal-years/', data),
     update: (id, data) => api.patch(`finance/fiscal-years/${id}/`, data),
+    delete: (id) => api.delete(`finance/fiscal-years/${id}/`),
     generatePeriods: (id) => api.post(`finance/fiscal-years/${id}/generate_periods/`),
     close: (id) => api.post(`finance/fiscal-years/${id}/close_year/`),
     reopen: (id) => api.post(`finance/fiscal-years/${id}/reopen_year/`),
@@ -304,6 +317,7 @@ export const financeAPI = {
   },
   exchangeRates: {
     list: (params) => api.get('finance/exchange-rates/', { params }),
+    delete: (id) => api.delete(`finance/exchange-rates/${id}/`),
     latest: (currencyId) => api.get('finance/exchange-rates/', { params: { currency: currencyId, ordering: '-effective_date', page_size: 1 } }),
   },
   postingProfiles: {
@@ -347,6 +361,7 @@ export const financeAPI = {
       detail: (id) => api.get(`fixed-assets/assets/${id}/`),
       create: (data) => api.post('fixed-assets/assets/', data),
       update: (id, data) => api.patch(`fixed-assets/assets/${id}/`, data),
+      delete: (id) => api.delete(`fixed-assets/assets/${id}/`),
       runDepreciation: (data) => api.post('fixed-assets/assets/run-depreciation/', data),
       dispose: (id, data) => api.post(`fixed-assets/assets/${id}/dispose/`, data),
     },
@@ -385,6 +400,7 @@ export const financeAPI = {
       list: (params) => api.get('finance/supplier-payments/', { params }),
       detail: (id) => api.get(`finance/supplier-payments/${id}/`),
       create: (data) => api.post('finance/supplier-payments/', data),
+delete: (id) => api.delete(`finance/supplier-payments/${id}/`),
       post: (id) => api.post(`finance/supplier-payments/${id}/post_payment/`),
       approvalStatus: (id) => api.get(`finance/supplier-payments/${id}/approval_status/`),
       approve: (id, comment) => api.post(`finance/supplier-payments/${id}/approve/`, { comment }),
@@ -399,6 +415,7 @@ export const financeAPI = {
       detail: (id) => api.get(`finance/customers/${id}/`),
       create: (data) => api.post('finance/customers/', data),
       update: (id, data) => api.patch(`finance/customers/${id}/`, data),
+      delete: (id) => api.delete(`finance/customers/${id}/`),
       statement: (id, params) => api.get(`finance/customers/${id}/statement/`, { params }),
       statementPdf: (id, params) => api.get(`finance/customers/${id}/statement/`, { params: { ...params, export_format: 'pdf' }, responseType: 'blob' }),
       emailStatement: (id, data) => api.post(`finance/customers/${id}/email_statement/`, data),
@@ -408,6 +425,7 @@ export const financeAPI = {
       detail: (id) => api.get(`finance/customer-invoices/${id}/`),
       create: (data) => api.post('finance/customer-invoices/', data),
       update: (id, data) => api.patch(`finance/customer-invoices/${id}/`, data),
+      delete: (id) => api.delete(`finance/customer-invoices/${id}/`),
       post: (id) => api.post(`finance/customer-invoices/${id}/post_invoice/`),
       email: (id) => api.post(`finance/customer-invoices/${id}/email_invoice/`),
       pdf: (id) => api.get(`finance/customer-invoices/${id}/pdf/`, { responseType: 'blob' }),
@@ -419,6 +437,7 @@ export const financeAPI = {
       list: (params) => api.get('finance/customer-receipts/', { params }),
       detail: (id) => api.get(`finance/customer-receipts/${id}/`),
       create: (data) => api.post('finance/customer-receipts/', data),
+delete: (id) => api.delete(`finance/customer-receipts/${id}/`),
       post: (id) => api.post(`finance/customer-receipts/${id}/post_receipt/`),
       allocate: (id, allocations) => api.post(`finance/customer-receipts/${id}/allocate/`, { allocations }),
       refund: (id, data) => api.post(`finance/customer-receipts/${id}/refund/`, data),
@@ -450,12 +469,14 @@ export const bankingAPI = {
     detail: (id) => api.get(`banking/accounts/${id}/`),
     create: (data) => api.post('banking/accounts/', data),
     update: (id, data) => api.patch(`banking/accounts/${id}/`, data),
+    delete: (id) => api.delete(`banking/accounts/${id}/`),
     stats: (id) => api.get(`banking/accounts/${id}/stats/`),
     unmatchedLedger: (id) => api.get(`banking/accounts/${id}/unmatched_ledger/`),
     reconciliation: (id, asOf) => api.get(`banking/accounts/${id}/reconciliation/`, { params: { as_of: asOf } }),
   },
   statements: {
     list: (params) => api.get('banking/statements/', { params }),
+    delete: (id) => api.delete(`banking/statements/${id}/`),
     detail: (id) => api.get(`banking/statements/${id}/`),
     import: (formData) => api.post('banking/statements/import/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -484,6 +505,7 @@ export const procurementAPI = {
     detail: (id) => api.get(`procurement/orders/${id}/`),
     create: (data) => api.post('procurement/orders/', data),
     update: (id, data) => api.patch(`procurement/orders/${id}/`, data),
+    delete: (id) => api.delete(`procurement/orders/${id}/`),
     approvalStatus: (id) => api.get(`procurement/orders/${id}/approval_status/`),
     approve: (id, comment) => api.post(`procurement/orders/${id}/approve/`, { comment }),
     reject: (id, comment) => api.post(`procurement/orders/${id}/reject/`, { comment }),
@@ -502,6 +524,7 @@ export const projectsAPI = {
   detail: (id) => api.get(`projects/${id}/`),
   create: (data) => api.post('projects/', data),
   update: (id, data) => api.patch(`projects/${id}/`, data),
+  delete: (id) => api.delete(`projects/${id}/`),
   costReport: (id) => api.get(`projects/${id}/cost_report/`),
   capitalise: (id, data) => api.post(`projects/${id}/capitalise/`, data),
 }
@@ -528,18 +551,21 @@ export const portalAPI = {
 export const commissionsAPI = {
   list: (params) => api.get('commissions/records/', { params }),
   detail: (id) => api.get(`commissions/records/${id}/`),
+  delete: (id) => api.delete(`commissions/records/${id}/`),
   approve: (id) => api.post(`commissions/records/${id}/approve/`),
   stats: () => api.get('commissions/records/stats/'),
   structures: {
     list: (params) => api.get('commissions/structures/', { params }),
     create: (data) => api.post('commissions/structures/', data),
     update: (id, data) => api.patch(`commissions/structures/${id}/`, data),
+    delete: (id) => api.delete(`commissions/structures/${id}/`),
   },
 }
 
 export const documentsAPI = {
   list: (params) => api.get('documents/', { params }),
   detail: (id) => api.get(`documents/${id}/`),
+  delete: (id) => api.delete(`documents/${id}/`),
   upload: (formData) => api.post('documents/', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   compliance: {
     list: (params) => api.get('documents/compliance/', { params }),
@@ -553,23 +579,27 @@ export const hrAPI = {
     detail: (id) => api.get(`hr/employees/${id}/`),
     create: (data) => api.post('hr/employees/', data),
     update: (id, data) => api.patch(`hr/employees/${id}/`, data),
+    delete: (id) => api.delete(`hr/employees/${id}/`),
     statement: (id) => api.get(`hr/employees/${id}/statement/`),
   },
   departments: { 
     list: () => api.get('hr/departments/'),
     create: (data) => api.post('hr/departments/', data),
     update: (id, data) => api.patch(`hr/departments/${id}/`, data),
+    delete: (id) => api.delete(`hr/departments/${id}/`),
   },
   leave: {
     list: (params) => api.get('hr/leave/', { params }),
     create: (data) => api.post('hr/leave/', data),
     update: (id, data) => api.patch(`hr/leave/${id}/`, data),
+    delete: (id) => api.delete(`hr/leave/${id}/`),
   },
   contracts: {
     list: (params) => api.get('hr/contracts/', { params }),
     detail: (id) => api.get(`hr/contracts/${id}/`),
     create: (data) => api.post('hr/contracts/', data),
     update: (id, data) => api.patch(`hr/contracts/${id}/`, data),
+    delete: (id) => api.delete(`hr/contracts/${id}/`),
   },
   jobPositions: {
     list: (params) => api.get('hr/job-positions/', { params }),
@@ -582,6 +612,7 @@ export const payrollAPI = {
     detail: (id) => api.get(`payroll/runs/${id}/`),
     create: (data) => api.post('payroll/runs/', data),
     update: (id, data) => api.patch(`payroll/runs/${id}/`, data),
+    delete: (id) => api.delete(`payroll/runs/${id}/`),
     process: (id) => api.post(`payroll/runs/${id}/process/`),
     payAll: (id) => api.post(`payroll/runs/${id}/pay_all/`),
     approve: (id) => api.post(`payroll/runs/${id}/approve/`),
@@ -624,6 +655,7 @@ export const adminAPI = {
     detail: (id) => api.get(`core/users/${id}/`),
     create: (data) => api.post('core/users/', data),
     update: (id, data) => api.patch(`core/users/${id}/`, data),
+    delete: (id) => api.delete(`core/users/${id}/`),
     setPassword: (id, data) => api.post(`core/users/${id}/set-password/`, data),
     sodConflicts: (id) => api.get(`core/users/${id}/sod_conflicts/`),
   },
@@ -632,6 +664,7 @@ export const adminAPI = {
     detail: (id) => api.get(`core/roles/${id}/`),
     create: (data) => api.post('core/roles/', data),
     update: (id, data) => api.patch(`core/roles/${id}/`, data),
+    delete: (id) => api.delete(`core/roles/${id}/`),
   },
   modules: {
     list: (params) => api.get('core/modules/', { params }),

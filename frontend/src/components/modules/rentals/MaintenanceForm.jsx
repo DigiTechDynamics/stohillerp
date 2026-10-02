@@ -6,23 +6,28 @@ import { rentalsAPI, propertiesAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import CurrencySelect from '@/components/common/CurrencySelect'
 
+const CATEGORIES = ['Plumbing', 'Electrical', 'HVAC', 'Carpentry', 'Painting', 'Appliance', 'Structural', 'General']
+
 export default function MaintenanceForm() {
   const queryClient = useQueryClient()
-  const { closeSidePanel } = useUIStore()
+  const { closeSidePanel, sidePanelData } = useUIStore()
   const [error, setError] = useState(null)
+  const ticket = sidePanelData?.ticket
+  const isEdit = !!ticket?.id
+  const knownCategory = !ticket?.category || CATEGORIES.includes(ticket.category)
 
-  const [showCustomCategory, setShowCustomCategory] = useState(false)
+  const [showCustomCategory, setShowCustomCategory] = useState(!knownCategory)
   const [formData, setFormData] = useState({
-    property: '',
-    lease: '',
-    category: '',
-    custom_category: '',
-    priority: 'medium',
-    status: 'logged',
-    description: '',
-    reported_by: '',
-    estimated_cost: '',
-    currency: '',
+    property: ticket?.property || '',
+    lease: ticket?.lease || '',
+    category: knownCategory ? (ticket?.category || '') : 'Other',
+    custom_category: knownCategory ? '' : ticket.category,
+    priority: ticket?.priority || 'medium',
+    status: ticket?.status || 'logged',
+    description: ticket?.description || '',
+    reported_by: ticket?.reported_by || '',
+    estimated_cost: ticket?.estimated_cost || '',
+    currency: ticket?.currency || '',
   })
 
   // Fetch all properties
@@ -45,7 +50,7 @@ export default function MaintenanceForm() {
     : []
 
   const mutation = useMutation({
-    mutationFn: (data) => rentalsAPI.maintenance.create(data),
+    mutationFn: (data) => (isEdit ? rentalsAPI.maintenance.update(ticket.id, data) : rentalsAPI.maintenance.create(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rental-maintenance'] })
       queryClient.invalidateQueries({ queryKey: ['rental-stats'] })
@@ -93,7 +98,7 @@ export default function MaintenanceForm() {
     const payload = { 
       ...formData, 
       category: finalCategory,
-      reference: `MREQ-${Date.now().toString().slice(-6)}` 
+      ...(isEdit ? {} : { reference: `MREQ-${Date.now().toString().slice(-6)}` }),
     }
     
     // Cleanup
@@ -115,8 +120,8 @@ export default function MaintenanceForm() {
               <Wrench size={24} />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Log Maintenance</h3>
-              <p className="text-xs text-dark-500">Create a new maintenance or repair ticket.</p>
+              <h3 className="text-lg font-semibold text-white">{isEdit ? `Edit ticket ${ticket.reference || ''}` : 'Log Maintenance'}</h3>
+              <p className="text-xs text-dark-500">{isEdit ? 'Update the ticket details.' : 'Create a new maintenance or repair ticket.'}</p>
             </div>
           </div>
 
@@ -234,7 +239,7 @@ export default function MaintenanceForm() {
           disabled={mutation.isPending}
           className="flex-1 btn-primary py-3 flex items-center justify-center gap-2"
         >
-          {mutation.isPending ? 'Logging...' : <><Save size={18} /> Log Ticket</>}
+          {mutation.isPending ? 'Saving...' : <><Save size={18} /> {isEdit ? 'Save Changes' : 'Log Ticket'}</>}
         </button>
         <button type="button" onClick={closeSidePanel} className="btn-secondary px-8 py-3">
           Cancel

@@ -24,6 +24,7 @@ from rest_framework.response import Response
 from apps.finance.approval_views import ApprovalActions
 from apps.procurement import services
 from apps.procurement.models import GoodsReceipt, GoodsReceiptLine, PurchaseOrder, PurchaseOrderLine
+from utils.record_rules import RecordRulesMixin
 
 
 class PurchaseOrderLineSerializer(serializers.ModelSerializer):
@@ -110,7 +111,7 @@ def _date(value):
         raise ValidationError({'date': 'Use YYYY-MM-DD.'})
 
 
-class PurchaseOrderViewSet(ApprovalActions, viewsets.ModelViewSet):
+class PurchaseOrderViewSet(RecordRulesMixin, ApprovalActions, viewsets.ModelViewSet):
     queryset = PurchaseOrder.objects.select_related('supplier', 'project').prefetch_related('lines__expense_account')
     serializer_class = PurchaseOrderSerializer
     filterset_fields = ['status', 'supplier', 'project', 'property_ref']

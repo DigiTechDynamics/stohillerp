@@ -6,9 +6,10 @@ from rest_framework.response import Response  # type: ignore
 from django_filters.rest_framework import DjangoFilterBackend  # type: ignore
 from django.db.models import Sum, Count, Q  # type: ignore
 from apps.rentals.models import Lease, LeaseCharge, RentalInvoice, RentalPayment, MaintenanceRequest  # type: ignore
+from utils.record_rules import RecordRulesMixin
 
 
-class LeaseViewSet(viewsets.ModelViewSet):
+class LeaseViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = Lease.objects.select_related(
         'property', 'property__property_type', 'tenant', 'unit', 'managing_agent'
     )
@@ -202,7 +203,7 @@ class LeaseViewSet(viewsets.ModelViewSet):
             return Response({'error': str(e)}, status=400)
 
 
-class RentalInvoiceViewSet(viewsets.ModelViewSet):
+class RentalInvoiceViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = RentalInvoice.objects.select_related(
         'lease', 'lease__tenant', 'lease__property'
     )
@@ -247,7 +248,7 @@ class RentalInvoiceViewSet(viewsets.ModelViewSet):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class RentalPaymentViewSet(viewsets.ModelViewSet):
+class RentalPaymentViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = RentalPayment.objects.select_related(
         'invoice', 'invoice__lease', 'invoice__lease__tenant'
     )
@@ -260,7 +261,7 @@ class RentalPaymentViewSet(viewsets.ModelViewSet):
         return RentalPaymentSerializer
 
 
-class MaintenanceViewSet(viewsets.ModelViewSet):
+class MaintenanceViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = MaintenanceRequest.objects.select_related(
         'property', 'lease', 'lease__property', 'lease__tenant'
     )

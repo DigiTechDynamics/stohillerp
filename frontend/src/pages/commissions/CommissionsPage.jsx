@@ -7,6 +7,7 @@ import { commissionsAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import Pagination from '@/components/common/Pagination'
+import RecordActions from '@/components/common/RecordActions'
 
 export default function CommissionsPage() {
   const [activeTab, setActiveTab] = useState('records')
@@ -128,6 +129,7 @@ export default function CommissionsPage() {
                 <th>Amount</th>
                 <th>Status</th>
                 <th>Date</th>
+                <th className="w-16"></th>
               </tr>
             </thead>
             <tbody>
@@ -155,12 +157,16 @@ export default function CommissionsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-dark-400">{formatDate(record.created_at)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <RecordActions record={record} label="commission" deleteFn={commissionsAPI.delete}
+                        invalidate={['commissions-records', 'commission-stats']} />
+                    </td>
                   </motion.tr>
                 ))}
               </AnimatePresence>
               {records.length === 0 && !loadingRecords && (
                 <tr>
-                  <td colSpan={6} className="text-center py-20">
+                  <td colSpan={7} className="text-center py-20">
                     <Award size={40} className="mx-auto mb-3 text-dark-600" />
                     <p className="text-dark-400">No commission records found.</p>
                   </td>
@@ -176,6 +182,7 @@ export default function CommissionsPage() {
                 <th>Base Rate</th>
                 <th>Type</th>
                 <th>Tiers</th>
+                <th className="w-24"></th>
               </tr>
             </thead>
             <tbody>
@@ -193,12 +200,17 @@ export default function CommissionsPage() {
                     <td className="px-4 py-3 text-sm text-primary font-semibold">{struct.base_rate}%</td>
                     <td className="px-4 py-3 text-xs text-dark-300 uppercase tracking-wider">{struct.calculation_type || 'Standard'}</td>
                     <td className="px-4 py-3 text-sm text-dark-400">{struct.tiers?.length || 0} configured</td>
+                    <td className="px-4 py-3 text-right">
+                      <RecordActions record={struct} label="commission structure"
+                        onEdit={() => openPanel('commission-structure-form', { structure: struct })}
+                        deleteFn={commissionsAPI.structures.delete} invalidate={['commissions-structures']} />
+                    </td>
                   </motion.tr>
                 ))}
               </AnimatePresence>
               {structures.length === 0 && !loadingStructures && (
                 <tr>
-                  <td colSpan={4} className="text-center py-20">
+                  <td colSpan={5} className="text-center py-20">
                     <Calculator size={40} className="mx-auto mb-3 text-dark-600" />
                     <p className="text-dark-400">No commission structures found.</p>
                   </td>

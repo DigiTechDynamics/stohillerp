@@ -5,21 +5,29 @@ import { HardHat, Plus, X } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { apiErrorMessage, financeAPI, projectsAPI, propertiesAPI } from '@/services/api'
 import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
+import RecordActions from '@/components/common/RecordActions'
 
 const today = () => new Date().toISOString().split('T')[0]
 const rows = (res) => res?.data?.results || res?.data || []
 const TARGETS = { inventory: 'Property inventory (for sale)', fixed_asset: 'Fixed asset (held / investment)' }
 
-function ProjectForm({ onDone }) {
+function ProjectForm({ project, onDone }) {
   const queryClient = useQueryClient()
   const [busy, setBusy] = useState(false)
-  const [form, setForm] = useState({ code: '', name: '', property: '', status: 'active', start_date: today(), end_date: '', budget: '', capitalise_to: 'inventory', notes: '' })
+  const [form, setForm] = useState(project
+    ? { code: project.code, name: project.name, property: project.property || '', status: project.status,
+        start_date: project.start_date || '', end_date: project.end_date || '', budget: project.budget,
+        capitalise_to: project.capitalise_to, notes: project.notes || '' }
+    : { code: '', name: '', property: '', status: 'active', start_date: today(), end_date: '', budget: '', capitalise_to: 'inventory', notes: '' })
   const { data: propsRes } = useQuery({ queryKey: ['properties-picker'], queryFn: () => propertiesAPI.list({ page_size: 200 }) })
   const save = async () => {
     setBusy(true)
     try {
-      const { data } = await projectsAPI.create({ ...form, property: form.property || null, end_date: form.end_date || null, budget: form.budget || '0' })
-      toast.success(`Project ${data.code} created with cost centre ${data.cost_center_code}.`)
+      const payload = { ...form, property: form.property || null, start_date: form.start_date || null,
+        end_date: form.end_date || null, budget: form.budget || '0' }
+      if (project) delete payload.code      // the code is also the cost centre's code
+      const { data } = project ? await projectsAPI.update(project.id, payload) : await projectsAPI.create(payload)
+      toast.success(project ? `Project ${data.code} updated.` : `Project ${data.code} created with cost centre ${data.cost_center_code}.`)
       queryClient.invalidateQueries({ queryKey: ['projects'] })
       onDone(data)
     } catch (error) {
@@ -31,13 +39,18 @@ function ProjectForm({ onDone }) {
   return (
     <div className="card p-5 space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-white font-semibold">New development project</h2>
+        <h2 className="text-white font-semibold">{project ? `Edit ${project.code}` : 'New development project'}</h2>
         <button className="btn-ghost p-1" aria-label="Close" onClick={() => onDone(null)}><X size={16} /></button>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <input className="form-input" placeholder="Code (e.g. PRJ-001)" aria-label="Project code" value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} />
+        <input className="form-input" placeholder="Code (e.g. PRJ-001)" aria-label="Project code" disabled={!!project} value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} />
         <input className="form-input lg:col-span-2" placeholder="Name" aria-label="Project name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
         <input type="number" step="0.01" className="form-input" placeholder="Budget" aria-label="Budget" value={form.budget} onChange={e => setForm({ ...form, budget: e.target.value })} />
+        {project && (
+          <select className="form-input" aria-label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+            <option value="planning">Planning</option><option value="active">In progress</option><option value="cancelled">Cancelled</option>
+          </select>
+        )}
         <select className="form-input" aria-label="Property" value={form.property} onChange={e => setForm({ ...form, property: e.target.value })}>
           <option value="">Property (optional)...</option>
           {rows(propsRes).map(p => <option key={p.id} value={p.id}>{p.reference_number} - {p.name}</option>)}
@@ -56,7 +69,7 @@ function ProjectForm({ onDone }) {
   )
 }
 
-function ProjectDetail({ project, onClose }) {
+function ProjectDetail({ project, onClose, onEdit }) {
   const queryClient = useQueryClient()
   const [busy, setBusy] = useState(false)
   const [cap, setCap] = useState(null)
@@ -91,7 +104,11 @@ function ProjectDetail({ project, onClose }) {
           <h2 className="text-xl text-white font-semibold">{project.name}</h2>
           <p className="text-xs text-dark-400">{project.property_name || 'No property'} · capitalises to {TARGETS[project.capitalise_to]}</p>
         </div>
-        <button className="btn-ghost p-1" aria-label="Close" onClick={onClose}><X size={16} /></button>
+        <span className="flex items-center gap-1">
+          <RecordActions record={project} label="project" onEdit={onEdit}
+            deleteFn={projectsAPI.delete} invalidate={['projects']} onDeleted={onClose} />
+          <button className="btn-ghost p-1" aria-label="Close" onClick={onClose}><X size={16} /></button>
+        </span>
       </div>
       {r && (
         <>
@@ -165,7 +182,7 @@ function ProjectDetail({ project, onClose }) {
 }
 
 export default function ProjectsPage() {
-  const [creating, setCreating] = useState(false)
+  const [creating, setCreating] = useState(null)   // null, 'new', or the project being edited
   const [selected, setSelected] = useState(null)
   const [status, setStatus] = useState('')
   const { data, isLoading } = useQuery({ queryKey: ['projects', status], queryFn: () => projectsAPI.list({ status: status || undefined, page_size: 200 }) })
@@ -179,12 +196,17 @@ export default function ProjectsPage() {
           <h1 className="font-display text-2xl text-white">Development Projects</h1>
           <p className="text-dark-400 text-sm mt-1">Budget, cost to date and capitalisation of development work in progress</p>
         </div>
-        <button className="btn-primary flex items-center gap-2" onClick={() => { setCreating(true); setSelected(null) }}>
+        <button className="btn-primary flex items-center gap-2" onClick={() => { setCreating('new'); setSelected(null) }}>
           <Plus size={16} /> New Project
         </button>
       </div>
-      {creating && <ProjectForm onDone={(p) => { setCreating(false); if (p) setSelected(p.id) }} />}
-      {current && <ProjectDetail key={current.id} project={current} onClose={() => setSelected(null)} />}
+      {creating && (
+        <ProjectForm key={creating === 'new' ? 'new' : creating.id} project={creating === 'new' ? null : creating}
+          onDone={(p) => { setCreating(null); if (p) setSelected(p.id) }} />
+      )}
+      {current && !creating && (
+        <ProjectDetail key={current.id} project={current} onClose={() => setSelected(null)} onEdit={() => setCreating(current)} />
+      )}
       <select className="form-input w-auto" aria-label="Status filter" value={status} onChange={e => setStatus(e.target.value)}>
         <option value="">All statuses</option>
         <option value="planning">Planning</option><option value="active">In progress</option>
@@ -192,10 +214,10 @@ export default function ProjectsPage() {
       </select>
       <div className="card overflow-hidden">
         <table className="data-table">
-          <thead><tr><th>Code</th><th>Name</th><th>Property</th><th>Started</th><th>Status</th><th className="text-right">Budget</th><th className="text-right">In WIP</th></tr></thead>
+          <thead><tr><th>Code</th><th>Name</th><th>Property</th><th>Started</th><th>Status</th><th className="text-right">Budget</th><th className="text-right">In WIP</th><th className="w-24"></th></tr></thead>
           <tbody>
             {projects.map(p => (
-              <tr key={p.id} className={`cursor-pointer hover:bg-white/2 ${selected === p.id ? 'bg-primary/5' : ''}`} onClick={() => { setSelected(p.id); setCreating(false) }}>
+              <tr key={p.id} className={`cursor-pointer hover:bg-white/2 ${selected === p.id ? 'bg-primary/5' : ''}`} onClick={() => { setSelected(p.id); setCreating(null) }}>
                 <td className="px-4 py-3 font-mono text-xs text-primary">{p.code}</td>
                 <td className="px-4 py-3 text-sm text-white">{p.name}</td>
                 <td className="px-4 py-3 text-xs text-dark-400">{p.property_name || '—'}</td>
@@ -203,10 +225,15 @@ export default function ProjectsPage() {
                 <td className="px-4 py-3"><span className={`badge text-[10px] uppercase font-bold ${getStatusColor(p.status)}`}>{p.status}</span></td>
                 <td className="px-4 py-3 text-sm text-right">{formatCurrency(p.budget)}</td>
                 <td className="px-4 py-3 text-sm text-right text-white">{formatCurrency(p.wip_balance)}</td>
+                <td className="px-4 py-3 text-right">
+                  <RecordActions record={p} label="project" onEdit={() => { setSelected(null); setCreating(p) }}
+                    deleteFn={projectsAPI.delete} invalidate={['projects']}
+                    onDeleted={() => setSelected(s => (s === p.id ? null : s))} />
+                </td>
               </tr>
             ))}
             {!isLoading && projects.length === 0 && (
-              <tr><td colSpan={7} className="text-center py-16">
+              <tr><td colSpan={8} className="text-center py-16">
                 <HardHat size={40} className="mx-auto mb-3 text-dark-600" />
                 <p className="text-dark-400">No development projects.</p>
               </td></tr>

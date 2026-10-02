@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Search, Plus, Key, Wrench, AlertTriangle, Building2, DollarSign, MapPin, Users, Receipt, Edit2, Trash2, Landmark
+  Search, Plus, Key, Wrench, AlertTriangle, Building2, DollarSign, MapPin, Users, Receipt, Landmark
 } from 'lucide-react'
 import { rentalsAPI, propertiesAPI, crmAPI } from '@/services/api'
 import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
@@ -11,6 +11,7 @@ import { useUIStore } from '@/stores/authStore'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
 import Pagination from '@/components/common/Pagination'
 import { MaintenanceComplete, OwnersTab } from '@/components/modules/rentals/RentalsExtras'
+import RecordActions from '@/components/common/RecordActions'
 import { useQueryClient } from '@tanstack/react-query'
 
 const TABS = [
@@ -28,16 +29,6 @@ export default function RentalsPage() {
   const [sort, setSort] = useState('-created_at')
   const [page, setPage] = useState(1)
   const openPanel = useUIStore((s) => s.openSidePanel)
-
-  const handleDeleteTenant = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this tenant contact?')) return
-    try {
-      await crmAPI.contacts.delete(id)
-      setActiveTab('tenants') // Force refresh/stay on tab
-    } catch (error) {
-      alert('Failed to delete tenant. They might be linked to active leases.')
-    }
-  }
 
   // ── Data Queries ──────────────────────────────────────────────────
   const { data: statsRes } = useQuery({
@@ -278,6 +269,7 @@ export default function RentalsPage() {
                 <th>Location</th>
                 <th>Status</th>
                 <th className="text-right">Monthly Rate</th>
+                <th className="w-24"></th>
               </tr>
             </thead>
             <tbody>
@@ -307,12 +299,16 @@ export default function RentalsPage() {
                     <td className="px-4 py-3 text-sm text-white font-semibold text-right">
                       {prop.rental_rate ? formatCurrency(parseFloat(prop.rental_rate), prop.currency_code) : '—'}
                     </td>
+                    <td className="px-4 py-3 text-right">
+                      <RecordActions record={prop} label="property" onEdit={() => openPanel('property-form', { property: prop })}
+                        deleteFn={propertiesAPI.delete} invalidate={['rental-properties', 'properties']} />
+                    </td>
                   </motion.tr>
                 ))}
               </AnimatePresence>
               {properties.length === 0 && !isLoading && (
                 <tr>
-                  <td colSpan={6} className="text-center py-16">
+                  <td colSpan={7} className="text-center py-16">
                     <Building2 size={40} className="mx-auto mb-3 text-dark-600" />
                     <p className="text-dark-400">No properties found.</p>
                   </td>
@@ -334,7 +330,7 @@ export default function RentalsPage() {
                 <th>Email</th>
                 <th>Mobile</th>
                 <th>Status</th>
-                <th className="w-10"></th>
+                <th className="w-24"></th>
               </tr>
             </thead>
             <tbody>
@@ -358,29 +354,15 @@ export default function RentalsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2 text-dark-400">
-                        <button 
-                          className="p-1 hover:text-primary transition-colors"
-                          onClick={(e) => { e.stopPropagation(); openPanel('contact-form', { contact: tenant }) }}
-                          title="Edit Tenant"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button 
-                          className="p-1 hover:text-red-400 transition-colors"
-                          onClick={(e) => { e.stopPropagation(); handleDeleteTenant(tenant.id) }}
-                          title="Delete Tenant"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                      <RecordActions record={tenant} label="tenant" onEdit={() => openPanel('contact-form', { contact: tenant })}
+                        deleteFn={crmAPI.contacts.delete} invalidate={['rental-tenants']} />
                     </td>
                   </motion.tr>
                 ))}
               </AnimatePresence>
               {tenants.length === 0 && !isLoading && (
                 <tr>
-                  <td colSpan={5} className="text-center py-16">
+                  <td colSpan={6} className="text-center py-16">
                     <Users size={40} className="mx-auto mb-3 text-dark-600" />
                     <p className="text-dark-400">No tenants found.</p>
                   </td>
@@ -403,6 +385,7 @@ export default function RentalsPage() {
                 <th>Term</th>
                 <th>Status</th>
                 <th className="text-right">Monthly Rent</th>
+                <th className="w-24"></th>
               </tr>
             </thead>
             <tbody>
@@ -430,12 +413,16 @@ export default function RentalsPage() {
                     <td className="px-4 py-3 text-sm text-white font-semibold text-right">
                       {formatCurrency(parseFloat(lease.monthly_rental), lease.currency_code)}
                     </td>
+                    <td className="px-4 py-3 text-right">
+                      <RecordActions record={lease} label="lease" onEdit={() => openPanel('lease-form', { lease })}
+                        deleteFn={rentalsAPI.leases.delete} invalidate={['rental-leases', 'rental-stats']} />
+                    </td>
                   </motion.tr>
                 ))}
               </AnimatePresence>
               {leases.length === 0 && !isLoading && (
                 <tr>
-                  <td colSpan={6} className="text-center py-16">
+                  <td colSpan={7} className="text-center py-16">
                     <Key size={40} className="mx-auto mb-3 text-dark-600" />
                     <p className="text-dark-400">No leases found. Create your first lease.</p>
                   </td>
@@ -459,6 +446,7 @@ export default function RentalsPage() {
                 <th>Status</th>
                 <th className="text-right">Total</th>
                 <th className="text-right">Balance</th>
+                <th className="w-28"></th>
               </tr>
             </thead>
             <tbody>
@@ -500,13 +488,15 @@ export default function RentalsPage() {
                           <DollarSign size={14} />
                         </button>
                       )}
+                      <RecordActions record={inv} label="invoice" deleteFn={rentalsAPI.invoices.delete}
+                        invalidate={['rental-invoices', 'rental-stats']} className="ml-1" />
                     </td>
                   </motion.tr>
                 ))}
               </AnimatePresence>
               {invoices.length === 0 && !isLoading && (
                 <tr>
-                  <td colSpan={7} className="text-center py-16">
+                  <td colSpan={8} className="text-center py-16">
                     <Receipt size={40} className="mx-auto mb-3 text-dark-600" />
                     <p className="text-dark-400">No invoices found.</p>
                   </td>
@@ -532,8 +522,12 @@ export default function RentalsPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-sm font-medium text-white truncate">{ticket.category}</p>
-                  <span className={`badge text-[10px] uppercase font-bold ${getStatusColor(ticket.status)}`}>
-                    {ticket.status?.replace(/_/g, ' ')}
+                  <span className="flex items-center gap-2">
+                    <span className={`badge text-[10px] uppercase font-bold ${getStatusColor(ticket.status)}`}>
+                      {ticket.status?.replace(/_/g, ' ')}
+                    </span>
+                    <RecordActions record={ticket} label="ticket" onEdit={() => openPanel('maintenance-form', { ticket })}
+                      deleteFn={rentalsAPI.maintenance.delete} invalidate={['rental-maintenance', 'rental-stats']} />
                   </span>
                 </div>
                 <p className="text-xs text-dark-400 truncate mb-1">{ticket.description}</p>

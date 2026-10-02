@@ -13,8 +13,9 @@ from .services.zimbabwe import ZimbabweTaxService
 from apps.finance.models.ap import Supplier, SupplierInvoice, SupplierInvoiceLine
 from apps.finance.models.core import ChartOfAccount, Journal, JournalEntry, JournalLine, FiscalPeriod
 from apps.core.services.number_sequence import NumberSequenceService
+from utils.record_rules import RecordRulesMixin
 
-class PayrollRunViewSet(viewsets.ModelViewSet):
+class PayrollRunViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = PayrollRun.objects.all()
     serializer_class = PayrollRunSerializer
 
@@ -372,7 +373,7 @@ class PayrollRunViewSet(viewsets.ModelViewSet):
         return Response({'sent': sent, 'skipped_no_email': skipped})
 
 
-class PayslipViewSet(viewsets.ModelViewSet):
+class PayslipViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = Payslip.objects.prefetch_related('lines').select_related('employee', 'payroll_run', 'contract')
     serializer_class = PayslipSerializer
     filterset_fields = ['payroll_run', 'employee', 'status']

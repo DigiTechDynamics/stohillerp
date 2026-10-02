@@ -7,6 +7,7 @@ import { crmAPI } from '@/services/api'
 import { formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
+import RecordActions from '@/components/common/RecordActions'
 
 export default function Chatter({ opportunityId, contactId, contactData, opportunityData }) {
   const queryClient = useQueryClient()
@@ -116,8 +117,17 @@ export default function Chatter({ opportunityId, contactId, contactData, opportu
                   {item.type === 'note' && item.is_internal && <span className="text-[8px] px-1.5 py-0.5 bg-amber-500/20 text-amber-500 font-bold rounded uppercase tracking-tighter border border-amber-500/20">Internal Note</span>}
                   {item.type === 'activity' && <span className="text-[8px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 font-bold rounded uppercase tracking-tighter border border-blue-500/20">{item.activity_type}</span>}
                 </div>
-                <span className="text-[10px] text-dark-500 font-mono font-bold tracking-tighter opacity-60">
-                  {formatDate(item.date)}
+                <span className="flex items-center gap-1">
+                  <span className="text-[10px] text-dark-500 font-mono font-bold tracking-tighter opacity-60">
+                    {formatDate(item.date)}
+                  </span>
+                  {item.type === 'activity' ? (
+                    <RecordActions record={item} label="activity" size={12}
+                      onEdit={() => openPanel('activity-form', { activity: item, contact: contactData, opportunity: opportunityData })}
+                      deleteFn={crmAPI.activities.delete} invalidate={['crm-activities', 'kanban']} />
+                  ) : (
+                    <RecordActions record={item} label="note" size={12} deleteFn={crmAPI.notes.delete} invalidate={['crm-notes']} />
+                  )}
                 </span>
               </div>
               

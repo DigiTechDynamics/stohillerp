@@ -12,6 +12,7 @@ from apps.core.serializers import (
     PasswordChangeSerializer, CurrentUserUpdateSerializer
 )
 from utils.permissions import HasModuleAccess, user_modules
+from utils.record_rules import RecordRulesMixin
 
 
 def is_access_admin(user):
@@ -27,7 +28,7 @@ class AccessAdminWritePermission(permissions.BasePermission):
         return request.method in permissions.SAFE_METHODS or is_access_admin(request.user)
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = User.objects.prefetch_related('roles').order_by('first_name', 'last_name')
     permission_classes = [permissions.IsAuthenticated, HasModuleAccess, AccessAdminWritePermission]
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
@@ -72,7 +73,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response({'status': 'password set successfully'})
 
 
-class RoleViewSet(viewsets.ModelViewSet):
+class RoleViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
     permission_classes = [permissions.IsAuthenticated, HasModuleAccess, AccessAdminWritePermission]
@@ -98,7 +99,7 @@ class CurrentUserView(APIView):
         return Response(serializer.data)
 
 
-class CurrencyViewSet(viewsets.ModelViewSet):
+class CurrencyViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = Currency.objects.all().order_by('code')
     serializer_class = CurrencySerializer
     filter_backends = [filters.SearchFilter]

@@ -34,10 +34,11 @@ from apps.finance.statements import CustomerStatementActions, SupplierStatementA
 from apps.finance.approval_views import ApprovalActions  # type: ignore
 from apps.procurement.match_views import InvoiceMatchActions  # type: ignore
 from apps.finance.services import approvals  # type: ignore
+from utils.record_rules import RecordRulesMixin
 
 logger = logging.getLogger('stohill.finance')
 
-class CurrencyViewSet(viewsets.ModelViewSet):
+class CurrencyViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = Currency.objects.all().order_by('code')
     serializer_class = CurrencySerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -138,7 +139,7 @@ class UnifiedAccountSearchView(APIView):
 
 
 
-class ChartOfAccountViewSet(viewsets.ModelViewSet):
+class ChartOfAccountViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = ChartOfAccount.objects.select_related('parent').order_by('code')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['account_type', 'account_sub_type', 'is_active', 'allow_direct_posting']
@@ -157,7 +158,7 @@ class JournalViewSet(viewsets.ModelViewSet):
         return JournalSerializer
 
 
-class JournalBatchViewSet(viewsets.ModelViewSet):
+class JournalBatchViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = JournalBatch.objects.select_related('journal', 'fiscal_period', 'maker', 'checker').prefetch_related('entries')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'journal', 'fiscal_period', 'maker']
@@ -167,6 +168,18 @@ class JournalBatchViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         from apps.finance.serializers import JournalBatchSerializer  # type: ignore
         return JournalBatchSerializer
+
+    def perform_destroy(self, instance):
+        """A draft batch is deleted together with its draft entries (they'd block it otherwise)."""
+        from utils.record_rules import delete_lock
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+
+        reason = delete_lock(instance)
+        if reason:
+            raise DRFValidationError({'detail': reason})
+        with transaction.atomic():
+            instance.entries.filter(status=JournalEntry.EntryStatus.DRAFT).delete()
+            super().perform_destroy(instance)
 
     # All three workflow actions lock the batch row (select_for_update) inside a
     # transaction, so concurrent clicks can't approve or post a batch twice.
@@ -241,7 +254,7 @@ class JournalBatchViewSet(viewsets.ModelViewSet):
         return Response({'status': 'posted'})
 
 
-class JournalEntryViewSet(viewsets.ModelViewSet):
+class JournalEntryViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = JournalEntry.objects.select_related('journal', 'fiscal_period').prefetch_related('lines__account')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'entry_type', 'journal', 'fiscal_period']
@@ -279,7 +292,7 @@ class JournalEntryViewSet(viewsets.ModelViewSet):
             return Response({'error': str(e)}, status=400)
 
 
-class FiscalYearViewSet(viewsets.ModelViewSet):
+class FiscalYearViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = FiscalYear.objects.all().order_by('-start_date')
 
     def get_serializer_class(self):
@@ -345,7 +358,7 @@ class FiscalYearViewSet(viewsets.ModelViewSet):
             return Response({'error': str(e)}, status=400)
         return Response({'status': 'year_reopened', 'reversal_entry': reversal.reference if reversal else None})
 
-class FiscalPeriodViewSet(viewsets.ModelViewSet):
+class FiscalPeriodViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = FiscalPeriod.objects.select_related('fiscal_year').order_by('-start_date')
 
     def get_serializer_class(self):
@@ -745,7 +758,7 @@ class SupplierViewSet(SupplierStatementActions, viewsets.ModelViewSet):
         supplier.save(update_fields=['is_active'])
         return Response({'is_active': supplier.is_active})
 
-class SupplierInvoiceViewSet(ApprovalActions, InvoiceMatchActions, InvoiceSettlementActions, viewsets.ModelViewSet):
+class SupplierInvoiceViewSet(RecordRulesMixin, ApprovalActions, InvoiceMatchActions, InvoiceSettlementActions, viewsets.ModelViewSet):
     queryset = SupplierInvoice.objects.select_related('supplier').prefetch_related('lines__expense_account', 'lines__tax_code')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'supplier']
@@ -799,7 +812,7 @@ class SupplierInvoiceViewSet(ApprovalActions, InvoiceMatchActions, InvoiceSettle
             return Response({'error': 'Only draft invoices can be deleted'}, status=status.HTTP_400_BAD_REQUEST)
         return super().destroy(request, *args, **kwargs)
 
-class SupplierPaymentViewSet(ApprovalActions, PaymentSettlementActions, viewsets.ModelViewSet):
+class SupplierPaymentViewSet(RecordRulesMixin, ApprovalActions, PaymentSettlementActions, viewsets.ModelViewSet):
     queryset = SupplierPayment.objects.select_related('supplier', 'bank_account')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'supplier']
@@ -843,7 +856,7 @@ class CustomerProfileViewSet(CustomerStatementActions, viewsets.ModelViewSet):
         from apps.finance.serializers import CustomerProfileSerializer  # type: ignore
         return CustomerProfileSerializer
 
-class CustomerInvoiceViewSet(InvoiceSettlementActions, viewsets.ModelViewSet):
+class CustomerInvoiceViewSet(RecordRulesMixin, InvoiceSettlementActions, viewsets.ModelViewSet):
     queryset = CustomerInvoice.objects.select_related('customer').prefetch_related('lines__revenue_account', 'lines__tax_code')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'customer']
@@ -891,7 +904,7 @@ class CustomerInvoiceViewSet(InvoiceSettlementActions, viewsets.ModelViewSet):
         response['Content-Disposition'] = f'attachment; filename="{invoice.invoice_number}.pdf"'
         return response
 
-class CustomerReceiptViewSet(ReceiptSettlementActions, viewsets.ModelViewSet):
+class CustomerReceiptViewSet(RecordRulesMixin, ReceiptSettlementActions, viewsets.ModelViewSet):
     queryset = CustomerReceipt.objects.select_related('customer', 'bank_account')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'customer']

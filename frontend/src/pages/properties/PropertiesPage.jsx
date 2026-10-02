@@ -3,13 +3,14 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Building2, Map, Grid, List, Search, Plus, MapPin, BedDouble, Bath, Square, Eye, TrendingUp, Home, DollarSign
+  Building2, Map, Grid, List, Search, Plus, MapPin, BedDouble, Bath, Square, TrendingUp, Home, DollarSign
 } from 'lucide-react'
 import { propertiesAPI } from '@/services/api'
 import { formatCurrency, getStatusColor } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
 import Pagination from '@/components/common/Pagination'
+import RecordActions from '@/components/common/RecordActions'
 import { useQueryClient } from '@tanstack/react-query'
 
 const STATUS_OPTIONS = [
@@ -50,10 +51,9 @@ function PropertyCard({ property }) {
             {property.status.replace(/_/g, ' ')}
           </span>
         </div>
-        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button className="w-7 h-7 rounded-lg bg-dark-900/80 backdrop-blur flex items-center justify-center hover:bg-primary transition-colors">
-            <Eye size={14} className="text-white" />
-          </button>
+        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg bg-dark-900/80 backdrop-blur">
+          <RecordActions record={property} label="property" onEdit={() => openPanel('property-form', { property })}
+            deleteFn={propertiesAPI.delete} invalidate={['properties', 'property-stats']} />
         </div>
       </div>
 
@@ -134,6 +134,10 @@ function PropertyRow({ property }) {
       <td className="px-4 py-3 text-xs text-dark-400">
         {property.bedrooms && `${property.bedrooms} bed`}
         {property.bathrooms && (property.bedrooms ? ` · ${property.bathrooms} bath` : `${property.bathrooms} bath`)}
+      </td>
+      <td className="px-4 py-3 text-right">
+        <RecordActions record={property} label="property" onEdit={() => openPanel('property-form', { property })}
+          deleteFn={propertiesAPI.delete} invalidate={['properties', 'property-stats']} />
       </td>
     </tr>
   )
@@ -270,6 +274,7 @@ export default function PropertiesPage() {
                 <th>Status</th>
                 <th>Price</th>
                 <th>Specs</th>
+                <th className="w-24"></th>
               </tr>
             </thead>
             <tbody>

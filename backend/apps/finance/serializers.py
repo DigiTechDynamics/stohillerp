@@ -338,6 +338,8 @@ class FiscalPeriodSerializer(serializers.ModelSerializer):
 class SupplierSerializer(serializers.ModelSerializer):
     balance = serializers.SerializerMethodField()
     currency_code = serializers.CharField(source='currency.code', read_only=True)
+    ap_account_code = serializers.CharField(source='ap_account.code', read_only=True, default=None)
+    ap_account_name = serializers.CharField(source='ap_account.name', read_only=True, default=None)
     
     class Meta:
         model = Supplier
@@ -430,12 +432,13 @@ class SupplierInvoiceSerializer(serializers.ModelSerializer):
 class SupplierPaymentSerializer(serializers.ModelSerializer):
     supplier_name = serializers.CharField(source='supplier.name', read_only=True)
     currency_code = serializers.CharField(source='currency.code', read_only=True)
+    bank_account_name = serializers.CharField(source='bank_account.name', read_only=True, default=None)
     journal_entry_details = JournalEntrySerializer(source='journal_entry', read_only=True)  # type: ignore
 
     class Meta:
         model = SupplierPayment
         fields = [
-            'id', 'supplier', 'supplier_name', 'bank_account', 'payment_date',
+            'id', 'supplier', 'supplier_name', 'bank_account', 'bank_account_name', 'payment_date',
             'amount', 'currency', 'currency_code', 'exchange_rate', 'unapplied_amount', 'payment_reference', 'status',
             'journal_entry', 'journal_entry_details'
         ]

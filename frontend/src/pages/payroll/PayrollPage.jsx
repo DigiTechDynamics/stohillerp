@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
-  Landmark, Plus, MoreVertical, Play, CheckCircle, RefreshCcw, DollarSign, User, Calendar, ArrowRight, Banknote, Settings, FileText, ExternalLink
+  Landmark, Plus, Play, CheckCircle, RefreshCcw, DollarSign, User, Calendar, ArrowRight, Banknote, Settings, FileText, ExternalLink
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -11,6 +11,7 @@ import PayrollRunTools from '@/components/modules/payroll/PayrollRunTools'
 import PayslipModal from '@/components/modules/payroll/PayslipModal'
 import DeductionSettingsView from '@/components/modules/payroll/DeductionSettingsView'
 import Pagination from '@/components/common/Pagination'
+import RecordActions from '@/components/common/RecordActions'
 import { formatCurrency } from '@/utils/format'
 
 export default function PayrollPage() {
@@ -237,12 +238,10 @@ export default function PayrollPage() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <h2 className="text-2xl font-display text-white">{selectedRun.name}</h2>
-                          <button
-                            onClick={() => openSidePanel('payroll-run-form', { ...selectedRun, onSuccess: () => fetchRuns(pagination.page) })}
-                            className="btn-ghost p-1.5"
-                          >
-                             <MoreVertical size={16} />
-                          </button>
+                          <RecordActions record={selectedRun} label="payroll run" size={16}
+                            onEdit={() => openSidePanel('payroll-run-form', { ...selectedRun, onSuccess: () => fetchRuns(pagination.page) })}
+                            deleteFn={payrollAPI.runs.delete}
+                            onDeleted={() => { setSelectedRun(null); fetchRuns(pagination.page) }} />
                         </div>
                         <p className="text-dark-400 text-sm">{selectedRun.period_start} to {selectedRun.period_end}</p>
                       </div>

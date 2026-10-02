@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { Building2, Plus, Edit2, Users, User } from 'lucide-react'
+import { Building2, Plus, Users, User } from 'lucide-react'
 import { hrAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
+import RecordActions from '@/components/common/RecordActions'
 
 export default function DepartmentListPanel() {
   const openPanel = useUIStore(s => s.openSidePanel)
@@ -59,13 +60,10 @@ export default function DepartmentListPanel() {
                     </div>
                   </div>
                 </div>
-                <button 
-                  onClick={() => openPanel('department-form', { department: dept })}
-                  className="p-2 rounded-lg bg-white/5 text-dark-500 hover:text-white hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100"
-                  title="Edit Department"
-                >
-                  <Edit2 size={16} />
-                </button>
+                <RecordActions record={dept} label="department" size={16}
+                  onEdit={() => openPanel('department-form', { department: dept })}
+                  deleteFn={hrAPI.departments.delete} invalidate={['hr-departments']}
+                  className="opacity-0 group-hover:opacity-100 transition-all" />
               </div>
             </div>
           ))

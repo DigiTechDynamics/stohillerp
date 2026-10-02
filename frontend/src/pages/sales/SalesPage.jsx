@@ -9,6 +9,7 @@ import { useUIStore } from '@/stores/authStore'
 
 import DataManagementButtons from '@/components/common/DataManagementButtons'
 import Pagination from '@/components/common/Pagination'
+import RecordActions from '@/components/common/RecordActions'
 import { useQueryClient } from '@tanstack/react-query'
 
 export default function SalesPage() {
@@ -134,6 +135,7 @@ export default function SalesPage() {
               <th className="text-emerald-400">Commission</th>
               <th>Status</th>
               <th>Closing Date</th>
+              <th className="w-24"></th>
             </tr>
           </thead>
           <tbody>
@@ -165,12 +167,16 @@ export default function SalesPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-dark-400">{tx.closing_date ? formatDate(tx.closing_date) : 'TBD - Awaiting Confirmation'}</td>
+                  <td className="px-4 py-3 text-right">
+                    <RecordActions record={tx} label="sale" onEdit={() => openPanel('sale-form', { sale: tx })}
+                      deleteFn={salesAPI.delete} invalidate={['sales-transactions', 'sales-stats']} />
+                  </td>
                 </motion.tr>
               ))}
             </AnimatePresence>
             {transactions.length === 0 && !isLoading && (
               <tr>
-                <td colSpan={6} className="text-center py-20">
+                <td colSpan={8} className="text-center py-20">
                   <Briefcase size={40} className="mx-auto mb-3 text-dark-600" />
                   <p className="text-dark-400">No transactions found.</p>
                 </td>

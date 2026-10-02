@@ -11,6 +11,7 @@ import { formatCurrency } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
 import Pagination from '@/components/common/Pagination'
+import RecordActions from '@/components/common/RecordActions'
 import { useQueryClient } from '@tanstack/react-query'
 
 import CurrenciesTab from './CurrenciesTab'
@@ -159,6 +160,7 @@ export default function FinancePage() {
                       <th>Type</th>
                       <th className="text-right">Balance</th>
                       <th className="w-24">Status</th>
+                      <th className="w-24"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -171,13 +173,19 @@ export default function FinancePage() {
                           {formatCurrency(acc.current_balance || 0, acc.currency_code)}
                         </td>
                         <td className="px-4 py-3">
-                          <span className="badge-primary text-[10px] uppercase">Active</span>
+                          {acc.is_active === false
+                            ? <span className="badge text-[10px] uppercase bg-dark-700 text-dark-400">Inactive</span>
+                            : <span className="badge-primary text-[10px] uppercase">Active</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <RecordActions record={acc} label="account" onEdit={() => openPanel('account-form', { account: acc })}
+                            deleteFn={financeAPI.accounts.delete} invalidate={['finance-accounts']} />
                         </td>
                       </tr>
                     ))}
                     {accounts.length === 0 && !isLoading && (
                       <tr>
-                        <td colSpan={5} className="text-center py-16 text-dark-400">
+                        <td colSpan={6} className="text-center py-16 text-dark-400">
                           No accounts found in this search.
                         </td>
                       </tr>

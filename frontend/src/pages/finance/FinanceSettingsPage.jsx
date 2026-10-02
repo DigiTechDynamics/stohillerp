@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast'
 import { adminAPI, apiErrorMessage, financeAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import AccountCombobox from '@/components/common/AccountCombobox'
+import RecordActions from '@/components/common/RecordActions'
 
 const TABS = [
   { id: 'cost-centres', label: 'Cost Centres', icon: Layers },
@@ -53,18 +54,20 @@ function CostCentres() {
   return (
     <div className="card overflow-hidden">
       <table className="data-table">
-        <thead><tr><th>Code</th><th>Name</th><th>Status</th><th className="w-24"></th></tr></thead>
+        <thead><tr><th>Code</th><th>Name</th><th>Status</th><th className="w-48"></th></tr></thead>
         <tbody>
           {centres.map(c => (
             <tr key={c.id}>
               <td className="px-4 py-3 font-mono text-xs text-primary">{c.code}</td>
               <td className="px-4 py-3 text-sm text-white">{c.name}</td>
               <td className="px-4 py-3 text-xs">{c.is_active ? 'Active' : <span className="text-dark-500">Inactive</span>}</td>
-              <td className="px-4 py-3 text-right">
+              <td className="px-4 py-3 text-right whitespace-nowrap">
                 <button className="btn-ghost text-xs" disabled={busy}
                   onClick={() => run(() => financeAPI.costCenters.update(c.id, { is_active: !c.is_active }))}>
                   {c.is_active ? 'Deactivate' : 'Activate'}
                 </button>
+                <RecordActions record={c} label="cost centre" onEdit={() => setForm({ id: c.id, code: c.code, name: c.name })}
+                  deleteFn={financeAPI.costCenters.delete} invalidate={['cost-centres']} />
               </td>
             </tr>
           ))}
@@ -81,10 +84,15 @@ function CostCentres() {
         <button className="btn-primary" disabled={busy}
           onClick={async () => {
             if (!complete({ Code: form.code.trim(), Name: form.name.trim() })) return
-            if (await run(() => financeAPI.costCenters.create(form), 'Cost centre added.')) setForm({ code: '', name: '' })
+            const { id, ...data } = form
+            const saved = id
+              ? await run(() => financeAPI.costCenters.update(id, data), 'Cost centre updated.')
+              : await run(() => financeAPI.costCenters.create(data), 'Cost centre added.')
+            if (saved) setForm({ code: '', name: '' })
           }}>
-          <Plus size={16} /> Add
+          {form.id ? 'Save' : <><Plus size={16} /> Add</>}
         </button>
+        {form.id && <button className="btn-ghost" onClick={() => setForm({ code: '', name: '' })}>Cancel</button>}
       </div>
     </div>
   )
@@ -122,13 +130,27 @@ function RecurringJournals() {
       toast.error('Debits and credits must be equal.')
       return
     }
-    const payload = { ...form, end_date: form.end_date || null, lines }
-    if (await run(() => financeAPI.recurringJournals.create(payload), 'Recurring journal saved.')) setForm(null)
+    const { id, ...rest } = form
+    const payload = { ...rest, end_date: form.end_date || null, lines }
+    const saved = id
+      ? await run(() => financeAPI.recurringJournals.update(id, payload), 'Recurring journal updated.')
+      : await run(() => financeAPI.recurringJournals.create(payload), 'Recurring journal saved.')
+    if (saved) setForm(null)
   }
+
+  const editTemplate = (t) => setForm({
+    id: t.id, name: t.name, description: t.description, journal: t.journal, frequency: t.frequency,
+    next_run_date: t.next_run_date, end_date: t.end_date || '', auto_post: t.auto_post,
+    reverse_next_period: t.reverse_next_period,
+    lines: t.lines.map(l => ({
+      account: l.account, side: l.side, amount: l.amount, description: l.description || '',
+      picked: { type: 'account', id: l.account, display: l.account_code },
+    })),
+  })
 
   const templateForm = () => (
         <div className="card p-5 space-y-4">
-          <h3 className="text-white font-semibold">New recurring journal</h3>
+          <h3 className="text-white font-semibold">{form.id ? 'Edit recurring journal' : 'New recurring journal'}</h3>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <input className="form-input" placeholder="Name" aria-label="Template name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
             <input className="form-input" placeholder="Entry description" aria-label="Entry description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
@@ -205,10 +227,8 @@ function RecurringJournals() {
                     onClick={() => run(() => financeAPI.recurringJournals.update(t.id, { is_active: !t.is_active }))}>
                     {t.is_active ? 'Pause' : 'Resume'}
                   </button>
-                  <button className="btn-ghost text-xs text-dark-500 hover:text-rose-400" aria-label={`Delete ${t.name}`} disabled={busy}
-                    onClick={() => window.confirm(`Delete "${t.name}"?`) && run(() => financeAPI.recurringJournals.remove(t.id), 'Deleted.')}>
-                    <Trash2 size={14} />
-                  </button>
+                  <RecordActions record={t} label="recurring journal" onEdit={editTemplate}
+                    deleteFn={financeAPI.recurringJournals.remove} invalidate={['recurring-journals']} />
                 </td>
               </tr>
             ))}
@@ -252,10 +272,9 @@ function ApprovalRules() {
                     onClick={() => run(() => financeAPI.approvalRules.update(r.id, { is_active: !r.is_active }))}>
                     {r.is_active ? 'Disable' : 'Enable'}
                   </button>
-                  <button className="btn-ghost text-xs text-dark-500 hover:text-rose-400" aria-label={`Delete ${r.name}`} disabled={busy}
-                    onClick={() => window.confirm(`Delete rule "${r.name}"?`) && run(() => financeAPI.approvalRules.remove(r.id), 'Rule deleted.')}>
-                    <Trash2 size={14} />
-                  </button>
+                  <RecordActions record={r} label="approval rule"
+                    onEdit={() => setForm({ id: r.id, name: r.name, document_type: r.document_type, min_amount: r.min_amount, role: r.role, sequence: r.sequence })}
+                    deleteFn={financeAPI.approvalRules.remove} invalidate={['approval-rules']} />
                 </td>
               </tr>
             ))}
@@ -276,13 +295,18 @@ function ApprovalRules() {
           </select>
           <div className="flex gap-2">
             <input type="number" className="form-input w-20" aria-label="Sequence" value={form.sequence} onChange={e => setForm({ ...form, sequence: e.target.value })} />
-            <button className="btn-primary" disabled={busy} aria-label="Add rule"
+            <button className="btn-primary" disabled={busy} aria-label={form.id ? 'Save rule' : 'Add rule'}
               onClick={async () => {
                 if (!complete({ 'Rule name': form.name.trim(), 'Approver role': form.role })) return
-                if (await run(() => financeAPI.approvalRules.create(form), 'Rule added.')) setForm(blank)
+                const { id, ...data } = form
+                const saved = id
+                  ? await run(() => financeAPI.approvalRules.update(id, data), 'Rule updated.')
+                  : await run(() => financeAPI.approvalRules.create(data), 'Rule added.')
+                if (saved) setForm(blank)
               }}>
-              <Plus size={16} /> Add
+              {form.id ? 'Save' : <><Plus size={16} /> Add</>}
             </button>
+            {form.id && <button className="btn-ghost" onClick={() => setForm(blank)}>Cancel</button>}
           </div>
         </div>
       </div>

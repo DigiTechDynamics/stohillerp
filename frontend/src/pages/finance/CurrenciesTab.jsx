@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { DollarSign, Percent, Plus, RefreshCw, Loader2 } from 'lucide-react'
-import api from '@/services/api'
+import api, { financeAPI } from '@/services/api'
+import RecordActions from '@/components/common/RecordActions'
 import { formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 
@@ -69,6 +70,7 @@ function CurrenciesList() {
               <th>Symbol</th>
               <th>Base Currency</th>
               <th className="text-center">Status</th>
+              <th className="w-24"></th>
             </tr>
           </thead>
           <tbody>
@@ -83,10 +85,14 @@ function CurrenciesList() {
                 <td className="text-center">
                   {c.is_active ? <span className="badge-green">Active</span> : <span className="badge-gray">Inactive</span>}
                 </td>
+                <td className="text-right">
+                  <RecordActions record={c} label="currency" onEdit={() => openPanel('currency-form', { currency: c })}
+                    deleteFn={financeAPI.currencies.delete} invalidate={['currencies']} />
+                </td>
               </tr>
             ))}
             {currencies.length === 0 && (
-              <tr><td colSpan={5} className="text-center py-6 text-dark-500">No currencies configured.</td></tr>
+              <tr><td colSpan={6} className="text-center py-6 text-dark-500">No currencies configured.</td></tr>
             )}
           </tbody>
         </table>
@@ -122,6 +128,7 @@ function ExchangeRatesList() {
               <th>Currency</th>
               <th>Date</th>
               <th className="text-right">Rate To Base</th>
+              <th className="w-24"></th>
             </tr>
           </thead>
           <tbody>
@@ -130,10 +137,14 @@ function ExchangeRatesList() {
                 <td className="text-sm font-medium text-white">{r.currency_code || '-'}</td>
                 <td className="text-dark-300">{formatDate(r.date || r.effective_date)}</td>
                 <td className="font-mono text-right text-emerald-400">{parseFloat(r.rate).toFixed(6)}</td>
+                <td className="text-right">
+                  <RecordActions record={r} label="exchange rate" onEdit={() => openPanel('exchange-rate-form', { rate: r })}
+                    deleteFn={financeAPI.exchangeRates.delete} invalidate={['exchange-rates']} />
+                </td>
               </tr>
             ))}
             {rates.length === 0 && (
-              <tr><td colSpan={3} className="text-center py-6 text-dark-500">No exchange rates configured.</td></tr>
+              <tr><td colSpan={4} className="text-center py-6 text-dark-500">No exchange rates configured.</td></tr>
             )}
           </tbody>
         </table>

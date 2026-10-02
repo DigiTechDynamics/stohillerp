@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { financeAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
+import RecordActions from '@/components/common/RecordActions'
 import { formatDate } from '@/utils/format'
 
 export default function FiscalPeriodsPage() {
@@ -138,10 +139,13 @@ export default function FiscalPeriodsPage() {
           <h2 className="text-xs font-bold text-dark-500 uppercase tracking-widest px-1">Fiscal Years</h2>
           <div className="space-y-2">
             {years.map((y) => (
-              <button
+              <div
                 key={y.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelectedYearId(y.id)}
-                className={`w-full group text-left p-4 rounded-xl border transition-all ${
+                onKeyDown={(e) => { if (e.key === 'Enter') setSelectedYearId(y.id) }}
+                className={`w-full group text-left p-4 rounded-xl border transition-all cursor-pointer ${
                   selectedYearId === y.id
                     ? 'bg-primary/10 border-primary text-white'
                     : 'bg-white/2 border-white/5 text-dark-300 hover:border-white/10 shadow-sm'
@@ -156,6 +160,9 @@ export default function FiscalPeriodsPage() {
                     >
                       <Settings2 size={12} />
                     </button>
+                    <RecordActions record={y} label="fiscal year" size={12} deleteFn={financeAPI.fiscalYears.delete}
+                      invalidate={['fiscal-years']} onDeleted={() => setSelectedYearId(null)}
+                      className="opacity-0 group-hover:opacity-100" />
                     {y.is_closed ? (
                       <CheckCircle2 size={14} className="text-emerald-400" />
                     ) : (
@@ -166,7 +173,7 @@ export default function FiscalPeriodsPage() {
                 <p className="text-[10px] text-dark-500 mt-1 uppercase">
                   {formatDate(y.start_date)} — {formatDate(y.end_date)}
                 </p>
-              </button>
+              </div>
             ))}
             {years.length === 0 && !yearsLoading && (
               <div className="p-8 text-center card bg-white/2 border-dashed border-white/5">

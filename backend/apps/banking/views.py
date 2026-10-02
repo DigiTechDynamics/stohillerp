@@ -28,6 +28,7 @@ from apps.banking.serializers import (
 )
 from apps.banking.services import reconciliation
 from apps.finance.models import BankAccount, JournalLine
+from utils.record_rules import RecordRulesMixin
 
 
 class BankAccountViewSet(viewsets.ModelViewSet):
@@ -66,7 +67,7 @@ class BankAccountViewSet(viewsets.ModelViewSet):
         return Response(reconciliation.reconciliation_report(self.get_object(), as_of))
 
 
-class CorporateBankStatementViewSet(viewsets.ModelViewSet):
+class CorporateBankStatementViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = CorporateBankStatement.objects.select_related('bank_account').prefetch_related(
         'lines__journal_entry_line__entry')
     serializer_class = CorporateBankStatementSerializer
@@ -94,7 +95,7 @@ class CorporateBankStatementViewSet(viewsets.ModelViewSet):
         return Response(reconciliation.auto_match_statement(self.get_object(), request.user))
 
 
-class CorporateBankStatementLineViewSet(viewsets.ModelViewSet):
+class CorporateBankStatementLineViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = CorporateBankStatementLine.objects.select_related(
         'statement__bank_account', 'journal_entry_line__entry')
     serializer_class = CorporateBankStatementLineSerializer

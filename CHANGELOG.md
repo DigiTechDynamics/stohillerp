@@ -5,6 +5,44 @@
 Branch `chore/production-hardening`. Every bug below has a regression test in
 `backend/tests/`.
 
+### Edit and delete where applicable
+
+- **Ledger protection (server side).** Posted records could be edited or
+  deleted through the API. A posted journal entry was deleted outright (204)
+  in testing, and an active lease was edited and deleted.
+  `utils/record_rules.py` now enforces the rules on every update and delete:
+  - Transactions (invoices, receipts, payments, journal entries and batches,
+    purchase orders, rental invoices, payroll runs and payslips, sales,
+    commissions, leases, maintenance jobs, leave requests) can be changed only
+    while they are drafts or open.
+  - Posted ones are corrected by reversal, credit note, refund or
+    cancellation.
+  - Assets with depreciation history, reconciled bank lines, system accounts
+    and accounts with postings, the base currency, and roles in use are
+    protected. Users are deactivated, not deleted.
+- **Clear reasons.** Every record the API returns carries `edit_lock` and
+  `delete_lock` (null, or the reason). Deleting a record that others still
+  use returns "cannot be deleted because it is used by 3 journal lines..."
+  instead of a server error.
+- **Screens.**
+  - A shared `RecordActions` control (edit, and delete with confirmation),
+    added across properties, rentals (properties, tenants, leases, invoices,
+    maintenance), sales, commissions, CRM activities and notes, HR
+    (employees, agents, departments, leave), payroll runs, the chart of
+    accounts, journal batches, AR and AP (customers, suppliers, invoices,
+    receipts, payments), fixed assets, currencies and exchange rates, fiscal
+    years, Finance Settings, bank accounts and statements, purchase orders,
+    projects, documents, users, roles and SoD rules.
+  - Locked actions are shown disabled, with the reason as a tooltip.
+  - New edit modes: maintenance tickets, CRM activities, draft purchase
+    orders, projects, cost centres, approval rules, recurring journals.
+- **Fixed along the way:**
+  - Several list rows had a "⋮" button that did nothing.
+  - The chart of accounts showed every account as Active.
+  - The AP lists showed fixed "AP Control Account" and "Default Bank" text.
+  - A draft journal batch couldn't be deleted because its own entries blocked
+    it.
+
 ### Real data instead of hardcoded values
 
 - **Company details** come from `COMPANY_*` settings (`core/company/`).

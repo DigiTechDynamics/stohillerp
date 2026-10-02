@@ -28,11 +28,26 @@ def _as_api_error(exc):
 
     from apps.finance.services.accounting import AccountingError
 
+    from django.db.models import ProtectedError, RestrictedError
+
     if isinstance(exc, AccountingError):
         return ValidationError({"detail": str(exc)})
     if isinstance(exc, DjangoValidationError):
         return ValidationError({"detail": exc.messages})
+    if isinstance(exc, (ProtectedError, RestrictedError)):
+        return ValidationError({"detail": _in_use_message(exc)})
     return exc
+
+
+def _in_use_message(exc):
+    """'Cannot delete: it is used by 3 journal lines and 1 invoice.' from a ProtectedError."""
+    from collections import Counter
+
+    objs = getattr(exc, "protected_objects", None) or getattr(exc, "restricted_objects", None) or []
+    counts = Counter(type(o)._meta for o in objs)
+    parts = [f"{n} {meta.verbose_name if n == 1 else meta.verbose_name_plural}" for meta, n in counts.most_common()]
+    used_by = " and ".join([", ".join(parts[:-1]), parts[-1]] if len(parts) > 1 else parts) or "other records"
+    return f"This record cannot be deleted because it is used by {used_by}. Deactivate it instead if it has an active setting."
 
 
 def custom_exception_handler(exc, context):
