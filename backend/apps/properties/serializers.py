@@ -202,7 +202,8 @@ class PropertyListSerializer(serializers.ModelSerializer):
                   'portfolio', 'portfolio_name', 'unit_count']
 
     def get_primary_image(self, obj):
-        img = obj.images.filter(is_primary=True).first() or obj.images.first()
+        images = list(obj.images.all())          # prefetched by the list view
+        img = next((i for i in images if i.is_primary), None) or (images[0] if images else None)
         if img:
             request = self.context.get('request')
             return request.build_absolute_uri(img.image.url) if request else img.image.url

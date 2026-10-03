@@ -23,7 +23,7 @@ Property management covers:
 | Database | PostgreSQL 16 (the only supported engine) |
 | Web      | React 18 (JSX), Vite 5, Tailwind CSS, TanStack Query, Zustand, Radix UI |
 | Runtime  | gunicorn + WhiteNoise, nginx (SPA + reverse proxy), Docker Compose |
-| Quality  | pytest + pytest-django (444 tests), Vitest (11 tests), ruff, GitHub Actions |
+| Quality  | pytest + pytest-django (587 tests), Vitest (32 tests), ruff, GitHub Actions |
 
 ---
 
@@ -64,7 +64,6 @@ stohillerp/
 │   │   └── */seeds.py          # idempotent reference data per app
 │   ├── utils/                  # middleware (request id, logging), errors, pagination
 │   ├── tests/                  # pytest suite
-│   ├── scripts/manual_checks/  # legacy checks not yet ported to pytest
 │   ├── requirements.txt        # runtime (pinned)
 │   └── requirements-dev.txt    # + pytest, ruff
 └── frontend/
@@ -168,6 +167,7 @@ Backend settings come from environment variables (or `backend/.env`); see
 | `DATABASE_URL` | `postgres://stohill:stohill@localhost:5432/stohill_erp` | **Required** in production |
 | `DJANGO_ALLOWED_HOSTS` / `DJANGO_CSRF_TRUSTED_ORIGINS` | localhost | Comma-separated |
 | `JWT_ACCESS_MINUTES` / `JWT_REFRESH_DAYS` | 15 / 7 | Refresh tokens rotate and are revoked on use |
+| `JWT_COOKIE_SECURE` | on outside `DEBUG`; follows `DJANGO_SECURE_SSL_REDIRECT` in production | The refresh cookie is sent over HTTPS only. Set False only for a plain-HTTP local run |
 | `THROTTLE_LOGIN` / `THROTTLE_ANON` / `THROTTLE_USER` | 10/min, 60/min, 600/min | |
 | `LOG_LEVEL` / `LOG_FORMAT` | INFO / `verbose` (`json` in production) | |
 | `TIME_ZONE` | `Africa/Harare` | Business dates (dashboards, "today") |
@@ -267,8 +267,12 @@ build, and the Docker builds.
 ## API
 
 - Base path: `/api/v1/`. JSON only. JWT bearer auth.
-- `POST auth/login/` → `{access, refresh}`. `POST auth/refresh/` → a new pair (rotated).
-  `POST auth/logout/` with `{refresh}` revokes it.
+- `POST auth/login/` → `{access}`. The refresh token is set as an httpOnly, SameSite=Strict cookie
+  (`stohill_refresh`, path `/api/v1/auth/`) that scripts cannot read. The SPA keeps the access
+  token in memory only.
+- `POST auth/refresh/` (with header `X-Requested-With: XMLHttpRequest`) → a new `{access}`; the
+  cookie is rotated. API clients may instead send `{"refresh": ...}` in the body.
+- `POST auth/logout/` revokes the refresh token and clears the cookie.
 - `GET health/` is unauthenticated and returns 503 if the database is unreachable.
 - Errors always use this shape; quote the `request_id` when reporting a problem:
   `{"success": false, "error": {"status_code", "message", "request_id"}}`
@@ -286,12 +290,11 @@ Evolution, with a prioritised gap list, is in [docs/GAP_ANALYSIS.md](docs/GAP_AN
 
 These are ordered by risk. See `CHANGELOG.md` for what is already fixed.
 
-1. **JWTs are stored in `localStorage`**, so any XSS flaw could steal them.
-   Plan: httpOnly refresh cookie plus an in-memory access token.
-2. **Not built: multi-company and ZIMRA fiscalisation (FDMS).** See
+1. **Not built: multi-company and ZIMRA fiscalisation (FDMS).** See
    GAP_ANALYSIS.md.
-3. **N+1 queries in some list serializers** (e.g. counts per contact). Annotate
-   counts in the queryset.
-4. **Six legacy check scripts** in `backend/scripts/manual_checks/` still need
-   porting to pytest (depreciation, payment allocation, per-role dashboards).
-5. **Frontend test coverage is a starter set** (Vitest; `npm test`).
+2. **Frontend test coverage is a starter set** (Vitest; `npm test`).
+
+Fixed: tokens are no longer kept in `localStorage` (httpOnly refresh cookie,
+in-memory access token); list endpoints no longer query per row, guarded by
+`tests/test_query_counts.py`; the legacy manual check scripts are now pytest
+tests (`tests/test_legacy_checks.py`).

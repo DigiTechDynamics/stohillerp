@@ -8,7 +8,7 @@ from apps.hr.models import Employee, Department, LeaveRequest, JobPosition, Empl
 from utils.record_rules import RecordRulesMixin
 
 class EmployeeViewSet(viewsets.ModelViewSet):
-    queryset = Employee.objects.select_related('department', 'reports_to')
+    queryset = Employee.objects.select_related('department', 'reports_to', 'job_position')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'employment_type', 'department']
     search_fields = ['first_name', 'last_name', 'employee_number', 'email']

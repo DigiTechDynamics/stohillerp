@@ -346,7 +346,8 @@ class SupplierSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def get_balance(self, obj):
-        return str(obj.balance)
+        annotated = getattr(obj, 'ledger_balance', None)
+        return str(annotated if annotated is not None else obj.balance)
 
 class SupplierInvoiceLineSerializer(serializers.ModelSerializer):
     expense_account_code = serializers.CharField(source='expense_account.code', read_only=True)
@@ -460,7 +461,10 @@ class CustomerProfileSerializer(serializers.ModelSerializer):
         return str(obj)
 
     def get_balance(self, obj):
-        return str(obj.balance)
+        annotated = getattr(obj, 'ledger_balance', None)
+        if annotated is None or obj.contact_link_id is None:
+            return str(obj.balance)
+        return str(annotated)
 
 class CustomerInvoiceLineSerializer(serializers.ModelSerializer):
     revenue_account_code = serializers.CharField(source='revenue_account.code', read_only=True)

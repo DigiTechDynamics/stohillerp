@@ -183,6 +183,9 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
 }
+# The refresh token lives in an httpOnly cookie (apps/core/auth_views.py).
+# Secure (HTTPS-only) by default outside DEBUG; production follows SSL redirect.
+JWT_COOKIE_SECURE = env.bool("JWT_COOKIE_SECURE", default=not DEBUG)
 
 # ─── CORS ────────────────────────────────────────────────────────────────────
 # Only needed when the SPA is served from a different origin than the API.

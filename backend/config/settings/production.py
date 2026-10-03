@@ -32,6 +32,8 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+# Plain-HTTP local runs (DJANGO_SECURE_SSL_REDIRECT=False) need a non-secure refresh cookie.
+JWT_COOKIE_SECURE = env.bool("JWT_COOKIE_SECURE", default=SECURE_SSL_REDIRECT)
 X_FRAME_OPTIONS = "DENY"
 
 # Health checks come from the proxy/orchestrator over plain HTTP.
