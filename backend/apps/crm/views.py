@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Count, Sum, Avg, Q
+from django.db.models import Count, Sum, Avg, Q, Prefetch
 from django.utils import timezone
 from datetime import timedelta
 import calendar
@@ -22,6 +22,7 @@ from apps.crm.serializers import (
     SalesTeamSerializer, ContactDocumentSerializer
 )
 from utils.private_media import private_file_response
+from utils.queries import subquery_count
 from apps.portal.views import InviteToPortalActions
 
 
@@ -41,6 +42,17 @@ class SalesTeamViewSet(viewsets.ModelViewSet):
 
 class ContactViewSet(InviteToPortalActions, viewsets.ModelViewSet):
     queryset = Contact.objects.select_related('assigned_agent', 'sales_team').order_by('last_name')
+
+    def get_queryset(self):
+        # Counts and active leases in the list query, not one query each per contact.
+        from apps.documents.models import Document
+        from apps.rentals.models import Lease
+
+        return super().get_queryset().annotate(
+            n_opportunities=subquery_count(Opportunity, 'contact'),
+            n_documents=subquery_count(Document, 'contact'),
+        ).prefetch_related(Prefetch('leases', to_attr='active_lease_list',
+                                    queryset=Lease.objects.filter(status='active').select_related('property')))
     serializer_class = ContactSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['contact_type', 'status', 'rating', 'assigned_agent', 'sales_team']

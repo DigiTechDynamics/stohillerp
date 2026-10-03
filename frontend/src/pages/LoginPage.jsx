@@ -25,17 +25,18 @@ export default function LoginPage() {
     try {
       // 1. Authenticate and get tokens
       const loginRes = await authAPI.login(email, password)
-      const { access, refresh } = loginRes.data
-      
-      // 2. Set temporary tokens so we can fetch user info
-      setAuth(null, access, refresh)
+      // (the refresh token arrives as an httpOnly cookie, out of reach of scripts)
+      const { access } = loginRes.data
+
+      // 2. Keep the access token (in memory only) so we can fetch user info
+      setAuth(null, access)
       
       // 3. Fetch user profile
       const userRes = await authAPI.me()
       const userData = userRes.data
       
       // 4. Save full auth state
-      setAuth(userData, access, refresh)
+      setAuth(userData, access)
       
       toast.success(`Welcome${isPortalUser(userData) ? '' : ' back'}, ${userData.first_name || 'Admin'}!`)
       navigate(homePathFor(userData))

@@ -53,7 +53,7 @@ class UserSerializer(serializers.ModelSerializer):
         child=serializers.UUIDField(), write_only=True, required=False
     )
     full_name = serializers.ReadOnlyField()
-    accessible_modules = serializers.ReadOnlyField()
+    accessible_modules = serializers.SerializerMethodField()
     sod_conflicts = serializers.SerializerMethodField()
 
     class Meta:
@@ -71,8 +71,21 @@ class UserSerializer(serializers.ModelSerializer):
             instance.roles.set(Role.objects.filter(id__in=role_ids))
         return instance
 
+    def _shared(self):
+        # Loaded once per response, not once per user (the list serializer shares
+        # its context between rows).
+        cache = self.context.setdefault('_access_cache', {})
+        if not cache:
+            cache['sod_rules'] = User.active_sod_rules()
+            cache['module_codes'] = list(Module.objects.values_list('code', flat=True))
+        return cache
+
+    def get_accessible_modules(self, obj):
+        shared = self._shared()
+        return obj.get_accessible_modules(shared['sod_rules'], shared['module_codes'])
+
     def get_sod_conflicts(self, obj):
-        return obj.check_sod_conflicts()
+        return obj.check_sod_conflicts(self._shared()['sod_rules'])
 
 
 class CurrentUserUpdateSerializer(UserSerializer):

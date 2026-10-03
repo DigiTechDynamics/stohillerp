@@ -1,5 +1,53 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import api, { downloadPrivateFile } from './api'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import axios from 'axios'
+import api, { downloadPrivateFile, signOut } from './api'
+import { useAuthStore } from '@/stores/authStore'
+
+describe('token handling', () => {
+  const originalAdapter = api.defaults.adapter
+  afterEach(() => {
+    api.defaults.adapter = originalAdapter
+    vi.restoreAllMocks()
+    useAuthStore.getState().logout()
+  })
+
+  it('keeps tokens out of localStorage', () => {
+    useAuthStore.getState().setAuth({ id: 1, first_name: 'A' }, 'access-1')
+    const stored = window.localStorage.getItem('stohill-auth') || ''
+    expect(stored).not.toContain('access-1')
+    expect(stored).not.toMatch(/refreshToken|accessToken/)
+  })
+
+  it('after a reload, refreshes from the cookie on a 401 and retries with the new token', async () => {
+    useAuthStore.setState({ user: { id: 1 }, isAuthenticated: true, accessToken: null })
+    const seen = []
+    api.defaults.adapter = async (config) => {
+      seen.push(config.headers.Authorization || null)
+      if (!config.headers.Authorization) {
+        const error = new Error('401')
+        error.config = config
+        error.response = { status: 401, data: {} }
+        throw error
+      }
+      return { data: { ok: true }, status: 200, statusText: 'OK', headers: {}, config }
+    }
+    const post = vi.spyOn(axios, 'post').mockResolvedValue({ data: { access: 'fresh-access' } })
+
+    const res = await api.get('core/me/')
+    expect(res.data.ok).toBe(true)
+    expect(post).toHaveBeenCalledWith(expect.stringMatching(/auth\/refresh\/$/), {},
+      expect.objectContaining({ withCredentials: true, headers: { 'X-Requested-With': 'XMLHttpRequest' } }))
+    expect(seen).toEqual([null, 'Bearer fresh-access'])
+    expect(useAuthStore.getState().accessToken).toBe('fresh-access')
+  })
+
+  it('signs out locally even when the server call fails', async () => {
+    useAuthStore.getState().setAuth({ id: 1 }, 'a')
+    api.defaults.adapter = async () => { throw new Error('offline') }
+    await signOut()
+    expect(useAuthStore.getState().isAuthenticated).toBe(false)
+  })
+})
 
 describe('downloadPrivateFile', () => {
   beforeEach(() => {

@@ -2,22 +2,25 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+// Tokens are never written to storage: the access token is kept in memory and
+// the refresh token is an httpOnly cookie the API manages. After a reload the
+// first API call gets a 401 and the client refreshes from the cookie.
 export const useAuthStore = create()(
   persist(
     (set, get) => ({
       user: null,
       accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
       executiveMode: false,
 
-      setAuth: (user, access, refresh) =>
+      setAuth: (user, access) =>
         set({
           user,
           accessToken: access,
-          refreshToken: refresh,
           isAuthenticated: !!access,
         }),
+
+      setAccessToken: (access) => set({ accessToken: access }),
 
       setUser: (user) => set({ user }),
 
@@ -25,7 +28,6 @@ export const useAuthStore = create()(
         set({
           user: null,
           accessToken: null,
-          refreshToken: null,
           isAuthenticated: false,
         }),
 
@@ -42,10 +44,14 @@ export const useAuthStore = create()(
     }),
     {
       name: 'stohill-auth',
+      // v2: tokens are no longer stored; drop any that older versions left behind.
+      version: 2,
+      migrate: (persisted) => {
+        const { accessToken: _access, refreshToken: _refresh, ...rest } = persisted || {}
+        return rest
+      },
       partialize: (state) => ({
         user: state.user,
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
         executiveMode: state.executiveMode,
       }),

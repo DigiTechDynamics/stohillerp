@@ -417,7 +417,7 @@ from .models import TaxBracket, PayrollSetting, SalaryRule, SalaryStructure
 from rest_framework import serializers as drf_serializers
 
 class TaxBracketViewSet(viewsets.ModelViewSet):
-    queryset = TaxBracket.objects.all()
+    queryset = TaxBracket.objects.select_related('currency')
     serializer_class = TaxBracketSerializer
     filterset_fields = ['currency']
 

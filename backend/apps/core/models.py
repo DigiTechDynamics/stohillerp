@@ -239,47 +239,73 @@ class User(AbstractBaseUser, PermissionsMixin, UUIDModel):
 
     def has_role(self, role_type):
         """Check if user has a specific role type."""
-        return self.roles.filter(role_type=role_type).exists()
+        return role_type in self._role_types()
+
+    # Lists prefetch 'roles__modules' (see UserViewSet); a single user is
+    # answered with one query each instead of loading every role.
+    def _roles_prefetched(self):
+        return 'roles' in getattr(self, '_prefetched_objects_cache', {})
+
+    def _role_types(self):
+        if self._roles_prefetched():
+            return {r.role_type for r in self.roles.all()}
+        return set(self.roles.values_list('role_type', flat=True))
+
+    def _assigned_module_codes(self):
+        if self._roles_prefetched():
+            return {m.code for r in self.roles.all() for m in r.modules.all()}
+        return set(Module.objects.filter(roles__users=self).distinct().values_list('code', flat=True))
 
     @property
     def accessible_modules(self):
-        """Returns unique list of module codes this user can access, enforced by SOD rules."""
+        return self.get_accessible_modules()
+
+    def get_accessible_modules(self, sod_rules=None, all_module_codes=None):
+        """
+        Unique module codes this user can access, enforced by SOD rules. Lists
+        pass sod_rules / all_module_codes (loaded once) to avoid a query per user.
+        """
         # 1. Superusers always get everything
         if self.is_superuser or self.has_role(Role.RoleType.SUPER_ADMIN):
-            return list(Module.objects.values_list('code', flat=True))
+            return list(all_module_codes) if all_module_codes is not None \
+                else list(Module.objects.values_list('code', flat=True))
 
         # Tenants, owners and contractors see only their portals (not even the dashboard).
         if self.is_portal_only:
-            types = set(self.roles.values_list('role_type', flat=True))
-            return sorted(EXTERNAL_ROLE_MODULES[t] for t in types)
-        
+            return sorted(EXTERNAL_ROLE_MODULES[t] for t in self._role_types())
+
         # 2. Get all modules assigned to user's roles
-        # Note: We removed the global 'admin' bypass here. 
+        # Note: We removed the global 'admin' bypass here.
         # Admins now only see what is assigned to their specific roles.
-        assigned_modules = set(Module.objects.filter(roles__users=self).distinct().values_list('code', flat=True))
-        
+        assigned_modules = self._assigned_module_codes()
+
         # 3. Always include dashboard for everyone
         assigned_modules.add('dashboard')
-        
+
         # 4. Enforce Critical SOD violations (blocking access)
-        return self._enforce_critical_sod(assigned_modules)
+        return self._enforce_critical_sod(assigned_modules, sod_rules)
 
     @property
     def is_portal_only(self):
         """A tenant, owner or contractor login with no staff role."""
         if self.is_superuser:
             return False
-        role_types = set(self.roles.values_list('role_type', flat=True))
+        role_types = self._role_types()
         return bool(role_types) and role_types <= set(EXTERNAL_ROLE_MODULES)
 
-    def _enforce_critical_sod(self, module_codes):
+    @staticmethod
+    def active_sod_rules():
+        return list(SODRule.objects.filter(is_active=True).select_related('module_a', 'module_b'))
+
+    def _enforce_critical_sod(self, module_codes, sod_rules=None):
         """
         Filters out conflicting modules based on 'Critical' SOD rules.
         If a violation is found, the second module (module_b) in the rule is blocked.
         """
         blocked_modules = set()
-        active_rules = SODRule.objects.filter(is_active=True, severity=SODRule.Severity.CRITICAL).select_related('module_a', 'module_b')
-        
+        rules = sod_rules if sod_rules is not None else self.active_sod_rules()
+        active_rules = [r for r in rules if r.severity == SODRule.Severity.CRITICAL]
+
         for rule in active_rules:
             if rule.module_a.code in module_codes and rule.module_b.code in module_codes:
                 # Block the second module in the conflict pair
@@ -287,16 +313,16 @@ class User(AbstractBaseUser, PermissionsMixin, UUIDModel):
         
         return [code for code in module_codes if code not in blocked_modules]
 
-    def check_sod_conflicts(self):
+    def check_sod_conflicts(self, sod_rules=None):
         """
         Validates the user's assigned modules against active SOD rules.
         Returns a list of conflict dicts.
         """
         # We check ASSIGNED modules to report conflicts, even if accessible_modules filters them for enforcement
-        user_modules = set(Module.objects.filter(roles__users=self).distinct().values_list('code', flat=True))
+        user_modules = self._assigned_module_codes()
         conflicts = []
-        
-        rules = SODRule.objects.filter(is_active=True).select_related('module_a', 'module_b')
+
+        rules = sod_rules if sod_rules is not None else self.active_sod_rules()
         for rule in rules:
             if rule.module_a.code in user_modules and rule.module_b.code in user_modules:
                 conflicts.append({

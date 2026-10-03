@@ -29,7 +29,7 @@ class AccessAdminWritePermission(permissions.BasePermission):
 
 
 class UserViewSet(RecordRulesMixin, viewsets.ModelViewSet):
-    queryset = User.objects.prefetch_related('roles').order_by('first_name', 'last_name')
+    queryset = User.objects.prefetch_related('roles__modules').order_by('first_name', 'last_name')
     permission_classes = [permissions.IsAuthenticated, HasModuleAccess, AccessAdminWritePermission]
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
     search_fields = ['first_name', 'last_name', 'email']
@@ -74,7 +74,7 @@ class UserViewSet(RecordRulesMixin, viewsets.ModelViewSet):
 
 
 class RoleViewSet(RecordRulesMixin, viewsets.ModelViewSet):
-    queryset = Role.objects.all()
+    queryset = Role.objects.prefetch_related('modules')
     serializer_class = RoleSerializer
     permission_classes = [permissions.IsAuthenticated, HasModuleAccess, AccessAdminWritePermission]
 

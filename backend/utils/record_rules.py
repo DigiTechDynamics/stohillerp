@@ -19,6 +19,17 @@ Put the mixin first in a viewset's bases.
 from rest_framework.exceptions import ValidationError
 
 
+def _flag(obj, name, query):
+    """A fact a list loaded for every row at once (LIST_ANNOTATIONS), else one query."""
+    return getattr(obj, name) if hasattr(obj, name) else query()
+
+
+def _entries_between(obj):
+    from apps.finance.models import JournalEntry
+
+    return JournalEntry.objects.filter(entry_date__range=(obj.start_date, obj.end_date)).exists()
+
+
 def _status(obj):
     return getattr(obj, 'status', None)
 
@@ -92,13 +103,13 @@ def _asset_edit(obj):
 
 
 def _asset_delete(obj):
-    if obj.transactions.exists():
+    if _flag(obj, '_has_transactions', lambda: obj.transactions.exists()):
         return 'This asset has depreciation or disposal history and cannot be deleted. Dispose of it instead.'
     return None
 
 
 def _statement_delete(obj):
-    if obj.lines.filter(is_reconciled=True).exists():
+    if _flag(obj, '_has_reconciled', lambda: obj.lines.filter(is_reconciled=True).exists()):
         return 'Some lines of this statement are reconciled. Undo those matches first.'
     return None
 
@@ -110,7 +121,8 @@ def _statement_line(obj):
 def _project_delete(obj):
     from apps.projects.services import wip_balance
 
-    if obj.status not in ('planning',) or wip_balance(obj) or obj.purchase_orders.exists():
+    if obj.status not in ('planning',) or _flag(obj, '_has_pos', lambda: obj.purchase_orders.exists()) \
+            or wip_balance(obj):
         return 'Projects with costs or purchase orders cannot be deleted. Mark the project cancelled instead.'
     return None
 
@@ -118,7 +130,7 @@ def _project_delete(obj):
 def _account_delete(obj):
     if obj.is_system:
         return 'System accounts cannot be deleted.'
-    if obj.journal_lines.exists():
+    if _flag(obj, '_has_postings', lambda: obj.journal_lines.exists()):
         return 'This account has postings and cannot be deleted. Deactivate it instead.'
     return None
 
@@ -128,7 +140,8 @@ def _user_delete(obj):
 
 
 def _role_delete(obj):
-    return 'Users have this role. Move them to another role first.' if obj.users.exists() else None
+    in_use = _flag(obj, '_in_use', lambda: obj.users.exists())
+    return 'Users have this role. Move them to another role first.' if in_use else None
 
 
 def _currency_delete(obj):
@@ -140,17 +153,13 @@ def _period_edit(obj):
 
 
 def _period_delete(obj):
-    from apps.finance.models import JournalEntry
-
-    if JournalEntry.objects.filter(entry_date__range=(obj.start_date, obj.end_date)).exists():
+    if _flag(obj, '_has_entries', lambda: _entries_between(obj)):
         return 'This period has journal entries and cannot be deleted.'
     return None
 
 
 def _year_delete(obj):
-    from apps.finance.models import JournalEntry
-
-    if JournalEntry.objects.filter(entry_date__range=(obj.start_date, obj.end_date)).exists():
+    if _flag(obj, '_has_entries', lambda: _entries_between(obj)):
         return 'This year has journal entries and cannot be deleted.'
     return None
 
@@ -202,6 +211,33 @@ RULES = {
 }
 
 
+def _list_annotations(label):
+    """
+    Exists() subqueries that answer the rules for a whole page in the list
+    query, instead of one query per row.
+    """
+    from django.db.models import Exists, OuterRef
+
+    if label == 'core.role':
+        from apps.core.models import User
+        return {'_in_use': Exists(User.roles.through.objects.filter(role_id=OuterRef('pk')))}
+    if label == 'finance.chartofaccount':
+        from apps.finance.models import JournalLine
+        return {'_has_postings': Exists(JournalLine.objects.filter(account_id=OuterRef('pk')))}
+    if label in ('finance.fiscalperiod', 'finance.fiscalyear'):
+        from apps.finance.models import JournalEntry
+        return {'_has_entries': Exists(JournalEntry.objects.filter(
+            entry_date__gte=OuterRef('start_date'), entry_date__lte=OuterRef('end_date')))}
+    if label == 'fixed_assets.fixedasset':
+        from apps.fixed_assets.models import AssetTransaction
+        return {'_has_transactions': Exists(AssetTransaction.objects.filter(asset_id=OuterRef('pk')))}
+    if label == 'banking.corporatebankstatement':
+        from apps.banking.models import CorporateBankStatementLine
+        return {'_has_reconciled': Exists(CorporateBankStatementLine.objects.filter(
+            statement_id=OuterRef('pk'), is_reconciled=True))}
+    return {}
+
+
 def rules_for(model):
     return RULES.get(model._meta.label_lower, (None, None))
 
@@ -245,7 +281,9 @@ class RecordRulesMixin:
         items = data.get('results') if isinstance(data, dict) else data
         if isinstance(items, list) and items:
             ids = [i.get('id') for i in items if isinstance(i, dict) and i.get('id') is not None]
-            self._annotate(items, self.get_queryset().model.objects.filter(pk__in=ids))
+            model = self.get_queryset().model
+            objects = model.objects.filter(pk__in=ids).annotate(**_list_annotations(model._meta.label_lower))
+            self._annotate(items, objects)
         return response
 
     def retrieve(self, request, *args, **kwargs):

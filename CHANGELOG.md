@@ -1,5 +1,40 @@
 # Changelog
 
+## [Unreleased] - technical debt
+
+Branch `fix/technical-debt`.
+
+- **Tokens out of `localStorage`.**
+  - Login now sets the refresh token as an httpOnly, SameSite=Strict cookie
+    (`stohill_refresh`, scoped to `/api/v1/auth/`), and the body carries only
+    the access token.
+  - The SPA keeps the access token in memory. After a reload, the first 401
+    refreshes it from the cookie.
+  - Refreshing from the cookie needs `X-Requested-With: XMLHttpRequest`.
+  - Logout revokes the token and clears the cookie.
+  - Tokens stored by older versions are discarded on upgrade, so users sign
+    in once more.
+  - New setting `JWT_COOKIE_SECURE`.
+- **No per-row queries in list endpoints.** Fixed:
+  - Users and roles: role modules are prefetched and the SoD rules are loaded
+    once per response.
+  - Contacts: opportunity and document counts and active leases.
+  - Opportunities: next activity and pipeline stages.
+  - Customer and supplier balances.
+  - Accounts, tax codes, employees, tax brackets and properties.
+  - Record lock checks for roles, accounts, fiscal periods and years, assets
+    and bank statements now run as one subquery per list.
+  - `tests/test_query_counts.py` fails if any list endpoint's query count
+    grows with the number of rows.
+- **Legacy manual checks ported.** The `scripts/manual_checks/` scripts are
+  now assertions in `tests/test_legacy_checks.py`, and the scripts are
+  removed. The tests cover:
+  - Depreciation.
+  - Disposal at a gain or a loss.
+  - Oldest-first receipt allocation.
+  - Commissions paid through payroll.
+  - The dashboards for every role.
+
 ## [Unreleased] - property-management gaps
 
 Branch `feat/property-management-gaps`. Closes the partial and missing items

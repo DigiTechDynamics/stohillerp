@@ -67,8 +67,10 @@ class ContactSerializer(SensitiveFieldsMixin, serializers.ModelSerializer):
 
     def get_active_leases(self, obj):
         try:
-            from apps.rentals.models import Lease
-            leases = Lease.objects.filter(tenant=obj, status='active').select_related('property')
+            leases = getattr(obj, 'active_lease_list', None)
+            if leases is None:
+                from apps.rentals.models import Lease
+                leases = Lease.objects.filter(tenant=obj, status='active').select_related('property')
             return [{
                 'id': str(l.id),
                 'lease_number': l.lease_number,
@@ -82,10 +84,12 @@ class ContactSerializer(SensitiveFieldsMixin, serializers.ModelSerializer):
     def get_opportunity_count(self, obj):
         # related_name is "contact_opportunities"; the old "opportunities"
         # attribute raised AttributeError, crashing the whole contacts list.
-        return obj.contact_opportunities.count()
+        annotated = getattr(obj, 'n_opportunities', None)
+        return annotated if annotated is not None else obj.contact_opportunities.count()
 
     def get_document_count(self, obj):
-        return obj.documents.count()
+        annotated = getattr(obj, 'n_documents', None)
+        return annotated if annotated is not None else obj.documents.count()
 
 
 class CrmTagSerializer(serializers.ModelSerializer):
@@ -154,15 +158,17 @@ class OpportunitySerializer(serializers.ModelSerializer):
         return obj.contact_name or obj.email_from or "Unnamed Lead"
 
     def get_next_activity_date(self, obj):
-        activity = obj.opportunity_activities.filter(status='planned').order_by('due_date').first()
-        return activity.due_date if activity else None
+        # Uses the activities the view prefetched (a .filter() would query per row).
+        dates = [a.due_date for a in obj.opportunity_activities.all() if a.status == 'planned' and a.due_date]
+        return min(dates) if dates else None
 
     def get_pipeline_stages(self, obj):
-        """Return ordered non-terminal stages for the stage progress bar."""
-        stages = PipelineStage.objects.filter(
-            pipeline=obj.pipeline
-        ).order_by('position')
-        return PipelineStageSerializer(stages, many=True).data
+        """Return ordered non-terminal stages for the stage progress bar (once per pipeline per response)."""
+        cache = self.context.setdefault('_pipeline_stages', {})
+        if obj.pipeline_id not in cache:
+            stages = PipelineStage.objects.filter(pipeline_id=obj.pipeline_id).order_by('position')
+            cache[obj.pipeline_id] = PipelineStageSerializer(stages, many=True).data
+        return cache[obj.pipeline_id]
 
     def get_contact_email(self, obj):
         if obj.contact:

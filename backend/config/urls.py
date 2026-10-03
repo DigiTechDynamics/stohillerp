@@ -7,9 +7,9 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
+from rest_framework_simplejwt.views import TokenVerifyView
 
-from apps.core.auth_views import LogoutView, ThrottledTokenObtainPairView
+from apps.core.auth_views import CookieTokenRefreshView, LogoutView, ThrottledTokenObtainPairView
 from apps.core.health import health
 from apps.portal.views import PaynowResultView, PortalActivateView
 
@@ -21,7 +21,7 @@ api_v1_patterns = [
     # Authentication
     path('auth/login/', ThrottledTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/logout/', LogoutView.as_view(), name='token_logout'),
-    path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/refresh/', CookieTokenRefreshView.as_view(), name='token_refresh'),
     path('auth/verify/', TokenVerifyView.as_view(), name='token_verify'),
     path('auth/portal-activate/', PortalActivateView.as_view(), name='portal-activate'),
 

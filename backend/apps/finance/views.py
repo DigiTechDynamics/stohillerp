@@ -9,7 +9,7 @@ import logging
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import models, transaction
 from django.utils import timezone
-from django.db.models import Sum, Count, Case, When, Q  # type: ignore
+from django.db.models import Sum, Count, Case, When, Q, OuterRef  # type: ignore
 from django.http import HttpResponse
 from datetime import date
 from decimal import Decimal
@@ -34,6 +34,7 @@ from apps.finance.statements import CustomerStatementActions, SupplierStatementA
 from apps.finance.approval_views import ApprovalActions  # type: ignore
 from apps.procurement.match_views import InvoiceMatchActions  # type: ignore
 from apps.finance.services import approvals  # type: ignore
+from utils.queries import ledger_balance
 from utils.record_rules import RecordRulesMixin
 from apps.portal.views import InviteSupplierToPortalActions
 
@@ -141,7 +142,7 @@ class UnifiedAccountSearchView(APIView):
 
 
 class ChartOfAccountViewSet(RecordRulesMixin, viewsets.ModelViewSet):
-    queryset = ChartOfAccount.objects.select_related('parent').order_by('code')
+    queryset = ChartOfAccount.objects.select_related('parent', 'currency').order_by('code')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['account_type', 'account_sub_type', 'is_active', 'allow_direct_posting']
     search_fields = ['code', 'name']
@@ -742,7 +743,9 @@ class ReportExportView(APIView):
 from apps.finance.models import Supplier, SupplierInvoice, SupplierPayment  # type: ignore
 
 class SupplierViewSet(SupplierStatementActions, InviteSupplierToPortalActions, viewsets.ModelViewSet):
-    queryset = Supplier.objects.all().order_by('name')
+    queryset = Supplier.objects.select_related('currency', 'ap_account').annotate(
+        ledger_balance=ledger_balance(debit_positive=False, supplier_ref=OuterRef('pk'), account=OuterRef('ap_account')),
+    ).order_by('name')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['is_active']
     search_fields = ['name', 'tax_number', 'email']
@@ -848,7 +851,9 @@ class SupplierPaymentViewSet(RecordRulesMixin, ApprovalActions, PaymentSettlemen
 from apps.finance.models import CustomerProfile, CustomerInvoice, CustomerReceipt  # type: ignore
 
 class CustomerProfileViewSet(CustomerStatementActions, viewsets.ModelViewSet):
-    queryset = CustomerProfile.objects.select_related('contact_link', 'ar_account').order_by('name')
+    queryset = CustomerProfile.objects.select_related('contact_link', 'ar_account').annotate(
+        ledger_balance=ledger_balance(contact_ref=OuterRef('contact_link'), account=OuterRef('ar_account')),
+    ).order_by('name')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['is_active']
     search_fields = ['name', 'contact_link__first_name', 'contact_link__last_name']
@@ -950,7 +955,7 @@ class BankAccountViewSet(viewsets.ModelViewSet):
         return BankAccountSerializer
 
 class TaxCodeViewSet(viewsets.ModelViewSet):
-    queryset = TaxCode.objects.all().order_by('code')
+    queryset = TaxCode.objects.select_related('collected_account', 'paid_account').order_by('code')
     
     def get_serializer_class(self):
         from apps.finance.serializers import TaxCodeSerializer  # type: ignore

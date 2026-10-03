@@ -10,10 +10,16 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1/'
 // login means "wrong password", not "expired token".
 const AUTH_ENDPOINTS = ['auth/login/', 'auth/refresh/']
 
+// The refresh token is an httpOnly cookie set by the API (never readable here);
+// the access token lives only in memory. X-Requested-With marks requests as
+// coming from our own scripts, which the API requires before using the cookie.
+const XHR_HEADERS = { 'X-Requested-With': 'XMLHttpRequest' }
+
 const api = axios.create({
   baseURL: BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
+  headers: { 'Content-Type': 'application/json', ...XHR_HEADERS },
   timeout: 30000,
+  withCredentials: true,
 })
 
 api.interceptors.request.use((config) => {
@@ -29,12 +35,11 @@ let refreshPromise = null
 
 function refreshAccessToken() {
   if (!refreshPromise) {
-    const { refreshToken, user, setAuth } = useAuthStore.getState()
     refreshPromise = axios
-      .post(`${BASE_URL}auth/refresh/`, { refresh: refreshToken })
+      .post(`${BASE_URL}auth/refresh/`, {}, { withCredentials: true, headers: XHR_HEADERS })
       .then(({ data }) => {
-        // The backend rotates refresh tokens: always store the new one.
-        setAuth(user, data.access, data.refresh ?? refreshToken)
+        // The API rotates the refresh cookie itself; keep the new access token in memory.
+        useAuthStore.getState().setAccessToken(data.access)
         return data.access
       })
       .finally(() => {
@@ -57,7 +62,7 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthCall) {
       originalRequest._retry = true
-      if (!useAuthStore.getState().refreshToken) {
+      if (!useAuthStore.getState().isAuthenticated) {
         forceLogout()
         return Promise.reject(error)
       }
@@ -76,8 +81,8 @@ api.interceptors.response.use(
 
 export const authAPI = {
   login: (email, password) => api.post('auth/login/', { email, password }),
-  // Revokes the refresh token server-side so a stolen copy can't be reused.
-  logout: (refresh) => api.post('auth/logout/', { refresh }),
+  // Revokes the refresh cookie server-side and clears it.
+  logout: () => api.post('auth/logout/', {}),
   me: () => api.get('core/me/'),
   updateMe: (data) => api.patch('core/me/', data),
   portalActivate: (data) => api.post('auth/portal-activate/', data),
@@ -988,14 +993,14 @@ export function saveBlobResponse(response, fallbackName = 'download') {
 export default api
 
 /**
- * Sign the user out everywhere this refresh token is used.
+ * Sign the user out: the API revokes the refresh cookie and clears it.
  * Server-side revocation is best-effort: local state is always cleared,
  * even if the network call fails (e.g. the token already expired).
  */
 export async function signOut() {
-  const { refreshToken, logout } = useAuthStore.getState()
+  const { logout } = useAuthStore.getState()
   try {
-    if (refreshToken) await authAPI.logout(refreshToken)
+    await authAPI.logout()
   } catch {
     // Ignore: an expired/invalid token needs no revocation.
   } finally {
