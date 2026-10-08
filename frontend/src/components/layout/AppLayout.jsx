@@ -10,6 +10,7 @@ import { useCompanyProfile } from '@/hooks/useCompanyProfile'
 import CommandPalette from '@/components/common/CommandPalette'
 import SidePanelContainer from '@/components/common/SidePanelContainer'
 import NotificationBell from '@/components/layout/NotificationBell'
+import RefreshButton from '@/components/layout/RefreshButton'
 import UserMenu from '@/components/layout/UserMenu'
 import ThemeToggle from '@/components/common/ThemeToggle'
 import BrandLogo from '@/components/common/BrandLogo'
@@ -251,6 +252,8 @@ export default function AppLayout() {
 
           <div className="flex items-center gap-3">
             <ThemeToggle />
+
+            <RefreshButton />
 
             <NotificationBell />
 

@@ -25,6 +25,8 @@ export default function LeaseTerms({ lease: initial }) {
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ['lease', lease.id] })
     queryClient.invalidateQueries({ queryKey: ['rental-leases'] })
+    queryClient.invalidateQueries({ queryKey: ['rental-tenants'] })
+    queryClient.invalidateQueries({ queryKey: ['rental-stats'] })
   }
 
   return (
@@ -169,10 +171,15 @@ function Signature({ lease, onChanged }) {
             Send for signature
           </button>
         )}
-        <button className="btn-secondary text-xs flex-1" onClick={async () => {
-          if (await act(rentalsAPI.leases.markSigned(lease.id, status !== 'signed'), status === 'signed' ? 'Marked unsigned.' : 'Marked signed.')) onChanged()
-        }}>{status === 'signed' ? 'Mark unsigned' : 'Mark signed'}</button>
+        {status !== 'signed' && (
+          <button className="btn-secondary text-xs flex-1" onClick={async () => {
+            if (await act(rentalsAPI.leases.markSigned(lease.id, true), 'Marked signed. The lease is now active.')) onChanged()
+          }}>Mark signed</button>
+        )}
       </div>
+      {status === 'signed' && lease.signature_signed_at && (
+        <p className="text-xs text-dark-400">Signed {formatDate(lease.signature_signed_at)}.</p>
+      )}
     </Section>
   )
 }

@@ -86,17 +86,19 @@ POLICY = {
     "procurement/": ({"procurement", "rentals", "properties", "projects"} | FINANCE, {"procurement", "finance_ap"}),
     "projects/": ({"projects", "properties", "procurement"} | FINANCE, {"projects", "finance_gl"}),
     "banking/": ({"banking", "finance_gl"}, {"banking", "finance_gl"}),
+    "fixed-assets/categories/": ({"fixed_assets", "finance_gl", "procurement", "projects"}, {"fixed_assets"}),
     "fixed-assets/": ({"fixed_assets", "finance_gl"}, {"fixed_assets"}),
 
     # Finance sub-areas
-    "finance/suppliers/": ({"finance_ap", "finance_gl", "payroll"}, {"finance_ap"}),
+    # Purchasing picks the supplier, account, tax code and asset category on an order.
+    "finance/suppliers/": ({"finance_ap", "finance_gl", "payroll", "procurement"}, {"finance_ap"}),
     "finance/supplier-invoices/": ({"finance_ap", "finance_gl", "payroll"}, {"finance_ap"}),
     "finance/supplier-payments/": ({"finance_ap", "finance_gl", "banking"}, {"finance_ap"}),
     "finance/customers/": ({"finance_ar", "finance_gl", "rentals", "sales"}, {"finance_ar"}),
     "finance/customer-invoices/": ({"finance_ar", "finance_gl", "rentals", "sales"}, {"finance_ar"}),
     "finance/customer-receipts/": ({"finance_ar", "finance_gl", "rentals"}, {"finance_ar"}),
     "finance/bank-accounts/": (FINANCE | {"rentals", "payroll"}, {"banking", "finance_gl"}),
-    "finance/tax-codes/": (FINANCE, {"tax", "finance_gl"}),
+    "finance/tax-codes/": (FINANCE | {"procurement"}, {"tax", "finance_gl"}),
     "finance/reports/vat-return/": ({"tax", "finance_gl"}, {"tax", "finance_gl"}),
     "finance/reports/export/vat-return/": ({"tax", "finance_gl"}, {"tax", "finance_gl"}),
     "finance/approval-rules/": (FINANCE, GL | {"admin"}),
@@ -107,8 +109,8 @@ POLICY = {
     "finance/reports/ap-aging/": ({"finance_ap", "finance_gl"}, set()),
     "finance/currencies/": (ANY, GL),
     "finance/exchange-rates/": (ANY, GL),
-    "finance/accounts/": (FINANCE | {"payroll"}, GL),
-    "finance/account-search/": (FINANCE | {"payroll"}, GL),
+    "finance/accounts/": (FINANCE | {"payroll", "procurement"}, GL),
+    "finance/account-search/": (FINANCE | {"payroll", "procurement"}, GL),
     "finance/journals/": (FINANCE | {"payroll"}, GL),
     "finance/summary/": (FINANCE, set()),
     # Posting, approving, locking and closing stay with the GL module; the

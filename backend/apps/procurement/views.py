@@ -30,17 +30,26 @@ from utils.record_rules import RecordRulesMixin
 class PurchaseOrderLineSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
     expense_account_code = serializers.CharField(source='expense_account.code', read_only=True)
+    asset_category_name = serializers.CharField(source='asset_category.name', read_only=True, default=None)
     line_total = serializers.DecimalField(max_digits=18, decimal_places=2, read_only=True)
 
     class Meta:
         model = PurchaseOrderLine
-        fields = ['id', 'description', 'expense_account', 'expense_account_code', 'quantity', 'unit_price',
-                  'tax_code', 'line_total', 'received_qty', 'invoiced_qty']
+        fields = ['id', 'description', 'expense_account', 'expense_account_code', 'asset_category',
+                  'asset_category_name', 'quantity', 'unit_price', 'tax_code', 'line_total', 'received_qty',
+                  'invoiced_qty']
         read_only_fields = ['received_qty', 'invoiced_qty']
+        extra_kwargs = {'expense_account': {'required': False}}
 
     def validate(self, attrs):
         if attrs.get('quantity', 1) <= 0 or attrs.get('unit_price', 0) < 0:
             raise serializers.ValidationError('Quantity must be positive and price not negative.')
+        if attrs.get('asset_category'):
+            # An asset is capitalised: it books to its category's asset account, not an expense.
+            attrs['expense_account'] = attrs['asset_category'].asset_cost_account
+        elif not attrs.get('expense_account'):
+            raise serializers.ValidationError({'expense_account': 'Choose an expense account, or an asset category '
+                                                                  'if the item is a fixed asset.'})
         return attrs
 
 
@@ -49,13 +58,36 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
     supplier_name = serializers.CharField(source='supplier.name', read_only=True)
     project_code = serializers.CharField(source='project.code', read_only=True, default=None)
     total_amount = serializers.DecimalField(max_digits=18, decimal_places=2, read_only=True)
+    invoices = serializers.SerializerMethodField()
+    to_invoice = serializers.SerializerMethodField()
 
     class Meta:
         model = PurchaseOrder
         fields = ['id', 'number', 'supplier', 'supplier_name', 'order_date', 'expected_date', 'currency', 'status',
                   'property_ref', 'cost_center', 'project', 'project_code', 'notes', 'issued_at', 'total_amount',
-                  'lines']
+                  'lines', 'invoices', 'to_invoice']
         read_only_fields = ['number', 'status', 'issued_at']
+
+    def _detail(self):
+        view = self.context.get('view')
+        return view is not None and getattr(view, 'action', None) != 'list'
+
+    def get_invoices(self, order):
+        """Supplier invoices raised from this order (detail only), so drafts awaiting posting are visible."""
+        if not self._detail():
+            return None
+        from apps.finance.models import SupplierInvoice
+
+        invoices = SupplierInvoice.objects.filter(lines__po_line__order=order).distinct().order_by('invoice_date')
+        return [{'id': str(i.id), 'invoice_number': i.invoice_number, 'status': i.status,
+                 'total_amount': str(i.total_amount)} for i in invoices]
+
+    def get_to_invoice(self, order):
+        """True while something received is on no invoice yet, posted or draft (detail only)."""
+        if not self._detail():
+            return None
+        return any(line.received_qty - line.invoiced_qty - services._pending_on_other_invoices(line) > 0
+                   for line in order.lines.all())
 
     def validate(self, attrs):
         if self.instance and self.instance.status != PurchaseOrder.Status.DRAFT:
@@ -112,7 +144,8 @@ def _date(value):
 
 
 class PurchaseOrderViewSet(RecordRulesMixin, ApprovalActions, viewsets.ModelViewSet):
-    queryset = PurchaseOrder.objects.select_related('supplier', 'project').prefetch_related('lines__expense_account')
+    queryset = PurchaseOrder.objects.select_related('supplier', 'project').prefetch_related(
+        'lines__expense_account', 'lines__asset_category')
     serializer_class = PurchaseOrderSerializer
     filterset_fields = ['status', 'supplier', 'project', 'property_ref']
     search_fields = ['number', 'supplier__name', 'notes']

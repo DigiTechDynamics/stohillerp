@@ -66,7 +66,7 @@ export default function RentalsPage() {
 
   const { data: tenantsRes, isLoading: tenantsLoading } = useQuery({
     queryKey: ['rental-tenants', { search, ordering: sort, page }],
-    queryFn: () => crmAPI.contacts.list({ search, contact_type: 'tenant', ordering: sort, page }),
+    queryFn: () => crmAPI.contacts.list({ search, tenants: 1, ordering: sort, page }),
     enabled: activeTab === 'tenants',
   })
   const tenants = tenantsRes?.data?.results || []

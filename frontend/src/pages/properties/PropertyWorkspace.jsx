@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, LayoutGrid, Image as ImageIcon, TrendingUp, ClipboardCheck, Users, Gauge, Calculator,
-  CalendarClock, Info, Upload, Star, FileDown, ListChecks, CheckCircle2, GitCompare, Loader2,
+  CalendarClock, Info, Upload, Star, FileDown, ListChecks, CheckCircle2, GitCompare, Loader2, Plus,
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { propertiesAPI, propmanAPI, crmAPI, rentalsAPI, financeAPI } from '@/services/api'
@@ -480,24 +480,109 @@ function InspectionDetail({ id, currency, onBack }) {
   )
 }
 
-// ── Owners (shares) ─────────────────────────────────────────────────────────
+// ── Owners: the landlord, co-owners' shares, and adding a new owner ──────────
+
+const OWNERSHIP = [['owned', 'Company owned'], ['managed', 'Managed for an owner'], ['jv', 'Joint venture']]
+const ownerOption = (c) => [c.id, [`${c.first_name} ${c.last_name}`.trim(), c.company].filter(Boolean).join(' · ')]
+
+// Quick-add an owner (a CRM contact filed as a landlord) without leaving the property.
+function NewOwnerForm({ onCreated, onCancel }) {
+  const [form, setForm] = useState({ first_name: '', last_name: '', company: '', email: '', phone_mobile: '' })
+  const [busy, setBusy] = useState(false)
+  const create = async () => {
+    if (!form.first_name || !form.last_name) return toast.error('Please fill in: First name, Last name.')
+    setBusy(true)
+    const res = await act(crmAPI.contacts.create({ ...form, contact_type: 'landlord', source: 'Property owner' }), 'Owner added.')
+    setBusy(false)
+    if (res) onCreated(res.data)
+  }
+  const field = (key, text, type = 'text') => (
+    <input aria-label={text} placeholder={text} type={type} className="form-input text-sm" value={form[key]}
+      onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
+  )
+  return (
+    <div className="rounded-xl border border-white/10 p-3 space-y-2">
+      <p className="text-xs text-dark-400">New owner (saved to CRM as a landlord)</p>
+      <div className="grid grid-cols-2 gap-2">
+        {field('first_name', 'First name *')}{field('last_name', 'Last name *')}
+        {field('company', 'Company / trust')}{field('email', 'Email', 'email')}
+        {field('phone_mobile', 'Mobile')}
+      </div>
+      <div className="flex gap-2">
+        <button className="btn-primary text-xs" disabled={busy} onClick={create}>Add owner</button>
+        <button className="btn-ghost text-xs" onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  )
+}
 
 function Owners({ property }) {
-  const owners = useOptions(['contacts-all'], () => crmAPI.contacts.list({ page_size: 500 }), (c) => [c.id, `${c.first_name} ${c.last_name}`.trim()])
+  const queryClient = useQueryClient()
+  const owners = useOptions(['contacts', 'owners'], () => crmAPI.contacts.list({ owners: 1, page_size: 500 }), ownerOption)
   const { data } = useQuery({ queryKey: ['ownerships', { property: property.id }], queryFn: () => propertiesAPI.ownerships.list({ property: property.id }) })
   const total = rowsOf(data).reduce((s, o) => s + parseFloat(o.share_percent || 0), 0)
+  const [form, setForm] = useState({ ownership_type: property.ownership_type || 'owned', owner: property.owner || '' })
+  const [adding, setAdding] = useState(false)
+  const [busy, setBusy] = useState(false)
+  // The current owner may not be filed as a landlord; keep them selectable.
+  const choices = property.owner && !owners.some(([id]) => id === property.owner)
+    ? [[property.owner, property.owner_name || 'Current owner'], ...owners] : owners
+
+  const save = async () => {
+    if (form.ownership_type === 'managed' && !form.owner) return toast.error('A managed property needs its owner.')
+    setBusy(true)
+    const res = await act(propertiesAPI.update(property.id, { ownership_type: form.ownership_type, owner: form.owner || null }), 'Owner saved.')
+    setBusy(false)
+    if (res) queryClient.invalidateQueries({ queryKey: ['property', property.id] })
+  }
+  const created = (contact) => {
+    queryClient.invalidateQueries({ queryKey: ['contacts', 'owners'] })
+    setForm((f) => ({ ...f, owner: contact.id }))
+    setAdding(false)
+  }
+
   return (
-    <CrudTable label="owner share" queryKey={['ownerships']} api={propertiesAPI.ownerships} params={{ property: property.id }}
-      description={`For co-owned managed properties. Rent, costs and payouts are split by share. Allocated: ${total.toFixed(2)}%.`}
-      emptyText={property.owner ? 'No shares set: the property owner on the property record receives 100%.' : 'No owners recorded.'}
-      columns={[
-        { key: 'owner_name', label: 'Owner' },
-        { key: 'share_percent', label: 'Share %', align: 'right' },
-      ]}
-      fields={[
-        { key: 'owner', label: 'Owner', type: 'select', options: owners, required: true },
-        { key: 'share_percent', label: 'Share %', type: 'number', required: true },
-      ]} />
+    <div className="space-y-6">
+      <div className="card p-4 space-y-3 max-w-2xl">
+        <h3 className="text-sm font-semibold text-white">Owner</h3>
+        <p className="text-xs text-dark-400">For a managed property, rent collected is held in trust for the owner, less the management fee
+          set on the Overview tab, and paid out on owner statements.</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Ownership</label>
+            <select aria-label="Ownership" className="form-input w-full text-sm" value={form.ownership_type}
+              onChange={(e) => setForm({ ...form, ownership_type: e.target.value })}>
+              {OWNERSHIP.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Owner (landlord)</label>
+            <select aria-label="Owner" className="form-input w-full text-sm" value={form.owner || ''}
+              onChange={(e) => setForm({ ...form, owner: e.target.value })}>
+              <option value="">{form.ownership_type === 'owned' ? 'The company' : 'Choose an owner'}</option>
+              {choices.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+        </div>
+        {adding ? <NewOwnerForm onCreated={created} onCancel={() => setAdding(false)} /> : (
+          <button className="btn-ghost text-xs" onClick={() => setAdding(true)}><Plus size={14} /> New owner</button>
+        )}
+        <div><button className="btn-primary text-xs" disabled={busy} onClick={save}>Save owner</button></div>
+      </div>
+
+      <CrudTable label="co-owner" queryKey={['ownerships']} api={propertiesAPI.ownerships} params={{ property: property.id }}
+        title="Co-owners"
+        description={`When several people own the property, rent, costs and payouts are split by share. Allocated: ${total.toFixed(2)}%${total && Math.abs(total - 100) > 0.001 ? ' (should total 100%)' : ''}.`}
+        emptyText={property.owner ? 'No shares: the owner above receives 100%.' : 'No co-owners recorded.'}
+        columns={[
+          { key: 'owner_name', label: 'Owner' },
+          { key: 'share_percent', label: 'Share %', align: 'right' },
+        ]}
+        fields={[
+          { key: 'owner', label: 'Owner', type: 'select', options: choices, required: true },
+          { key: 'share_percent', label: 'Share %', type: 'number', required: true },
+        ]} />
+    </div>
   )
 }
 

@@ -6,6 +6,7 @@ import { Home, FileText, ScrollText, Wrench, LogOut, Building2, ClipboardCheck, 
 import { useAuthStore } from '@/stores/authStore'
 import { useCompanyProfile } from '@/hooks/useCompanyProfile'
 import { signOut } from '@/services/api'
+import RefreshButton from '@/components/layout/RefreshButton'
 import { portalsFor } from '@/utils/portal'
 import BrandLogo from '@/components/common/BrandLogo'
 import PageLoader from '@/components/common/PageLoader'
@@ -61,6 +62,7 @@ export default function PortalLayout({ kind = 'tenant' }) {
             {others.map((p) => (
               <NavLink key={p.kind} to={p.path} className="text-xs text-primary hover:underline">{PORTALS[p.kind].title}</NavLink>
             ))}
+            <RefreshButton />
             <span className="text-xs text-dark-400 hidden sm:inline">{user?.first_name} {user?.last_name}</span>
             <button className="btn-ghost text-xs" onClick={async () => { await signOut(); navigate('/login') }}>
               <LogOut size={14} /> Sign out

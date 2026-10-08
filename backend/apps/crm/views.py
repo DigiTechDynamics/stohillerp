@@ -48,7 +48,15 @@ class ContactViewSet(InviteToPortalActions, viewsets.ModelViewSet):
         from apps.documents.models import Document
         from apps.rentals.models import Lease
 
-        return super().get_queryset().annotate(
+        qs = super().get_queryset()
+        if self.request.query_params.get('tenants') == '1':
+            # Rental Management's tenant list: filed as tenants, or holding a lease whatever their type.
+            qs = qs.filter(Q(contact_type=Contact.ContactType.TENANT) | Q(leases__isnull=False)).distinct()
+        if self.request.query_params.get('owners') == '1':
+            # Property owners: filed as landlords or investors, or already owning (a share of) a property.
+            qs = qs.filter(Q(contact_type__in=[Contact.ContactType.LANDLORD, Contact.ContactType.INVESTOR])
+                           | Q(owned_properties__isnull=False) | Q(property_shares__isnull=False)).distinct()
+        return qs.annotate(
             n_opportunities=subquery_count(Opportunity, 'contact'),
             n_documents=subquery_count(Document, 'contact'),
         ).prefetch_related(Prefetch('leases', to_attr='active_lease_list',

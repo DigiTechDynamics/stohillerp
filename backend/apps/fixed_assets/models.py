@@ -23,6 +23,8 @@ class AssetCategory(AuditedModel):
     disposal_gain_loss_account = models.ForeignKey(
         'finance.ChartOfAccount', on_delete=models.PROTECT, related_name='cat_disposal_accounts'
     )
+    # Used for assets created automatically (from purchase invoices); each asset can be changed later.
+    default_useful_life_months = models.PositiveIntegerField(default=60)
 
     class Meta:
         db_table = 'fa_categories'
@@ -53,6 +55,10 @@ class FixedAsset(AuditedModel):
     barcode = models.CharField(max_length=100, blank=True)
     property_ref = models.ForeignKey(
         'properties.Property', null=True, blank=True, on_delete=models.SET_NULL
+    )
+    # The supplier invoice line it was bought on, when created from purchasing.
+    purchase_invoice_line = models.ForeignKey(
+        'finance.SupplierInvoiceLine', null=True, blank=True, on_delete=models.SET_NULL, related_name='fixed_assets'
     )
 
     class Meta:
