@@ -178,6 +178,16 @@ export const crmAPI = {
     duplicateCheck: (params) => api.get('crm/contacts/duplicate_check/', { params }),
     recomputeScore: (id) => api.post(`crm/contacts/${id}/recompute_score/`),
     inviteToPortal: (id, kind = 'tenant') => api.post(`crm/contacts/${id}/invite_to_portal/`, { kind }),
+    // KYC documents (ID, proof of residence...), kept on the contact's record.
+    documents: {
+      list: (contactId) => api.get('crm/contact-documents/', { params: { contact: contactId, page_size: 100 } }),
+      create: (contactId, formData) => {
+        formData.append('contact', contactId)
+        return api.post('crm/contact-documents/', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+      },
+      verify: (contactId, docId) => api.post(`crm/contact-documents/${docId}/verify/`),
+      delete: (contactId, docId) => api.delete(`crm/contact-documents/${docId}/`),
+    },
   },
   opportunities: {
     list: (params) => api.get('crm/opportunities/', { params }),
@@ -192,6 +202,12 @@ export const crmAPI = {
     markLost: (id, reasonId, reasonText) => api.post(`crm/opportunities/${id}/mark_lost/`, { reason_id: reasonId, reason_text: reasonText }),
     bulkAction: (data) => api.post('crm/opportunities/bulk_action/', data),
     duplicateCheck: (params) => api.get('crm/opportunities/duplicate_check/', { params }),
+  },
+  salesTeams: {
+    list: (params) => api.get('crm/sales-teams/', { params }),
+    create: (data) => api.post('crm/sales-teams/', data),
+    update: (id, data) => api.patch(`crm/sales-teams/${id}/`, data),
+    delete: (id) => api.delete(`crm/sales-teams/${id}/`),
   },
   pipelines: { 
     list: () => api.get('crm/pipelines/'),
@@ -217,7 +233,7 @@ export const crmAPI = {
   },
   notes: {
     list: (params) => api.get('crm/notes/', { params }),
-    create: (data) => api.post('crm/notes/', data),
+    create: (data) => api.post('crm/notes/', data, data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
     delete: (id) => api.delete(`crm/notes/${id}/`),
   },
   lostReasons: {
@@ -438,7 +454,19 @@ export const financeAPI = {
     },
     transactions: {
       list: (params) => api.get('fixed-assets/transactions/', { params }),
-    }
+    },
+    books: {
+      list: (params) => api.get('fixed-assets/books/', { params }),
+      create: (data) => api.post('fixed-assets/books/', data),
+      update: (id, data) => api.patch(`fixed-assets/books/${id}/`, data),
+      delete: (id) => api.delete(`fixed-assets/books/${id}/`),
+    },
+    locations: {
+      list: (params) => api.get('fixed-assets/locations/', { params }),
+      create: (data) => api.post('fixed-assets/locations/', data),
+      update: (id, data) => api.patch(`fixed-assets/locations/${id}/`, data),
+      delete: (id) => api.delete(`fixed-assets/locations/${id}/`),
+    },
   },
   ap: {
     suppliers: {
@@ -882,6 +910,18 @@ export const hrAPI = {
   jobPositions: {
     list: (params) => api.get('hr/job-positions/', { params }),
   },
+  attendance: {
+    list: (params) => api.get('hr/attendance/', { params }),
+    create: (data) => api.post('hr/attendance/', data),
+    update: (id, data) => api.patch(`hr/attendance/${id}/`, data),
+    delete: (id) => api.delete(`hr/attendance/${id}/`),
+  },
+  allocations: {
+    list: (params) => api.get('hr/allocations/', { params }),
+    create: (data) => api.post('hr/allocations/', data),
+    update: (id, data) => api.patch(`hr/allocations/${id}/`, data),
+    delete: (id) => api.delete(`hr/allocations/${id}/`),
+  },
 }
 
 export const payrollAPI = {
@@ -947,6 +987,15 @@ export const adminAPI = {
   },
   modules: {
     list: (params) => api.get('core/modules/', { params }),
+  },
+  integrations: {
+    list: () => api.get('core/integrations/'),
+    testEmail: (to) => api.post('core/integrations/test-email/', { to }),
+    testSms: (to) => api.post('core/integrations/test-sms/', { to }),
+  },
+  auditLogs: {
+    list: (params) => api.get('core/audit-logs/', { params }),
+    models: () => api.get('core/audit-logs/models/'),
   },
   sodRules: {
     list: (params) => api.get('core/sod-rules/', { params }),

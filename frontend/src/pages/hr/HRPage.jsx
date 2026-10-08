@@ -10,11 +10,15 @@ import Pagination from '@/components/common/Pagination'
 import RecordActions from '@/components/common/RecordActions'
 import { useQueryClient } from '@tanstack/react-query'
 import { useLocation } from 'react-router-dom'
+import { AttendanceTab, LeaveAllocationsTab } from '@/components/modules/hr/HRTabs'
+
+const TABS = [['employees', 'Employees'], ['attendance', 'Attendance'], ['allocations', 'Leave allocations']]
 
 export default function HRPage() {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('first_name')
   const [page, setPage] = useState(1)
+  const [tab, setTab] = useState('employees')
   const queryClient = useQueryClient()
   const openPanel = useUIStore((s) => s.openSidePanel)
   const location = useLocation()
@@ -74,6 +78,20 @@ export default function HRPage() {
         ))}
       </div>
 
+      {/* Tabs */}
+      <div className="flex items-center gap-1 border-b border-white/5" role="tablist">
+        {TABS.map(([id, label]) => (
+          <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === id ? 'border-primary text-primary' : 'border-transparent text-dark-400 hover:text-white'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'attendance' && <AttendanceTab />}
+      {tab === 'allocations' && <LeaveAllocationsTab />}
+
+      {tab === 'employees' && (<>
       {/* Toolbar */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-3 w-full max-w-lg">
@@ -181,6 +199,7 @@ export default function HRPage() {
         totalCount={data?.data?.count}
         onPageChange={setPage}
       />
+      </>)}
     </div>
   )
 }

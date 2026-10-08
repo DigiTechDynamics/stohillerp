@@ -52,13 +52,47 @@ class EmployeeContractSerializer(serializers.ModelSerializer):
 
 class AttendanceSerializer(serializers.ModelSerializer):
     employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+
     class Meta:
         model = Attendance
         fields = '__all__'
+        read_only_fields = ['worked_hours']
+
+    def validate(self, attrs):
+        check_in = attrs.get('check_in', getattr(self.instance, 'check_in', None))
+        check_out = attrs.get('check_out', getattr(self.instance, 'check_out', None))
+        if check_in and check_out and check_out <= check_in:
+            raise serializers.ValidationError({'check_out': 'Check-out must be after check-in.'})
+        return attrs
 
 class LeaveAllocationSerializer(serializers.ModelSerializer):
     employee_name = serializers.CharField(source='employee.full_name', read_only=True)
     leave_type_display = serializers.CharField(source='get_leave_type_display', read_only=True)
+    days_taken = serializers.SerializerMethodField()
+    days_remaining = serializers.SerializerMethodField()
+
     class Meta:
         model = LeaveAllocation
         fields = '__all__'
+
+    def validate_days_allocated(self, value):
+        if value < 0:
+            raise serializers.ValidationError('Days allocated cannot be negative.')
+        return value
+
+    def get_days_taken(self, obj):
+        """Approved leave of this type starting within the allocation's validity."""
+        from django.db.models import Sum
+
+        from apps.hr.models import LeaveRequest
+
+        taken = LeaveRequest.objects.filter(employee_id=obj.employee_id, leave_type=obj.leave_type,
+                                            status=LeaveRequest.LeaveStatus.APPROVED)
+        if obj.valid_from:
+            taken = taken.filter(start_date__gte=obj.valid_from)
+        if obj.valid_to:
+            taken = taken.filter(start_date__lte=obj.valid_to)
+        return taken.aggregate(t=Sum('days_requested'))['t'] or 0
+
+    def get_days_remaining(self, obj):
+        return obj.days_allocated - self.get_days_taken(obj)

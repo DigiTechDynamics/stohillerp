@@ -75,7 +75,7 @@ function DocumentList({ contactId }) {
       setIsUploading(false)
       setUploadForm({ name: '', type: 'id' })
     },
-    onError: () => toast.error('Failed to upload document')
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to upload document'))
   })
 
   const verifyMutation = useMutation({
@@ -96,7 +96,7 @@ function DocumentList({ contactId }) {
 
   if (isLoading) return <div className="p-4 space-y-4">{[...Array(3)].map((_, i) => <div key={i} className="h-16 bg-dark-800 animate-pulse rounded-xl" />)}</div>
 
-  const docs = docsRes?.data || []
+  const docs = docsRes?.data?.results || docsRes?.data || []
 
   return (
     <div className="p-5 space-y-4">

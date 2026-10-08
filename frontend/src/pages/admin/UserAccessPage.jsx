@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Users, Shield, LayoutGrid, Wand2, Plus, Search, ShieldCheck, ShieldAlert, UserPlus, AlertTriangle, Key
+  Users, Shield, LayoutGrid, Wand2, Plus, Search, ShieldCheck, ShieldAlert, UserPlus, AlertTriangle, Key, History, Plug
 } from 'lucide-react'
 import { adminAPI, apiErrorMessage } from '@/services/api'
 import { alertDialog, confirmDialog } from '@/components/common/Dialogs'
@@ -11,6 +11,8 @@ import { useUIStore } from '@/stores/authStore'
 import Pagination from '@/components/common/Pagination'
 import RecordActions from '@/components/common/RecordActions'
 import PasswordResetModal from '@/components/modules/admin/PasswordResetModal'
+import AuditLogView from '@/components/modules/admin/AuditLogView'
+import IntegrationsView from '@/components/modules/admin/IntegrationsView'
 
 export default function UserAccessPage() {
   const [tab, setTab] = useState('users')
@@ -24,6 +26,8 @@ export default function UserAccessPage() {
     { id: 'roles', label: 'Role Definitions', icon: Shield },
     { id: 'modules', label: 'System Modules', icon: LayoutGrid },
     { id: 'sod', label: 'SOD Matrix', icon: Wand2 },
+    { id: 'audit', label: 'Audit Log', icon: History },
+    { id: 'integrations', label: 'Integrations', icon: Plug },
   ]
 
   return (
@@ -83,6 +87,8 @@ export default function UserAccessPage() {
           {tab === 'roles' && <RoleList page={page} setPage={setPage} />}
           {tab === 'modules' && <ModuleList page={page} setPage={setPage} />}
           {tab === 'sod' && <SODMatrix page={page} setPage={setPage} />}
+          {tab === 'audit' && <AuditLogView />}
+          {tab === 'integrations' && <IntegrationsView />}
         </AnimatePresence>
 
         <PasswordResetModal 

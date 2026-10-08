@@ -1,5 +1,97 @@
 # Changelog
 
+## [Unreleased] - UAT findings
+
+Branch `fix/uat-findings`. Fixes the findings in `uat-findings.md`. Tests are in
+`backend/tests/test_uat_findings.py`, `test_notifications_inbox.py`,
+`test_audit_log.py` and the new frontend `*.test.jsx` files.
+
+### Upgrade notes
+- Run `migrate` and `bootstrap_system`. They seed document types, fixed asset
+  categories and accounts 1550 and 4970, and point existing posting profiles at
+  the property-management accounts the code used before.
+- Email now goes out by SMTP as soon as `EMAIL_HOST` is set. The compose file
+  used to force the console backend, so no email was ever delivered.
+- New settings: `SMS_BACKEND` (Twilio or a JSON HTTP gateway), `SMS_FROM`,
+  `SMS_TWILIO_*`, `SMS_HTTP_*`, `RENTAL_PAYMENTS_BANK_ACCOUNT`,
+  `DEFAULT_RENT_ESCALATION_RATE`, `DEFAULT_MANAGEMENT_FEE_RATE`, and optionally
+  `VITE_MAP_TILE_URL` / `VITE_MAP_ATTRIBUTION` for a commercial map provider.
+- Payroll refuses to process when a statutory setting or the PAYE brackets for
+  the run's currency are missing, instead of using built-in rates.
+
+### Fixed (user-reported)
+- **Notifications** (#1, GAP-1, HC-3): a per-user inbox under the bell with an
+  unread count, mark read and mark all read. Raised by journal batches and AP
+  approvals, leave requests and decisions, tenant maintenance requests,
+  contractor and owner actions, online payments, lease alerts and CRM
+  assignments.
+- **Logo** (#2): the Stohill logo replaces the "S" placeholder.
+- **Side panel** (#3): record panels with two columns open wider and no longer
+  overflow; light mode uses a white sheet with grey cards and clearer text.
+- **Dialogs** (#4, GAP-22): every browser alert, confirm and prompt is replaced
+  by the application's own dialog.
+- **Light mode** (#5): grey text that was only readable on hover is now dark,
+  and row edit/delete buttons are always visible.
+- **Map** (#6): properties are shown on OpenStreetMap, which needs no key.
+  The property form has a location picker and address lookup.
+- **Pagination** (#7): page-size selector and an always-visible
+  "Showing x-y of n" footer.
+- **Rental invoices** (#8, GAP-2): a detail panel with the charges, payments
+  and a PDF preview, download and print; the list exports to Excel or PDF.
+- **Documents** (#9-#11, HC-1, HC-2, GAP-3): upload works (reference, size and
+  type are filled in). Document type tiles come from the system with live
+  counts and filter the list. A detail panel previews and downloads the file,
+  and document types can be set up.
+- **Exports** (#12): Excel produces a real .xlsx and PDF a formatted PDF.
+- **AR invoices and receipts** (#13, #14): PDFs escape names and descriptions
+  (an "&" made generation fail); receipts can be downloaded as PDF; detail
+  panels always load the full record.
+- **Fixed assets** (#15): the depreciation book is saved with the asset,
+  errors are shown, and starter categories are seeded.
+
+### Fixed (hardcoded data)
+- The top bar shows the real name and role (HC-4, HC-5). The login year is
+  current (HC-6). Phone placeholders and the property country follow the
+  company's country (HC-7, HC-13).
+- The unused rental posting with 15% VAT is removed (HC-8).
+- Owner funds, management fees, recoveries, maintenance and withholding tax
+  accounts come from the posting profile (HC-9).
+- Rental payments record the bank account they were banked into, with a
+  configurable default. Payments are no longer banked to the first account (HC-10).
+- Postings and payroll use the base currency instead of USD (HC-11).
+- Missing payroll settings are reported, not replaced by built-in rates
+  (HC-12).
+- Escalation and management fee defaults are set under Property settings >
+  Defaults (HC-14).
+
+### Added (gaps)
+- Audit log: changes made through the API, sign-ins and sign-outs are
+  recorded and shown under User Access > Audit Log (GAP-4).
+- CRM: the contact's KYC vault works (GAP-5). Sales teams have a screen
+  (GAP-6). Notes can carry attachments, which can be downloaded (GAP-7).
+- Fixed assets: books and location history on the asset (GAP-8), and an
+  asset history view (GAP-17).
+- HR: attendance with worked hours (GAP-9), and leave allocations with taken
+  and remaining days (GAP-10).
+- Executive mode is saved on the user and switched from the user menu
+  (GAP-11).
+- Journal entries can be reversed from the entry (GAP-12).
+- Payroll: statutory rates are saved and PAYE brackets can be managed per
+  currency (GAP-13).
+- Opportunities can be deleted from the table (GAP-14).
+- SoD: "Auto-Suggest Rules" offers the standard conflicting module pairs
+  (GAP-15).
+- Filters work in Banking, bank transactions and the CRM calendar (GAP-16).
+- User Access > Integrations shows email, SMS and Paynow status, with test
+  sends, and lists the processes that are manual by design. Startup checks
+  warn about missing configuration (GAP-18 to GAP-21).
+
+### Open
+- GAP-23 (MRI MDA comparison): `gaps.md` is not in the repository, so the
+  seven features still need to be reviewed and planned.
+- Paynow keys, an SMTP server and an SMS gateway account must be supplied
+  for GAP-18 to GAP-20 to take effect.
+
 ## [Unreleased] - technical debt
 
 Branch `fix/technical-debt`.

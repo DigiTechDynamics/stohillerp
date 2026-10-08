@@ -15,6 +15,7 @@ export default function AssetsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [activeCategory, setActiveCategory] = useState('all')
   const [page, setPage] = useState(1)
+  const [showHistory, setShowHistory] = useState(false)
 
   // Data Fetching
   const { data: assetsData, isLoading } = useQuery({
@@ -151,7 +152,8 @@ export default function AssetsPage() {
                   </button>
                 ))}
              </div>
-             <button className="p-2.5 bg-dark-800 border border-white/5 rounded-xl text-dark-400 hover:text-white transition-colors">
+             <button title="Asset history" aria-pressed={showHistory} onClick={() => setShowHistory((v) => !v)}
+               className={`p-2.5 border rounded-xl transition-colors ${showHistory ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-dark-800 border-white/5 text-dark-400 hover:text-white'}`}>
                <History size={18} />
              </button>
              <button className="p-2.5 bg-dark-800 border border-white/5 rounded-xl text-dark-400 hover:text-white transition-colors" onClick={() => openSidePanel('asset-category-form')}>
@@ -160,6 +162,7 @@ export default function AssetsPage() {
           </div>
         </div>
 
+        {showHistory ? <AssetHistory category={activeCategory !== 'all' ? activeCategory : undefined} /> : (
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
@@ -245,14 +248,66 @@ export default function AssetsPage() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
-      <Pagination 
-        currentPage={page}
-        totalPages={assetsData?.data?.total_pages}
-        totalCount={assetsData?.data?.count}
-        onPageChange={setPage}
-      />
+      {!showHistory && (
+        <Pagination
+          currentPage={page}
+          totalPages={assetsData?.data?.total_pages}
+          totalCount={assetsData?.data?.count}
+          onPageChange={setPage}
+        />
+      )}
+    </div>
+  )
+}
+
+// Every acquisition, depreciation run, revaluation and disposal across the register.
+const HISTORY_TYPES = [['', 'All events'], ['acquisition', 'Acquisition'], ['depreciation', 'Depreciation'],
+  ['revaluation', 'Revaluation'], ['impairment', 'Impairment'], ['disposal', 'Disposal']]
+
+function AssetHistory({ category }) {
+  const [type, setType] = useState('')
+  const [page, setPage] = useState(1)
+  const { data, isLoading } = useQuery({
+    queryKey: ['asset-history', type, category, page],
+    queryFn: async () => (await fixedAssetsAPI.transactions.list({
+      transaction_type: type || undefined, asset__category: category, page,
+    })).data,
+  })
+  const rows = data?.results || []
+  return (
+    <div className="p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-white">Asset history</h3>
+        <select className="form-input w-auto text-xs" aria-label="Event type" value={type} onChange={(e) => { setType(e.target.value); setPage(1) }}>
+          {HISTORY_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="data-table">
+          <thead>
+            <tr><th>Date</th><th>Asset</th><th>Event</th><th>Book</th><th className="text-right">Amount</th><th>Journal</th></tr>
+          </thead>
+          <tbody>
+            {rows.map((t) => (
+              <tr key={t.id}>
+                <td className="text-xs">{formatDate(t.transaction_date)}</td>
+                <td className="text-sm text-white">{t.asset_code} <span className="text-dark-400">{t.asset_name}</span></td>
+                <td><span className="badge-gray text-[10px] uppercase">{t.transaction_type_display}</span></td>
+                <td className="text-xs">{t.book_type}</td>
+                <td className="text-right font-mono text-sm">{formatCurrency(t.amount)}</td>
+                <td className="text-xs font-mono">{t.journal_reference || '—'}</td>
+              </tr>
+            ))}
+            {!rows.length && !isLoading && (
+              <tr><td colSpan={6} className="text-center py-12 text-dark-400">No asset events yet. Depreciation runs and disposals appear here.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <Pagination currentPage={page} totalPages={data?.total_pages} totalCount={data?.count} onPageChange={setPage} />
     </div>
   )
 }

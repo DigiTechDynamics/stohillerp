@@ -3,22 +3,38 @@ import { useQuery } from '@tanstack/react-query'
 import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Search, Filter, Phone, Mail, MessageSquare, Home, Plus
 } from 'lucide-react'
-import { crmAPI } from '@/services/api'
+import { crmAPI, hrAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 export default function CrmCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [search, setSearch] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState({ activity_type: '', status: '', assigned_to: '' })
   const openPanel = useUIStore(s => s.openSidePanel)
 
+  // Only the month on screen (the grid shows at most six weeks).
+  const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+  const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59)
   const { data: activitiesRes } = useQuery({
-    queryKey: ['crm-calendar-activities', currentDate.getMonth(), currentDate.getFullYear()],
-    queryFn: () => crmAPI.activities.list({ 
-      page_size: 100,
-      // Ideally we should filter by the month range here
+    queryKey: ['crm-calendar-activities', currentDate.getMonth(), currentDate.getFullYear(), search, filters],
+    queryFn: () => crmAPI.activities.list({
+      page_size: 200,
+      due_date__gte: monthStart.toISOString(),
+      due_date__lte: monthEnd.toISOString(),
+      search: search || undefined,
+      ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
     })
   })
+  const { data: agentsRes } = useQuery({
+    queryKey: ['employees', 'options'],
+    queryFn: () => hrAPI.employees.list({ page_size: 200 }),
+    enabled: showFilters,
+  })
+  const agents = agentsRes?.data?.results || []
+  const activeFilters = Object.values(filters).filter(Boolean).length
 
   const activities = activitiesRes?.data?.results || []
 
@@ -114,11 +130,15 @@ export default function CrmCalendar() {
               <input 
                 type="text" 
                 placeholder="Find event..." 
+                aria-label="Find event"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 className="bg-dark-700/50 border-white/5 rounded-xl pl-9 pr-4 py-2 text-xs text-white focus:border-primary/30 outline-none w-48 transition-all"
               />
            </div>
-           <button className="btn-secondary h-9 px-4 text-[10px] uppercase font-bold tracking-widest flex items-center gap-2">
-             <Filter size={14} /> Filter
+           <button onClick={() => setShowFilters((v) => !v)} aria-expanded={showFilters}
+             className={`btn-secondary h-9 px-4 text-[10px] uppercase font-bold tracking-widest flex items-center gap-2 ${activeFilters ? 'border-primary text-primary' : ''}`}>
+             <Filter size={14} /> Filter{activeFilters ? ` (${activeFilters})` : ''}
            </button>
            <button 
              onClick={() => openPanel('activity-form')}
@@ -128,6 +148,32 @@ export default function CrmCalendar() {
            </button>
         </div>
       </div>
+
+      {showFilters && (
+        <div className="flex flex-wrap items-center gap-3 px-6 py-3 border-b border-white/5 bg-dark-800/20">
+          <select className="form-input w-auto text-xs" aria-label="Activity type" value={filters.activity_type}
+            onChange={(e) => setFilters({ ...filters, activity_type: e.target.value })}>
+            <option value="">All types</option>
+            {['call', 'email', 'meeting', 'viewing', 'whatsapp', 'task', 'note'].map((t) => <option key={t} value={t}>{t[0].toUpperCase() + t.slice(1)}</option>)}
+          </select>
+          <select className="form-input w-auto text-xs" aria-label="Status" value={filters.status}
+            onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
+            <option value="">Any status</option>
+            <option value="planned">Planned</option>
+            <option value="completed">Completed</option>
+            <option value="overdue">Overdue</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <select className="form-input w-auto text-xs" aria-label="Agent" value={filters.assigned_to}
+            onChange={(e) => setFilters({ ...filters, assigned_to: e.target.value })}>
+            <option value="">All agents</option>
+            {agents.map((a) => <option key={a.id} value={a.id}>{a.full_name || `${a.first_name} ${a.last_name}`}</option>)}
+          </select>
+          {activeFilters > 0 && (
+            <button type="button" className="btn-ghost text-xs" onClick={() => setFilters({ activity_type: '', status: '', assigned_to: '' })}>Clear</button>
+          )}
+        </div>
+      )}
 
       {/* Days Grid Header */}
       <div className="grid grid-cols-7 bg-dark-800/20 border-b border-white/5">

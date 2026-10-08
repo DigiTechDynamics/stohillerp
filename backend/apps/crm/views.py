@@ -390,7 +390,8 @@ class ActivityViewSet(viewsets.ModelViewSet):
     queryset = Activity.objects.select_related('opportunity', 'assigned_to', 'email_template')
     serializer_class = ActivitySerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['activity_type', 'status', 'assigned_to', 'opportunity', 'contact']
+    filterset_fields = {'activity_type': ['exact'], 'status': ['exact'], 'assigned_to': ['exact'],
+                        'opportunity': ['exact'], 'contact': ['exact'], 'due_date': ['gte', 'lte']}
     search_fields = ['subject', 'description']
     ordering_fields = ['due_date', 'created_at', 'status']
 

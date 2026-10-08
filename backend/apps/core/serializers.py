@@ -120,12 +120,13 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
-    user_name = serializers.CharField(source='user.full_name', read_only=True)
+    user_name = serializers.CharField(source='user.full_name', read_only=True, default=None)
+    user_email = serializers.CharField(source='user.email', read_only=True, default=None)
 
     class Meta:
         model = AuditLog
-        fields = ['id', 'user_name', 'action', 'model_name', 'object_id',
-                  'object_repr', 'changes', 'ip_address', 'timestamp']
+        fields = ['id', 'user', 'user_name', 'user_email', 'action', 'model_name', 'object_id',
+                  'object_repr', 'changes', 'ip_address', 'user_agent', 'timestamp']
 
 
 class CurrencySerializer(serializers.ModelSerializer):

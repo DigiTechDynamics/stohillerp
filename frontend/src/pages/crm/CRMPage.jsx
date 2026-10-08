@@ -3,9 +3,9 @@ import { useState, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Search, Plus, User, Mail, Edit2, Trash2, TrendingUp, LayoutGrid, List, BarChart2, SlidersHorizontal, CheckSquare, Calendar as CalendarIcon
+  Search, Plus, User, Users, Mail, Edit2, Trash2, TrendingUp, LayoutGrid, List, BarChart2, SlidersHorizontal, CheckSquare, Calendar as CalendarIcon
 } from 'lucide-react'
-import { crmAPI } from '@/services/api'
+import { crmAPI, hrAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
@@ -17,6 +17,7 @@ import BulkActionBar from '@/components/modules/crm/BulkActionBar'
 import CrmReportingPage from '@/pages/crm/CrmReportingPage'
 import CrmCalendar from '@/components/modules/crm/CrmCalendar'
 import { confirmDialog } from '@/components/common/Dialogs'
+import CrudTable from '@/components/common/CrudTable'
 
 const TABS = [
   { id: 'leads', label: 'Leads', icon: Mail },
@@ -24,6 +25,7 @@ const TABS = [
   { id: 'calendar', label: 'Calendar', icon: CalendarIcon },
   { id: 'contacts', label: 'Contacts', icon: User },
   { id: 'reporting', label: 'Reporting', icon: BarChart2 },
+  { id: 'teams', label: 'Sales Teams', icon: Users },
 ]
 
 export default function CRMPage() {
@@ -117,7 +119,8 @@ export default function CRMPage() {
               {activeTab === 'pipeline' ? 'Active Sales Pipeline' :
                 activeTab === 'leads' ? 'Unqualified Leads' :
                   activeTab === 'contacts' ? 'Contact Directory' :
-                    activeTab === 'calendar' ? 'Team Schedule' : 'Analytics & Reporting'}
+                    activeTab === 'calendar' ? 'Team Schedule' :
+                      activeTab === 'teams' ? 'Sales Teams & Territories' : 'Analytics & Reporting'}
             </p>
           </div>
         </div>
@@ -126,7 +129,7 @@ export default function CRMPage() {
             module="crm"
             onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['crm-contacts'] })}
           />
-          {activeTab !== 'reporting' && (
+          {activeTab !== 'reporting' && activeTab !== 'teams' && (
             <>
               <button
                 className="btn-secondary flex items-center gap-2 h-10 px-4 text-xs font-bold uppercase tracking-wider"
@@ -165,7 +168,7 @@ export default function CRMPage() {
         </div>
 
         <div className="flex items-center gap-3 mb-2">
-          {activeTab !== 'contacts' && activeTab !== 'reporting' && activeTab !== 'calendar' && (
+          {!['contacts', 'reporting', 'calendar', 'teams'].includes(activeTab) && (
             <>
               {/* Kanban/Table toggle */}
               <div className="flex items-center bg-dark-800 rounded-xl p-1 border border-white/5 shadow-inner">
@@ -218,7 +221,7 @@ export default function CRMPage() {
       </div>
 
       {/* Search Toolbar (hide on reporting/calendar) */}
-      {activeTab !== 'reporting' && activeTab !== 'calendar' && (
+      {!['reporting', 'calendar', 'teams'].includes(activeTab) && (
         <div className="flex items-center gap-4 w-full flex-shrink-0 bg-dark-800/20 p-2 rounded-2xl border border-white/5">
           <div className="relative flex-1">
             <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-primary opacity-50" />
@@ -256,7 +259,9 @@ export default function CRMPage() {
       <div className="flex-1 overflow-hidden mt-4">
 
         {/* Reporting Tab */}
-        {activeTab === 'reporting' ? (
+        {activeTab === 'teams' ? (
+          <SalesTeams />
+        ) : activeTab === 'reporting' ? (
           <CrmReportingPage />
         ) : activeTab === 'calendar' ? (
           <CrmCalendar />
@@ -382,6 +387,36 @@ export default function CRMPage() {
         onClearSelection={clearSelection}
         onRefresh={() => queryClient.invalidateQueries({ queryKey: ['kanban'] })}
       />
+    </div>
+  )
+}
+
+// Sales teams: a leader and members (agents), used to assign and report on deals.
+function SalesTeams() {
+  const { data: employeesRes } = useQuery({
+    queryKey: ['employees', 'options'],
+    queryFn: () => hrAPI.employees.list({ page_size: 200 }),
+  })
+  const employees = (employeesRes?.data?.results || employeesRes?.data || []).map((e) => [e.id, e.full_name || `${e.first_name} ${e.last_name}`])
+  return (
+    <div className="h-full overflow-y-auto pr-2">
+      <CrudTable label="sales team" queryKey={['sales-teams']} api={crmAPI.salesTeams}
+        description="Group agents into teams. Deals and leads can be assigned to a team and filtered by it on the pipeline."
+        columns={[
+          { key: 'name', label: 'Team' },
+          { key: 'team_leader_name', label: 'Leader', render: (r) => r.team_leader_name || '—' },
+          { key: 'member_count', label: 'Members', align: 'right' },
+          { key: 'description', label: 'Territory / notes', render: (r) => r.description || '—' },
+          { key: 'is_active', label: 'Active', render: (r) => (r.is_active ? 'Yes' : 'No') },
+        ]}
+        fields={[
+          { key: 'name', label: 'Name', required: true },
+          { key: 'team_leader', label: 'Team leader', type: 'select', options: employees },
+          { key: 'members', label: 'Members (Ctrl/Cmd-click to pick several)', type: 'multiselect', options: employees, span: 2 },
+          { key: 'description', label: 'Territory / notes', type: 'textarea', span: 2 },
+          { key: 'is_active', label: 'Active', type: 'checkbox' },
+        ]}
+        defaults={{ is_active: true, members: [] }} />
     </div>
   )
 }

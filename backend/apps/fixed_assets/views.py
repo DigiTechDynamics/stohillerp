@@ -77,15 +77,27 @@ class FixedAssetViewSet(RecordRulesMixin, viewsets.ModelViewSet):
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class AssetBookViewSet(viewsets.ModelViewSet):
-    queryset = AssetBook.objects.all()
+    queryset = AssetBook.objects.select_related('asset').order_by('asset__code', 'book_type')
     serializer_class = AssetBookSerializer
+    filterset_fields = ['asset', 'book_type']
+
+    def perform_destroy(self, instance):
+        if instance.accumulated_depreciation or instance.last_depreciation_date:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError('This book has been depreciated and cannot be deleted.')
+        instance.delete()
+
 
 class AssetLocationViewSet(viewsets.ModelViewSet):
-    queryset = AssetLocation.objects.all()
+    """Where an asset is, as a dated history of transfers (the latest is the current location)."""
+    queryset = AssetLocation.objects.select_related('asset').order_by('-transfer_date', '-created_at')
     serializer_class = AssetLocationSerializer
     filterset_fields = ['asset']
 
+
 class AssetTransactionViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = AssetTransaction.objects.all()
+    """Asset history: acquisitions, depreciation, revaluations and disposals (?asset=&transaction_type=)."""
+    queryset = AssetTransaction.objects.select_related('asset', 'journal_entry')
     serializer_class = AssetTransactionSerializer
-    filterset_fields = ['asset', 'transaction_type']
+    filterset_fields = ['asset', 'transaction_type', 'asset__category']
+    search_fields = ['asset__code', 'asset__name', 'notes']

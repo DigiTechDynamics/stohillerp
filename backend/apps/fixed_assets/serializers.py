@@ -13,9 +13,26 @@ class AssetCategorySerializer(serializers.ModelSerializer):
 
 
 class AssetBookSerializer(serializers.ModelSerializer):
+    """A depreciation book (statutory, tax, IFRS...). A new book starts at the asset's cost."""
+    current_nbv = serializers.DecimalField(max_digits=18, decimal_places=2, required=False)
+
     class Meta:
         model = AssetBook
         fields = '__all__'
+        read_only_fields = ['accumulated_depreciation', 'consumed_units', 'last_depreciation_date']
+
+    def validate(self, attrs):
+        asset = attrs.get('asset', getattr(self.instance, 'asset', None))
+        if self.instance and self.instance.last_depreciation_date:
+            changed = {k for k in ('method', 'useful_life_months', 'salvage_value', 'current_nbv') if k in attrs}
+            if changed:
+                raise serializers.ValidationError('This book has been depreciated; change it with a revaluation '
+                                                  'or impairment instead.')
+        if not self.instance and asset is not None and attrs.get('current_nbv') is None:
+            attrs['current_nbv'] = asset.acquisition_cost
+        if asset is not None and attrs.get('salvage_value') and attrs['salvage_value'] > asset.acquisition_cost:
+            raise serializers.ValidationError({'salvage_value': 'The salvage value cannot exceed the cost.'})
+        return attrs
 
 
 class AssetBookInputSerializer(serializers.Serializer):
@@ -101,6 +118,11 @@ class AssetLocationSerializer(serializers.ModelSerializer):
 
 
 class AssetTransactionSerializer(serializers.ModelSerializer):
+    asset_code = serializers.CharField(source='asset.code', read_only=True)
+    asset_name = serializers.CharField(source='asset.name', read_only=True)
+    transaction_type_display = serializers.CharField(source='get_transaction_type_display', read_only=True)
+    journal_reference = serializers.CharField(source='journal_entry.reference', read_only=True, default=None)
+
     class Meta:
         model = AssetTransaction
         fields = '__all__'

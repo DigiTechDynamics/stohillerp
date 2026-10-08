@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  MessageSquare, Clock, Plus, Send, CheckCircle, Mail, Phone, User, Building2, FileText
+  MessageSquare, Clock, Plus, Send, CheckCircle, Mail, Phone, User, Building2, FileText, Paperclip, Download, X
 } from 'lucide-react'
-import { crmAPI } from '@/services/api'
+import { crmAPI, downloadPrivateFile, apiErrorMessage } from '@/services/api'
 import { formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
@@ -13,6 +13,8 @@ export default function Chatter({ opportunityId, contactId, contactData, opportu
   const queryClient = useQueryClient()
   const [noteBody, setNoteBody] = useState('')
   const [isInternal, setIsInternal] = useState(false)
+  const [attachment, setAttachment] = useState(null)
+  const fileRef = useRef(null)
   const openPanel = useUIStore(s => s.openSidePanel)
 
   // Fetch Notes
@@ -42,20 +44,25 @@ export default function Chatter({ opportunityId, contactId, contactData, opportu
     mutationFn: (data) => crmAPI.notes.create(data),
     onSuccess: () => {
       setNoteBody('')
+      setAttachment(null)
       queryClient.invalidateQueries({ queryKey: ['crm-notes'] })
       toast.success('Note added')
-    }
+    },
+    onError: (err) => toast.error(apiErrorMessage(err, 'The note could not be saved.')),
   })
 
   const handleAddNote = (e) => {
     e.preventDefault()
-    if (!noteBody.trim()) return
-    addNoteMutation.mutate({
-      opportunity: opportunityId,
-      contact: contactId,
-      body: noteBody,
-      is_internal: isInternal
-    })
+    if (!noteBody.trim() && !attachment) return
+    const values = { opportunity: opportunityId, contact: contactId, body: noteBody.trim() || attachment.name, is_internal: isInternal }
+    if (!attachment) {
+      addNoteMutation.mutate(values)
+      return
+    }
+    const data = new FormData()
+    Object.entries(values).forEach(([key, value]) => { if (value !== undefined && value !== null) data.append(key, value) })
+    data.append('attachment', attachment)
+    addNoteMutation.mutate(data)
   }
 
   const getActivityIcon = (type) => {
@@ -140,6 +147,14 @@ export default function Chatter({ opportunityId, contactId, contactData, opportu
                 )}
               </p>
               
+              {item.type === 'note' && item.attachment_url && (
+                <button type="button"
+                  onClick={() => downloadPrivateFile(item.attachment_url, 'attachment').catch(() => toast.error('Download failed.'))}
+                  className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-primary hover:underline">
+                  <Paperclip size={11} /> Download attachment <Download size={11} />
+                </button>
+              )}
+
               {item.type === 'activity' && item.status === 'completed' && (
                 <div className="flex items-center gap-1 mt-2 text-[9px] text-emerald-400 font-bold uppercase">
                   <CheckCircle size={10} /> Completed
@@ -168,7 +183,7 @@ export default function Chatter({ opportunityId, contactId, contactData, opportu
             />
             <button 
               type="submit"
-              disabled={!noteBody.trim() || addNoteMutation.isPending}
+              disabled={(!noteBody.trim() && !attachment) || addNoteMutation.isPending}
               className="absolute right-3 bottom-3 p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-30 disabled:hover:scale-100"
             >
               <Send size={18} />
@@ -182,8 +197,17 @@ export default function Chatter({ opportunityId, contactId, contactData, opportu
               <div className={`w-3 h-3 rounded-full border-2 transition-all ${isInternal ? 'bg-amber-500 border-amber-500' : 'border-dark-700'}`} />
               Internal Note Only
             </button>
-            <div className="flex gap-2 text-dark-500">
-               <button className="p-1.5 rounded-lg hover:bg-white/5 transition-all" title="Add Attachment"><Plus size={14} /></button>
+            <div className="flex items-center gap-2 text-dark-500 min-w-0">
+               {attachment && (
+                 <span className="flex items-center gap-1 text-[11px] text-dark-300 truncate max-w-[12rem]">
+                   <Paperclip size={11} className="flex-shrink-0" /> <span className="truncate">{attachment.name}</span>
+                   <button type="button" aria-label="Remove attachment" className="hover:text-white" onClick={() => setAttachment(null)}><X size={11} /></button>
+                 </span>
+               )}
+               <input ref={fileRef} type="file" className="hidden" aria-label="Attachment"
+                 onChange={(e) => { setAttachment(e.target.files[0] || null); e.target.value = '' }} />
+               <button type="button" className="p-1.5 rounded-lg hover:bg-white/5 transition-all" title="Add Attachment"
+                 onClick={() => fileRef.current?.click()}><Plus size={14} /></button>
             </div>
          </div>
       </div>

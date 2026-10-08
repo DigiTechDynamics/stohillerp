@@ -197,7 +197,7 @@ function PropertyDetailPanel({ property }) {
 
 // Record panels with a two-column layout (details beside the chatter) need
 // more room than a form; in the standard width their content overflowed.
-const WIDE_PANELS = new Set(['crm-detail', 'contact-detail', 'bank-transaction-view'])
+const WIDE_PANELS = new Set(['crm-detail', 'contact-detail', 'bank-transaction-view', 'asset-detail'])
 
 function PanelLoader() {
   return (

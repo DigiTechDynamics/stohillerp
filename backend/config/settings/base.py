@@ -82,6 +82,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "utils.middleware.RequestLoggingMiddleware",
+    "utils.audit.AuditLogMiddleware",  # records API changes in core.AuditLog
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -275,7 +276,13 @@ PAYMENT_TEST_GATEWAY_ENABLED = env.bool("PAYMENT_TEST_GATEWAY_ENABLED", default=
 
 # Property management (apps/propman).
 # SMS gateway: dotted path to a class with send(to, text). The default only logs.
-SMS_BACKEND = env("SMS_BACKEND", default="apps.notifications.services.LogSMSBackend")
+# Built in: apps.notifications.services.TwilioSMSBackend / .HTTPSMSBackend.
+SMS_BACKEND = env("SMS_BACKEND", default="") or "apps.notifications.services.LogSMSBackend"
+SMS_FROM = env("SMS_FROM", default="")
+SMS_TWILIO_ACCOUNT_SID = env("SMS_TWILIO_ACCOUNT_SID", default="")
+SMS_TWILIO_AUTH_TOKEN = env("SMS_TWILIO_AUTH_TOKEN", default="")
+SMS_HTTP_URL = env("SMS_HTTP_URL", default="")
+SMS_HTTP_TOKEN = env("SMS_HTTP_TOKEN", default="")
 # Annual % credited to tenants' deposits each month; 0 switches deposit interest off.
 DEPOSIT_INTEREST_RATE = env.float("DEPOSIT_INTEREST_RATE", default=0.0)
 # Days before a lease ends (and before option deadlines) that alerts go out.
@@ -293,11 +300,13 @@ RENT_LATE_FEE_RATE = env.float("RENT_LATE_FEE_RATE", default=0.10)
 RENT_LATE_FEE_GRACE_DAYS = env.int("RENT_LATE_FEE_GRACE_DAYS", default=7)
 
 # ─── Email ───────────────────────────────────────────────────────────────────
-EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@stohill.local")
-# SMTP (with EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend). Portal
-# invitations, payslips, statements and rent reminders go out this way.
-EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+# Portal invitations, payslips, statements and rent reminders go out by SMTP
+# as soon as EMAIL_HOST is set; without it, emails are only written to the log.
+EMAIL_HOST = env("EMAIL_HOST", default="")
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="") or (
+    "django.core.mail.backends.smtp.EmailBackend" if EMAIL_HOST
+    else "django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="") or "no-reply@stohill.local"
 EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
