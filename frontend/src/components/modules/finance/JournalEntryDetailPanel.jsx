@@ -1,20 +1,50 @@
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { Calendar, Hash, FileText, ArrowRightLeft, User, Clock, CheckCircle2, AlertCircle } from 'lucide-react'
-import { financeAPI } from '@/services/api'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'react-hot-toast'
+import { Calendar, Hash, FileText, ArrowRightLeft, User, Clock, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { financeAPI, apiErrorMessage } from '@/services/api'
+import { promptDialog } from '@/components/common/Dialogs'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 
 export default function JournalEntryDetailPanel({ entry: initialEntry }) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { closeSidePanel } = useUIStore()
+  const [reversing, setReversing] = useState(false)
 
   // Fetch full detail with lines
   const { data, isLoading } = useQuery({
     queryKey: ['journal-entry', initialEntry.id],
     queryFn: () => financeAPI.entries.detail(initialEntry.id),
-    initialData: { data: initialEntry }
+    initialData: { data: initialEntry },
+    initialDataUpdatedAt: 0,
   })
+
+  // Posted entries are immutable: corrections are a reversing entry.
+  const reverse = async () => {
+    const entryDate = await promptDialog({
+      title: `Reverse ${initialEntry.reference}?`,
+      message: 'A new entry with every debit and credit swapped is posted. The original stays in the ledger.',
+      label: 'Reversal date', inputType: 'date', defaultValue: new Date().toISOString().slice(0, 10),
+      required: true, confirmLabel: 'Reverse entry', tone: 'warning',
+    })
+    if (!entryDate) return
+    setReversing(true)
+    try {
+      const { data: result } = await financeAPI.entries.reverse(initialEntry.id, { entry_date: entryDate })
+      toast.success(`Reversed by ${result.reversal_reference}.`)
+      queryClient.invalidateQueries({ queryKey: ['journal-entry'] })
+      queryClient.invalidateQueries({ queryKey: ['finance-entries'] })
+      queryClient.invalidateQueries({ queryKey: ['journal-batches'] })
+      closeSidePanel()
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'The entry could not be reversed.'))
+    } finally {
+      setReversing(false)
+    }
+  }
 
   const entry = data?.data || initialEntry
 
@@ -155,9 +185,10 @@ export default function JournalEntryDetailPanel({ entry: initialEntry }) {
             Edit Draft
           </button>
         )}
-        {entry.status === 'posted' && (
-          <button className="flex-1 btn-secondary py-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center justify-center gap-2">
-            <AlertCircle size={16} /> Reverse Entry
+        {entry.status === 'posted' && !entry.is_reversal && (
+          <button onClick={reverse} disabled={reversing}
+            className="flex-1 btn-secondary py-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center justify-center gap-2">
+            {reversing ? <Loader2 size={16} className="animate-spin" /> : <AlertCircle size={16} />} Reverse Entry
           </button>
         )}
       </div>

@@ -82,6 +82,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "utils.middleware.RequestLoggingMiddleware",
+    "utils.audit.AuditLogMiddleware",  # records API changes in core.AuditLog
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -260,14 +261,28 @@ PORTAL_BASE_URL = env("PORTAL_BASE_URL", default="http://localhost:5173")
 PAYMENT_GATEWAY = env("PAYMENT_GATEWAY", default="test" if DEBUG else "paynow")
 PAYNOW_INTEGRATION_ID = env("PAYNOW_INTEGRATION_ID", default="")
 PAYNOW_INTEGRATION_KEY = env("PAYNOW_INTEGRATION_KEY", default="")
-# Bank account (code) that receives online payments; defaults to the first active one.
+# Bank account (code) that receives online payments. Blank: the account on the
+# posting profile's main bank GL account, or the only active bank account.
 ONLINE_PAYMENTS_BANK_ACCOUNT = env("ONLINE_PAYMENTS_BANK_ACCOUNT", default="")
+# Bank account code rental payments are banked into when the payment doesn't say.
+# Blank: the bank account on the posting profile's trust (managed properties) or
+# main bank GL account, or the only active bank account.
+RENTAL_PAYMENTS_BANK_ACCOUNT = env("RENTAL_PAYMENTS_BANK_ACCOUNT", default="")
+# Starting values for Property settings > Defaults (editable there).
+DEFAULT_RENT_ESCALATION_RATE = env("DEFAULT_RENT_ESCALATION_RATE", default="8.00")
+DEFAULT_MANAGEMENT_FEE_RATE = env("DEFAULT_MANAGEMENT_FEE_RATE", default="10.00")
 # The in-app test gateway completes payments without money moving: dev/tests only.
 PAYMENT_TEST_GATEWAY_ENABLED = env.bool("PAYMENT_TEST_GATEWAY_ENABLED", default=DEBUG)
 
 # Property management (apps/propman).
 # SMS gateway: dotted path to a class with send(to, text). The default only logs.
-SMS_BACKEND = env("SMS_BACKEND", default="apps.notifications.services.LogSMSBackend")
+# Built in: apps.notifications.services.TwilioSMSBackend / .HTTPSMSBackend.
+SMS_BACKEND = env("SMS_BACKEND", default="") or "apps.notifications.services.LogSMSBackend"
+SMS_FROM = env("SMS_FROM", default="")
+SMS_TWILIO_ACCOUNT_SID = env("SMS_TWILIO_ACCOUNT_SID", default="")
+SMS_TWILIO_AUTH_TOKEN = env("SMS_TWILIO_AUTH_TOKEN", default="")
+SMS_HTTP_URL = env("SMS_HTTP_URL", default="")
+SMS_HTTP_TOKEN = env("SMS_HTTP_TOKEN", default="")
 # Annual % credited to tenants' deposits each month; 0 switches deposit interest off.
 DEPOSIT_INTEREST_RATE = env.float("DEPOSIT_INTEREST_RATE", default=0.0)
 # Days before a lease ends (and before option deadlines) that alerts go out.
@@ -285,11 +300,13 @@ RENT_LATE_FEE_RATE = env.float("RENT_LATE_FEE_RATE", default=0.10)
 RENT_LATE_FEE_GRACE_DAYS = env.int("RENT_LATE_FEE_GRACE_DAYS", default=7)
 
 # ─── Email ───────────────────────────────────────────────────────────────────
-EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@stohill.local")
-# SMTP (with EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend). Portal
-# invitations, payslips, statements and rent reminders go out this way.
-EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+# Portal invitations, payslips, statements and rent reminders go out by SMTP
+# as soon as EMAIL_HOST is set; without it, emails are only written to the log.
+EMAIL_HOST = env("EMAIL_HOST", default="")
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="") or (
+    "django.core.mail.backends.smtp.EmailBackend" if EMAIL_HOST
+    else "django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="") or "no-reply@stohill.local"
 EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")

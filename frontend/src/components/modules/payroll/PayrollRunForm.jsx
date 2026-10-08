@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Landmark, Calendar, Save, X } from 'lucide-react'
 import { useUIStore } from '@/stores/authStore'
-import { payrollAPI } from '@/services/api'
+import { payrollAPI, apiErrorMessage } from '@/services/api'
+import { alertDialog } from '@/components/common/Dialogs'
 
 export default function PayrollRunForm({ data, onSuccess }) {
   const { closeSidePanel } = useUIStore()
@@ -27,7 +28,7 @@ export default function PayrollRunForm({ data, onSuccess }) {
       closeSidePanel()
     } catch (err) {
       console.error('Failed to save payroll run:', err)
-      alert('Failed to save payroll run. Please check entries.')
+      alertDialog({ title: 'Payroll run not saved', message: apiErrorMessage(err, 'Failed to save payroll run. Please check entries.'), tone: 'danger' })
     } finally {
       setLoading(false)
     }

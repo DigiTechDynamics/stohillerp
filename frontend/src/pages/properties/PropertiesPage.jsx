@@ -11,6 +11,7 @@ import { useUIStore } from '@/stores/authStore'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
 import Pagination from '@/components/common/Pagination'
 import RecordActions from '@/components/common/RecordActions'
+import PropertyMap, { hasCoordinates } from '@/components/common/PropertyMap'
 import { useQueryClient } from '@tanstack/react-query'
 
 const STATUS_OPTIONS = [
@@ -51,7 +52,7 @@ function PropertyCard({ property }) {
             {property.status.replace(/_/g, ' ')}
           </span>
         </div>
-        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg bg-dark-900/80 backdrop-blur">
+        <div className="absolute top-3 right-3 rounded-lg bg-dark-900/80 backdrop-blur">
           <RecordActions record={property} label="property" onEdit={() => openPanel('property-form', { property })}
             deleteFn={propertiesAPI.delete} invalidate={['properties', 'property-stats']} />
         </div>
@@ -149,10 +150,18 @@ export default function PropertiesPage() {
   const [status, setStatus] = useState('')
   const [sort, setSort] = useState('-created_at')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(12)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['properties', { search, status, ordering: sort, page }],
-    queryFn: () => propertiesAPI.list({ search, status, ordering: sort, page }),
+    queryKey: ['properties', { search, status, ordering: sort, page, pageSize }],
+    queryFn: () => propertiesAPI.list({ search, status, ordering: sort, page, page_size: pageSize }),
+    enabled: viewMode !== 'map',
+  })
+  // The map shows every matching property, not one page of them.
+  const { data: mapData, isLoading: mapLoading } = useQuery({
+    queryKey: ['properties', 'map', { search, status }],
+    queryFn: () => propertiesAPI.list({ search, status, page_size: 200 }),
+    enabled: viewMode === 'map',
   })
 
   const { data: statsData } = useQuery({
@@ -163,6 +172,8 @@ export default function PropertiesPage() {
   const queryClient = useQueryClient()
   const openPanel = useUIStore((s) => s.openSidePanel)
   const properties = data?.data?.results || []
+  const mapProperties = mapData?.data?.results || []
+  const unplotted = mapProperties.filter((p) => !hasCoordinates(p))
   const stats = statsData?.data || {}
 
   return (
@@ -172,7 +183,7 @@ export default function PropertiesPage() {
         <div>
           <h1 className="font-display text-2xl text-white">Property Operations</h1>
           <p className="text-dark-400 text-sm mt-1">
-            {data?.data?.count || 0} properties in portfolio
+            {(viewMode === 'map' ? mapData : data)?.data?.count || 0} properties in portfolio
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -257,7 +268,7 @@ export default function PropertiesPage() {
       </div>
 
       {/* Content */}
-      {isLoading ? (
+      {(viewMode === 'map' ? mapLoading : isLoading) ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {[...Array(8)].map((_, i) => (
             <div key={i} className="h-72 bg-dark-800 rounded-xl animate-pulse border border-white/5" />
@@ -285,12 +296,15 @@ export default function PropertiesPage() {
           </table>
         </div>
       ) : viewMode === 'map' ? (
-        <div className="card h-96 flex items-center justify-center">
-          <div className="text-center">
-            <Map size={40} className="text-dark-600 mx-auto mb-3" />
-            <p className="text-dark-400 text-sm">Map view requires a maps API key.</p>
-            <p className="text-dark-500 text-xs mt-1">Configure VITE_MAPS_KEY to enable.</p>
-          </div>
+        <div className="space-y-3">
+          <PropertyMap properties={mapProperties} onSelect={(p) => openPanel('property-detail', { property: p })} />
+          {unplotted.length > 0 && (
+            <p className="text-xs text-dark-400">
+              {unplotted.length} {unplotted.length === 1 ? 'property has' : 'properties have'} no map location
+              ({unplotted.slice(0, 5).map((p) => p.name).join(', ')}{unplotted.length > 5 ? ', ...' : ''}).
+              Edit the property to set it.
+            </p>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -306,12 +320,16 @@ export default function PropertiesPage() {
         </div>
       )}
 
-      <Pagination 
-        currentPage={page}
-        totalPages={data?.data?.total_pages}
-        totalCount={data?.data?.count}
-        onPageChange={setPage}
-      />
+      {viewMode !== 'map' && (
+        <Pagination
+          currentPage={page}
+          totalPages={data?.data?.total_pages}
+          totalCount={data?.data?.count}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+        />
+      )}
     </div>
   )
 }

@@ -44,12 +44,13 @@ class PostingData:
     """
 
     def __init__(self, description: str, entry_date: date, source_module: str = '',
-                 source_id=None, source_reference: str = '', currency_code: str = 'USD', exchange_rate: Decimal = Decimal('1.0')):
+                 source_id=None, source_reference: str = '', currency_code: str = '', exchange_rate: Decimal = Decimal('1.0')):
         self.description = description
         self.entry_date = entry_date
         self.source_module = source_module
         self.source_id = source_id
         self.source_reference = source_reference
+        # Blank: the company's base currency (resolved when posting).
         self.currency_code = currency_code
         self.exchange_rate = Decimal(str(exchange_rate))
         self.lines = []  # List of dictionaries
@@ -140,6 +141,9 @@ class AccountingService:
         'COST_OF_SALES': '5000',
         'PROPERTY_INVENTORY': '1510',
         'COMMISSION_EXPENSE': '5100',
+        'OWNER_FUNDS': '2210',
+        'RECOVERIES_INCOME': '4920',
+        'WITHHOLDING_TAX': '1120',
     }
 
     def __init__(self, user=None):
@@ -303,11 +307,13 @@ class AccountingService:
                 account_map[code] = self._get_account(code)
 
         # Get currency
+        from apps.core.models import Currency  # type: ignore
+        from apps.finance.services.fx import currency_code
+        code = posting_data.currency_code or currency_code(None)
         try:
-            from apps.core.models import Currency  # type: ignore
-            currency = Currency.objects.get(code=posting_data.currency_code)
+            currency = Currency.objects.get(code=code)
         except Currency.DoesNotExist:
-            raise AccountingError(f"Currency {posting_data.currency_code} not found.")
+            raise AccountingError(f"Currency {code} not found.")
 
         # ─── Create Journal Entry (header) ────────────────────────────────────
 
@@ -655,50 +661,6 @@ class AccountingService:
         return invoice_entry
 
     @transaction.atomic
-    def post_rental_invoice(self, lease, amount: Decimal, invoice_ref: str) -> JournalEntry:
-        """
-        Post monthly rental income entries.
-
-        Debit: Accounts Receivable (tenant owes rent)
-        Credit: Rental Income
-        Credit: VAT Payable (if applicable)
-        """
-        vat_amount = amount * Decimal('0.15') if lease.vat_applicable else Decimal('0.00')
-        net_amount = amount - vat_amount
-
-        posting = PostingData(
-            description=f'Rental Invoice - {lease.tenant.full_name} - {invoice_ref}',
-            entry_date=lease.next_invoice_date or date.today(),
-            source_module='rental',
-            source_id=lease.id,
-            source_reference=invoice_ref,
-        )
-
-        posting.add_debit(
-            self.ACCOUNTS['ACCOUNTS_RECEIVABLE'],
-            amount,
-            f'Rent due: {invoice_ref}',
-            property_ref=lease.property,
-            contact_ref=lease.tenant,
-        )
-
-        posting.add_credit(
-            self.ACCOUNTS['RENTAL_INCOME'],
-            net_amount,
-            f'Rental income: {invoice_ref}',
-            property_ref=lease.property,
-        )
-
-        if vat_amount > 0:
-            posting.add_credit(
-                self.ACCOUNTS['VAT_PAYABLE'],
-                vat_amount,
-                f'Output VAT: {invoice_ref}',
-            )
-
-        return self.post_entry(posting, journal_code='RJ')  # Rental Journal
-
-    @transaction.atomic
     def accrue_commission(self, commission_record) -> JournalEntry:
         """
         Recognise an approved commission as an expense and a liability.
@@ -813,7 +775,7 @@ class AccountingService:
                                'Deposit applied to arrears', property_ref=lease.property,
                                contact_ref=lease.tenant)
         if applied_to_damages > 0:
-            damages_account = '2210' if lease.property.is_managed else '4920'
+            damages_account = self.get_account('OWNER_FUNDS' if lease.property.is_managed else 'RECOVERIES_INCOME')
             posting.add_credit(damages_account, applied_to_damages, 'Deposit kept for damages',
                                property_ref=lease.property, contact_ref=lease.tenant)
 
@@ -1247,3 +1209,52 @@ class AccountingService:
             'total_credit': str(total_credit),
             'is_balanced': total_debit == total_credit,
         }
+
+
+def receiving_bank_account(chosen=None, *, setting='', trust=False):
+    """
+    The bank account money is received into, in order: the one the user chose;
+    the one named by the setting (a bank account code); the bank account on the
+    posting profile's trust (managed property) or main bank GL account; the only
+    active account if there is exactly one. Otherwise the user must choose:
+    picking an arbitrary account would bank money to the wrong place.
+    """
+    from django.conf import settings as django_settings
+
+    from apps.finance.models import BankAccount
+
+    if chosen is not None:
+        return chosen
+    active = BankAccount.objects.filter(is_active=True)
+    code = getattr(django_settings, setting, '') if setting else ''
+    if code:
+        account = active.filter(code=code).first()
+        if account:
+            return account
+    try:
+        gl_code = system_account_code('BANK_TRUST' if trust else 'BANK_MAIN')
+    except AccountingError:
+        gl_code = None
+    account = active.filter(gl_account__code=gl_code).first() if gl_code else None
+    if account:
+        return account
+    if active.count() == 1:
+        return active.first()
+    if not active.exists():
+        raise AccountingError('No active bank account is set up to receive payments.')
+    raise AccountingError('Choose the bank account the payment was received into.')
+
+
+def system_account_code(key: str) -> str:
+    """GL code for a system account key (e.g. 'OWNER_FUNDS'): the default posting profile, else the starter chart."""
+    return AccountingService().get_account(key)
+
+
+def system_account(key: str) -> ChartOfAccount:
+    """The ChartOfAccount for a system account key; a clear error if the chart lacks it."""
+    code = system_account_code(key)
+    try:
+        return ChartOfAccount.objects.get(code=code)
+    except ChartOfAccount.DoesNotExist:
+        raise AccountingError(f'GL account {code} ({key.replace("_", " ").lower()}) is not in the chart of accounts. '
+                              f'Set it on the default posting profile.')

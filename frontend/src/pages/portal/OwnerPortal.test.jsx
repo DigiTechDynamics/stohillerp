@@ -25,11 +25,12 @@ vi.mock('@/services/api', () => {
 
 import { OwnerMaintenance } from './OwnerPortal'
 import { ContractorJobs } from './ContractorPortal'
+import { DialogHost } from '@/components/common/Dialogs'
 import { ownerPortalAPI, contractorPortalAPI } from '@/services/api'
 
 function renderWith(element) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(<QueryClientProvider client={client}>{element}</QueryClientProvider>)
+  return render(<QueryClientProvider client={client}>{element}<DialogHost /></QueryClientProvider>)
 }
 
 describe('owner portal', () => {
@@ -47,11 +48,12 @@ describe('contractor portal', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('reports a job done with the progress note', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderWith(<ContractorJobs />)
     expect(await screen.findByText('No power in unit 3')).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Progress note'), { target: { value: 'Replaced breaker' } })
     fireEvent.click(screen.getByRole('button', { name: 'Report done' }))
+    expect(await screen.findByText('Report this job as done?')).toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Report done' }).at(-1))
     await waitFor(() => expect(contractorPortalAPI.reportDone).toHaveBeenCalledWith('MR-0002', 'Replaced breaker'))
   })
 })

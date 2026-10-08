@@ -11,17 +11,27 @@ import Pagination from '@/components/common/Pagination'
 import RecordActions from '@/components/common/RecordActions'
 import ReconciliationWorkspace from './ReconciliationWorkspace'
 
+const ACCOUNT_TYPES = [
+  ['current', 'Current / Cheque'], ['savings', 'Savings'], ['credit', 'Credit Card'],
+  ['loan', 'Loan Account'], ['investment', 'Investment'], ['petty_cash', 'Petty Cash'],
+]
+
 export default function BankingPage() {
   const [tab, setTab] = useState('accounts')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('name')
   const [page, setPage] = useState(1)
   const [reconAccountId, setReconAccountId] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  const [accountFilters, setAccountFilters] = useState({ is_active: '', account_type: '' })
+  const activeFilterCount = Object.values(accountFilters).filter(Boolean).length
   const { openSidePanel } = useUIStore.getState()
 
   const { data: accountsData, isLoading, refetch } = useQuery({
-    queryKey: ['banking-accounts', { search, ordering: sort, page }],
-    queryFn: () => bankingAPI.accounts.list({ search, ordering: sort, page })
+    queryKey: ['banking-accounts', { search, ordering: sort, page, ...accountFilters }],
+    queryFn: () => bankingAPI.accounts.list({
+      search, ordering: sort, page, ...Object.fromEntries(Object.entries(accountFilters).filter(([, v]) => v)),
+    })
   })
 
   const { data: statementsRaw } = useQuery({
@@ -178,10 +188,29 @@ export default function BankingPage() {
                   <option value="account_number">Account # (A-Z)</option>
                   <option value="code">Code</option>
                 </select>
-                <button className="btn-ghost p-2 text-dark-400">
+                <button title="Filter accounts" aria-expanded={showFilters} onClick={() => setShowFilters((v) => !v)}
+                  className={`btn-ghost p-2 ${activeFilterCount ? 'text-primary' : 'text-dark-400'}`}>
                   <Filter size={18} />
                 </button>
               </div>
+              {showFilters && (
+                <div className="flex flex-wrap items-center gap-3">
+                  <select className="form-input w-auto text-xs" aria-label="Status" value={accountFilters.is_active}
+                    onChange={(e) => { setAccountFilters({ ...accountFilters, is_active: e.target.value }); setPage(1) }}>
+                    <option value="">Active and inactive</option>
+                    <option value="true">Active only</option>
+                    <option value="false">Inactive only</option>
+                  </select>
+                  <select className="form-input w-auto text-xs" aria-label="Account type" value={accountFilters.account_type}
+                    onChange={(e) => { setAccountFilters({ ...accountFilters, account_type: e.target.value }); setPage(1) }}>
+                    <option value="">All account types</option>
+                    {ACCOUNT_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                  {activeFilterCount > 0 && (
+                    <button type="button" className="btn-ghost text-xs" onClick={() => { setAccountFilters({ is_active: '', account_type: '' }); setPage(1) }}>Clear filters</button>
+                  )}
+                </div>
+              )}
 
               <div className="card overflow-hidden">
                 <table className="data-table">

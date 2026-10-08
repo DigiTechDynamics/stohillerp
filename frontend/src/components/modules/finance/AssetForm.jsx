@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Save, X, Calendar, DollarSign, Tag, Info, Layers } from 'lucide-react'
-import { fixedAssetsAPI } from '@/services/api'
+import { Save, X, Calendar, DollarSign, Tag, Info, Layers, AlertCircle } from 'lucide-react'
+import { toast } from 'react-hot-toast'
+import { fixedAssetsAPI, apiErrorMessage } from '@/services/api'
+import { useUIStore } from '@/stores/authStore'
 import CurrencySelect from '@/components/common/CurrencySelect'
 
 export default function AssetForm({ asset, onClose }) {
   const queryClient = useQueryClient()
   const isEditing = !!asset
+  const openSidePanel = useUIStore((s) => s.openSidePanel)
+  const [error, setError] = useState(null)
 
   const [formData, setFormData] = useState({
     code: asset?.code || '',
@@ -42,12 +46,16 @@ export default function AssetForm({ asset, onClose }) {
         : fixedAssetsAPI.assets.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fixed-assets'] })
+      toast.success(isEditing ? 'Asset updated.' : 'Asset added.')
       onClose()
-    }
+    },
+    // The asset used to fail silently: show why it wasn't saved.
+    onError: (err) => setError(apiErrorMessage(err, 'The asset could not be saved.')),
   })
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    setError(null)
     // For simplicity, we bundle the book data with the asset creation
     // The backend ViewSet/Serializer would normally handle this via nested writes
     const payload = {
@@ -75,7 +83,13 @@ export default function AssetForm({ asset, onClose }) {
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+      <form id="asset-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+        {error && (
+          <div role="alert" className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex gap-2">
+            <AlertCircle size={14} className="flex-shrink-0" />
+            <p>{error}</p>
+          </div>
+        )}
         {/* Basic Info */}
         <section className="space-y-4">
           <div className="flex items-center gap-2 text-primary mb-2">
@@ -102,6 +116,11 @@ export default function AssetForm({ asset, onClose }) {
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
               </select>
+              {categories.length === 0 && (
+                <button type="button" className="text-[11px] text-primary hover:underline" onClick={() => openSidePanel('asset-category-form')}>
+                  No categories yet: add one
+                </button>
+              )}
             </div>
           </div>
           <div className="space-y-1.5">
@@ -253,7 +272,8 @@ export default function AssetForm({ asset, onClose }) {
           Cancel
         </button>
         <button 
-          onClick={handleSubmit}
+          type="submit"
+          form="asset-form"
           disabled={mutation.isPending}
           className="btn-primary px-8 py-2.5 flex items-center gap-2 shadow-lg shadow-primary/20"
         >

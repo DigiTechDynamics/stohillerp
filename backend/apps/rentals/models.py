@@ -8,6 +8,12 @@ from django.db import models, transaction  # type: ignore
 from apps.core.models import AuditedModel, TimeStampedModel  # type: ignore
 
 
+def default_escalation_rate():
+    """New leases escalate by the rate set under Property settings > Defaults."""
+    from apps.propman.defaults import default_escalation_rate as configured
+    return configured()
+
+
 def sync_unit_occupancy(unit_id):
     """A unit with an active lease is occupied; when its last active lease ends it is available again."""
     if not unit_id:
@@ -58,7 +64,8 @@ class Lease(AuditedModel):
 
     # Financial terms
     monthly_rental = models.DecimalField(max_digits=10, decimal_places=2)
-    rental_escalation_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('8.00'), help_text='Annual escalation %')
+    rental_escalation_rate = models.DecimalField(max_digits=5, decimal_places=2, default=default_escalation_rate,
+                                                 help_text='Annual escalation % (default: Property settings > Defaults)')
     last_escalation_date = models.DateField(
         null=True, blank=True,
         help_text='Anniversary at which the escalation was last applied (set by billing)',
@@ -218,6 +225,9 @@ class RentalPayment(AuditedModel):
     withholding_tax = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), help_text="Tax deducted by tenant")
     amount_from_balance = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), help_text="Amount deducted from tenant credit balance")
     payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices)
+    # The account the money was banked into. Blank: see receiving_bank_account().
+    bank_account = models.ForeignKey('finance.BankAccount', null=True, blank=True, on_delete=models.PROTECT,
+                                     related_name='rental_payments')
     reference = models.CharField(max_length=100)
     notes = models.TextField(blank=True)
     journal_entry = models.ForeignKey('finance.JournalEntry', null=True, blank=True, on_delete=models.SET_NULL)

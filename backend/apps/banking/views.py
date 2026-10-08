@@ -99,7 +99,8 @@ class CorporateBankStatementLineViewSet(RecordRulesMixin, viewsets.ModelViewSet)
     queryset = CorporateBankStatementLine.objects.select_related(
         'statement__bank_account', 'journal_entry_line__entry')
     serializer_class = CorporateBankStatementLineSerializer
-    filterset_fields = {'statement': ['exact'], 'statement__bank_account': ['exact'], 'is_reconciled': ['exact']}
+    filterset_fields = {'statement': ['exact'], 'statement__bank_account': ['exact'], 'is_reconciled': ['exact'],
+                        'transaction_date': ['gte', 'lte'], 'amount': ['gt', 'lt']}
     search_fields = ['reference', 'description']
 
     @action(detail=True, methods=['post'])

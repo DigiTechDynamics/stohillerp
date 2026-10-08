@@ -126,6 +126,10 @@ class PortalMaintenanceView(APIView):
         job = MaintenanceRequest.objects.create(property=lease.property, lease=lease, reported_by=contact,
                                                 category=category[:100], description=description,
                                                 priority=priority, created_by=request.user)
+        from apps.notifications.inbox import notify_module
+        notify_module('rentals', f'Maintenance request {job.reference} from {contact.full_name}',
+                      f'{lease.property.name}: {job.category} ({job.get_priority_display()}). {description[:200]}',
+                      link='/rentals', level='action', category='maintenance_request', related=f'maintenance:{job.pk}')
         return Response({'reference': job.reference, 'status': job.status}, status=status.HTTP_201_CREATED)
 
 

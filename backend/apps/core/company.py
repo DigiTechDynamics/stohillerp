@@ -33,6 +33,20 @@ def company_profile() -> dict:
     }
 
 
+# The countries the business is likely to be set up in (COMPANY_COUNTRY is an ISO code).
+COUNTRY_NAMES = {
+    'ZW': 'Zimbabwe', 'ZA': 'South Africa', 'BW': 'Botswana', 'ZM': 'Zambia', 'MZ': 'Mozambique',
+    'NA': 'Namibia', 'MW': 'Malawi', 'LS': 'Lesotho', 'SZ': 'Eswatini', 'KE': 'Kenya', 'TZ': 'Tanzania',
+    'UG': 'Uganda', 'NG': 'Nigeria', 'GH': 'Ghana', 'GB': 'United Kingdom', 'US': 'United States',
+}
+
+
+def company_country_name() -> str:
+    """The company's country as a name, e.g. "Zimbabwe" for COMPANY_COUNTRY=ZW."""
+    code = (settings.COMPANY_CONFIG.get('country') or '').upper()
+    return COUNTRY_NAMES.get(code, code)
+
+
 def base_currency_code() -> str:
     return company_profile()['currency']
 

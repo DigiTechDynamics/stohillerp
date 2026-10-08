@@ -10,6 +10,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.utils import timezone
 
+from apps.finance.services.accounting import system_account_code
 from apps.propman.models import CPIIndex, LeaseGuarantee, LeaseOption, TurnoverReport
 
 logger = logging.getLogger('stohill.propman.lease_terms')
@@ -77,7 +78,7 @@ def turnover_charge_lines(lease, period_start):
         if report.percentage_rent > 0:
             lines.append({'description': f'Turnover rent {report.month:%B %Y} ({lease.turnover_rent_percent}% of '
                                          f'{report.turnover} above base rent)',
-                          'account_code': '4100', 'amount': str(report.percentage_rent), 'vat': '0.00',
+                          'account_code': system_account_code('RENTAL_INCOME'), 'amount': str(report.percentage_rent), 'vat': '0.00',
                           'source': f'turnover:{report.pk}'})
     return lines, reports
 
@@ -95,6 +96,11 @@ def _alert(lease, subject, body, today):
 
     to = (lease.managing_agent.email if lease.managing_agent_id else '') or settings.COMPANY_CONFIG.get('email', '')
     send_email(to, subject, body, contact=lease.tenant, category='lease_alert', related=f'lease:{lease.lease_number}')
+    # In-app: the managing agent's login if they have one, else everyone in Rental Management.
+    from apps.notifications.inbox import module_users, notify
+    agent_user = lease.managing_agent.user if lease.managing_agent_id else None
+    notify(agent_user or module_users('rentals'), subject, body, link='/rentals', level='warning',
+           category='lease_alert', related=f'lease:{lease.pk}:{subject[:40]}')
     if lease.tenant_id:
         Activity.objects.create(contact=lease.tenant, activity_type=Activity.ActivityType.NOTE, subject=subject,
                                 description=body, status=Activity.ActivityStatus.PLANNED, due_date=timezone.now())

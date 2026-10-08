@@ -4,8 +4,11 @@ import { Save, AlertCircle, Building2, Hash } from 'lucide-react'
 import { financeAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import CurrencySelect from '@/components/common/CurrencySelect'
+import { useCompanyProfile } from '@/hooks/useCompanyProfile'
+import { phonePlaceholder } from '@/utils/format'
 
 export default function SupplierForm() {
+  const company = useCompanyProfile()
   const queryClient = useQueryClient()
   const { closeSidePanel, sidePanelData } = useUIStore()
   const [error, setError] = useState(null)
@@ -145,7 +148,7 @@ export default function SupplierForm() {
               value={formData.phone}
               onChange={handleChange}
               className="form-input w-full"
-              placeholder="+27..."
+              placeholder={phonePlaceholder(company.data?.country)}
             />
           </div>
         </div>

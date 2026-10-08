@@ -6,6 +6,7 @@ import { CheckSquare, UserCheck, Tag as TagIcon, Trash2, X, Loader2, Trophy, XCi
 import { crmAPI, hrAPI } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import { useState } from 'react'
+import { confirmDialog } from '@/components/common/Dialogs'
 
 export default function BulkActionBar({ selectedIds, onClearSelection }) {
   const queryClient = useQueryClient()
@@ -134,8 +135,8 @@ export default function BulkActionBar({ selectedIds, onClearSelection }) {
               <Trophy size={14} /> Mark Won
             </button>
             <button
-              onClick={() => {
-                if (window.confirm(`Mark ${count} deal(s) as lost?`)) {
+              onClick={async () => {
+                if (await confirmDialog({ title: 'Mark as lost?', message: `Mark ${count} deal(s) as lost?`, confirmLabel: 'Mark lost', tone: 'warning' })) {
                   bulkMutation.mutate({ ids: selectedIds, action: 'mark_lost' })
                 }
               }}
@@ -145,8 +146,8 @@ export default function BulkActionBar({ selectedIds, onClearSelection }) {
               <XCircle size={14} /> Mark Lost
             </button>
             <button
-              onClick={() => {
-                if (window.confirm(`Delete ${count} record(s)? This cannot be undone.`)) {
+              onClick={async () => {
+                if (await confirmDialog({ title: `Delete ${count} record(s)?`, message: 'This cannot be undone.', confirmLabel: 'Delete', tone: 'danger' })) {
                   bulkMutation.mutate({ ids: selectedIds, action: 'delete' })
                 }
               }}

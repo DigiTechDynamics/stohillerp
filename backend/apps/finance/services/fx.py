@@ -10,6 +10,8 @@ before the transaction date.
 from datetime import date
 from decimal import Decimal
 
+from django.conf import settings
+
 from apps.core.models import Currency
 
 ONE = Decimal('1')
@@ -50,4 +52,4 @@ def currency_code(currency) -> str:
     if currency is not None:
         return currency.code
     base = base_currency()
-    return base.code if base else 'USD'
+    return base.code if base else settings.COMPANY_CONFIG['currency']

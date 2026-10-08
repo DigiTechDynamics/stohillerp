@@ -1,8 +1,10 @@
 // Property-management settings: utility tariffs, CPI, arrears stages,
 // custom fields and portfolios.
-import { useState } from 'react'
-import { Zap, LineChart, Gavel, SlidersHorizontal, FolderTree } from 'lucide-react'
-import { propertiesAPI, propmanAPI, financeAPI } from '@/services/api'
+import { useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'react-hot-toast'
+import { Zap, LineChart, Gavel, SlidersHorizontal, FolderTree, Percent, Save } from 'lucide-react'
+import { propertiesAPI, propmanAPI, financeAPI, apiErrorMessage } from '@/services/api'
 import { formatDate } from '@/utils/format'
 import CrudTable from '@/components/common/CrudTable'
 import { Tabs, label, money, useOptions, UTILITIES } from './common'
@@ -13,7 +15,47 @@ const TABS = [
   { id: 'arrears', label: 'Arrears stages', icon: Gavel },
   { id: 'fields', label: 'Custom fields', icon: SlidersHorizontal },
   { id: 'portfolios', label: 'Portfolios', icon: FolderTree },
+  { id: 'defaults', label: 'Defaults', icon: Percent },
 ]
+
+// Default rates applied to new leases and properties (stored server-side).
+function DefaultsPanel() {
+  const queryClient = useQueryClient()
+  const { data } = useQuery({ queryKey: ['propman-defaults'], queryFn: async () => (await propmanAPI.defaults.get()).data })
+  const [values, setValues] = useState({})
+  const [saving, setSaving] = useState(false)
+  useEffect(() => {
+    if (data) setValues(Object.fromEntries(Object.entries(data).map(([k, v]) => [k, v.value])))
+  }, [data])
+
+  const save = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await propmanAPI.defaults.update(values)
+      queryClient.invalidateQueries({ queryKey: ['propman-defaults'] })
+      toast.success('Defaults saved.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Could not save the defaults.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={save} className="card p-5 space-y-4 max-w-xl">
+      <p className="text-sm text-dark-400">Starting values for new records. Each lease or property can still be changed individually.</p>
+      {Object.entries(data || {}).map(([name, { label: text }]) => (
+        <label key={name} className="block">
+          <span className="form-label">{text}</span>
+          <input type="number" step="0.01" min="0" max="100" required className="form-input w-40"
+            value={values[name] ?? ''} onChange={(e) => setValues({ ...values, [name]: e.target.value })} />
+        </label>
+      ))}
+      <button type="submit" className="btn-primary" disabled={saving || !data}><Save size={16} /> Save defaults</button>
+    </form>
+  )
+}
 
 // Tariff steps are edited as text: one "up_to:rate" per line, the last line may be ":rate".
 const stepsToText = (steps) => (steps || []).map((s) => `${s.up_to ?? ''}:${s.rate}`).join('\n')
@@ -35,6 +77,8 @@ export default function PropertySettingsPage() {
       </div>
       <Tabs tabs={TABS} active={tab} onChange={setTab} />
 
+      {tab === 'defaults' && <DefaultsPanel />}
+
       {tab === 'tariffs' && (
         <CrudTable label="tariff" queryKey={['tariffs']} api={propmanAPI.tariffs}
           description="Price per unit consumed. For stepped (block) tariffs, give one step per line as limit:rate, e.g. 50:1.20 then :1.80 for everything above."
@@ -43,7 +87,7 @@ export default function PropertySettingsPage() {
             { key: 'utility', label: 'Utility', render: (r) => label(r.utility) },
             { key: 'rate', label: 'Rate', render: (r) => (r.steps?.length ? `${r.steps.length} steps` : `${r.rate} / ${r.unit_label}`) },
             { key: 'fixed_monthly', label: 'Fixed / month', align: 'right', render: (r) => money(r.fixed_monthly) },
-            { key: 'income_account_code', label: 'Income account', render: (r) => r.income_account_code || '4920' },
+            { key: 'income_account_code', label: 'Income account', render: (r) => r.income_account_code || 'Default (recoveries)' },
             { key: 'is_active', label: 'Active', render: (r) => (r.is_active ? 'Yes' : 'No') },
           ]}
           fields={[

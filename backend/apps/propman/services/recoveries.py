@@ -18,7 +18,7 @@ from django.db import transaction
 from django.db.models import Q, Sum
 
 from apps.finance.models import ChartOfAccount, CustomerInvoice, CustomerInvoiceLine, JournalEntry, JournalLine
-from apps.finance.services.accounting import AccountingError, AccountingService
+from apps.finance.services.accounting import AccountingError, AccountingService, system_account, system_account_code
 from apps.propman.models import RecoveryReconciliation, RecoverySchedule
 
 ZERO = Decimal('0.00')
@@ -55,7 +55,7 @@ def recovery_charge_lines(lease, period_start, factor, vat_rate):
             continue
         vat = (amount * vat_rate).quantize(CENT) if schedule.vat_applicable else Decimal('0.00')
         lines.append({'description': f'{schedule.name} (on account, {(fraction * 100).quantize(Decimal("0.01"))}%)',
-                      'account_code': schedule.income_account.code if schedule.income_account_id else '4920',
+                      'account_code': schedule.income_account.code if schedule.income_account_id else system_account_code('RECOVERIES_INCOME'),
                       'amount': str(amount), 'vat': str(vat), 'source': f'recovery:{schedule.pk}'})
     return lines
 
@@ -108,7 +108,7 @@ def reconcile(schedule: RecoverySchedule, date_from, date_to, post=False, user=N
                                              posted=True).exists():
         raise AccountingError('This period has already been reconciled and posted.')
     data = reconciliation_preview(schedule, date_from, date_to)
-    income = schedule.income_account or ChartOfAccount.objects.get(code='4920')
+    income = schedule.income_account or system_account('RECOVERIES_INCOME')
     if post:
         for line in data['lines']:
             difference = Decimal(line['difference'])

@@ -24,7 +24,8 @@ def _clean(state):
 class ApprovalActions:
     def perform_create(self, serializer):
         # The creator is recorded so they can't approve their own document.
-        serializer.save(created_by=self.request.user)
+        doc = serializer.save(created_by=self.request.user)
+        approvals.notify_progress(doc)
 
     @action(detail=True, methods=['get'])
     def approval_status(self, request, pk=None):
@@ -32,11 +33,18 @@ class ApprovalActions:
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
-        return Response(_clean(approvals.approve(self.get_object(), request.user, request.data.get('comment', ''))))
+        doc = self.get_object()
+        state = approvals.approve(doc, request.user, request.data.get('comment', ''))
+        approvals.notify_progress(doc)
+        return Response(_clean(state))
 
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
-        return Response(_clean(approvals.reject(self.get_object(), request.user, request.data.get('comment', ''))))
+        doc = self.get_object()
+        comment = request.data.get('comment', '')
+        state = approvals.reject(doc, request.user, comment)
+        approvals.notify_progress(doc, rejected_by=request.user, comment=comment)
+        return Response(_clean(state))
 
 
 class ApprovalRuleSerializer(serializers.ModelSerializer):

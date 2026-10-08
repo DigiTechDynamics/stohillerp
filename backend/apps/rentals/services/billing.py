@@ -16,6 +16,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db import transaction
 
+from apps.finance.services.accounting import system_account_code
 from apps.rentals.models import Lease, RentalInvoice
 from apps.rentals.services.finance_sync import RentalFinanceSyncService
 
@@ -66,7 +67,7 @@ def charge_lines(lease: Lease, period_start: date, factor: Decimal) -> list:
             continue
         amount = (charge.monthly_amount * factor).quantize(CENT)
         vat = (amount * _vat_rate()).quantize(CENT) if charge.vat_applicable else Decimal('0.00')
-        lines.append({'description': charge.description, 'account_code': charge.account.code if charge.account else '4920',
+        lines.append({'description': charge.description, 'account_code': charge.account.code if charge.account else system_account_code('RECOVERIES_INCOME'),
                       'amount': str(amount), 'vat': str(vat)})
     return lines
 

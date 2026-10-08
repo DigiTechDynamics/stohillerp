@@ -163,7 +163,7 @@ export default function CrmDetailPanel({ id }) {
     <div className="flex flex-col h-full bg-dark-900 overflow-hidden">
       {/* Odoo-style Stage Progress Bar */}
       <div className="bg-dark-800/80 border-b border-white/5 px-4 py-3">
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide min-w-max mb-2">
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide mb-2">
           {opp.pipeline_stages?.filter(s => !s.is_terminal).map((stage, idx) => {
             const isCurrent = stage.id === opp.stage
             const currentIdx = opp.pipeline_stages?.findIndex(s => s.id === opp.stage) ?? -1
@@ -251,9 +251,9 @@ export default function CrmDetailPanel({ id }) {
       )}
 
       {/* Main Content Split View */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row min-w-0 overflow-hidden">
         {/* Left Side: Details */}
-        <div className="w-[60%] border-r border-white/5 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+        <div className="md:w-[60%] min-w-0 border-b md:border-b-0 md:border-r border-white/5 overflow-y-auto p-6 space-y-6 custom-scrollbar">
           <header>
             <div className="flex items-center justify-between mb-3">
               <span className="text-[10px] font-mono text-primary bg-primary/10 px-2 py-0.5 rounded-lg border border-primary/20 tracking-tighter">
@@ -383,7 +383,7 @@ export default function CrmDetailPanel({ id }) {
         </div>
 
         {/* Right Side: Chatter & Activities */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-hidden">
           <Chatter
             opportunityId={id}
             opportunityData={opp}

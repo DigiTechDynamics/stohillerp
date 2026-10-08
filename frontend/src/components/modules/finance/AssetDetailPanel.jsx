@@ -1,11 +1,18 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Calendar, DollarSign, History, TrendingDown, ShieldCheck, List } from 'lucide-react'
 import { fixedAssetsAPI } from '@/services/api'
+import CrudTable from '@/components/common/CrudTable'
+
+const METHODS = [
+  ['straight_line', 'Straight line'], ['declining_balance', 'Declining balance'],
+  ['double_declining', 'Double declining'], ['units_of_production', 'Units of production'], ['manual', 'Manual'],
+]
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 
 export default function AssetDetailPanel({ asset }) {
   const { openSidePanel } = useUIStore()
+  const queryClient = useQueryClient()
   const { data: transactions, isLoading } = useQuery({
     queryKey: ['asset-transactions', asset?.id],
     queryFn: () => fixedAssetsAPI.transactions.list({ asset: asset?.id }),
@@ -78,6 +85,50 @@ export default function AssetDetailPanel({ asset }) {
               <span className="text-xs text-dark-400">{statutoryBook?.last_depreciation_date ? formatDate(statutoryBook.last_depreciation_date) : 'Never'}</span>
             </div>
           </div>
+        </section>
+
+        {/* Depreciation books */}
+        <section>
+          <CrudTable compact title="Depreciation books" label="book" queryKey={['asset-books']} api={fixedAssetsAPI.books}
+            params={{ asset: asset.id }}
+            description="Only books that post to the GL (normally Statutory) depreciate in the ledger; others, such as Tax, are tracked alongside."
+            columns={[
+              { key: 'book_type', label: 'Book' },
+              { key: 'method', label: 'Method', render: (r) => METHODS.find(([v]) => v === r.method)?.[1] || r.method },
+              { key: 'useful_life_months', label: 'Life (months)', align: 'right' },
+              { key: 'current_nbv', label: 'NBV', align: 'right', render: (r) => formatCurrency(r.current_nbv, asset.currency_code) },
+              { key: 'posts_to_gl', label: 'Posts', render: (r) => (r.posts_to_gl ? 'GL' : 'Memo') },
+            ]}
+            fields={[
+              { key: 'book_type', label: 'Book', required: true, placeholder: 'Tax', readOnlyOnEdit: true },
+              { key: 'method', label: 'Method', type: 'select', options: METHODS, required: true },
+              { key: 'useful_life_months', label: 'Useful life (months)', type: 'number', required: true },
+              { key: 'salvage_value', label: 'Salvage value', type: 'number' },
+              { key: 'depreciation_rate', label: 'Rate % (declining)', type: 'number' },
+              { key: 'total_expected_units', label: 'Expected units', type: 'number' },
+              { key: 'posts_to_gl', label: 'Posts to the GL', type: 'checkbox' },
+            ]}
+            defaults={{ book_type: 'Tax', method: 'straight_line', useful_life_months: 60, salvage_value: 0, posts_to_gl: false }}
+            onSaved={() => queryClient.invalidateQueries({ queryKey: ['fixed-assets'] })} />
+        </section>
+
+        {/* Locations */}
+        <section>
+          <CrudTable compact title="Location history" label="location" queryKey={['asset-locations']} api={fixedAssetsAPI.locations}
+            params={{ asset: asset.id }}
+            description="Record each move; the most recent transfer is where the asset is now."
+            columns={[
+              { key: 'transfer_date', label: 'From', render: (r) => formatDate(r.transfer_date) },
+              { key: 'location_name', label: 'Location' },
+              { key: 'department', label: 'Department', render: (r) => r.department || '—' },
+            ]}
+            fields={[
+              { key: 'location_name', label: 'Location', required: true },
+              { key: 'department', label: 'Department' },
+              { key: 'transfer_date', label: 'Transfer date', type: 'date', required: true },
+              { key: 'notes', label: 'Notes', type: 'textarea', span: 2 },
+            ]}
+            defaults={{ transfer_date: new Date().toISOString().slice(0, 10) }} />
         </section>
 
         {/* Transaction History */}

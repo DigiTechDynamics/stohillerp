@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
 import { apiErrorMessage, contractorPortalAPI } from '@/services/api'
 import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
+import { confirmDialog } from '@/components/common/Dialogs'
 
 const STATUSES = [['acknowledged', 'Acknowledged'], ['in_progress', 'In progress'], ['pending_parts', 'Waiting for parts']]
 const CLOSED = ['completed', 'closed', 'cancelled']
@@ -99,7 +100,7 @@ export function ContractorJobs() {
               <button className="btn-secondary text-xs" disabled={!notes[job.reference]}
                 onClick={() => run(contractorPortalAPI.updateJob(job.reference, { notes: notes[job.reference] }), 'Note added.').then(() => setNotes({ ...notes, [job.reference]: '' }))}>Add note</button>
               <button className="btn-secondary text-xs" onClick={() => setQuoting(quoting === job.reference ? null : job.reference)}>Quote</button>
-              <button className="btn-primary text-xs" onClick={() => window.confirm('Report this job as done?') && run(contractorPortalAPI.reportDone(job.reference, notes[job.reference] || ''), 'Reported done. The office will inspect and process your invoice.')}>Report done</button>
+              <button className="btn-primary text-xs" onClick={async () => (await confirmDialog({ title: 'Report this job as done?', message: 'The office will inspect the work and process your invoice.', confirmLabel: 'Report done' })) && run(contractorPortalAPI.reportDone(job.reference, notes[job.reference] || ''), 'Reported done. The office will inspect and process your invoice.')}>Report done</button>
             </div>
           )}
           {quoting === job.reference && <QuoteForm job={job} onDone={() => setQuoting(null)} />}

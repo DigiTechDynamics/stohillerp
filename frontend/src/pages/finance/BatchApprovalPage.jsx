@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle, User, Info, AlertTriangle } from 'lucide-react'
-import { financeAPI } from '@/services/api'
+import { financeAPI, apiErrorMessage } from '@/services/api'
 import { formatCurrency } from '@/utils/format'
 import { useAuthStore } from '@/stores/authStore'
 import Pagination from '@/components/common/Pagination'
+import { confirmDialog, alertDialog } from '@/components/common/Dialogs'
 
 export default function BatchApprovalPage() {
   const navigate = useNavigate()
@@ -36,24 +37,24 @@ export default function BatchApprovalPage() {
 
   const handleApprove = async (batch) => {
     if (batch.maker === currentUser?.id && !currentUser?.is_superuser) {
-        alert("Maker/Checker Violation: You cannot approve a batch you created.")
+        alertDialog({ title: 'Maker/checker rule', message: 'You cannot approve a batch you created.', tone: 'warning' })
         return
     }
-    if (confirm(`Are you sure you want to approve Batch ${batch.batch_number}?`)) {
+    if (await confirmDialog({ title: `Approve batch ${batch.batch_number}?`, confirmLabel: 'Approve' })) {
       try {
           await approveMutation.mutateAsync(batch.id)
       } catch (err) {
-          alert("Error approving batch: " + (err.response?.data?.error || "Unknown error"))
+          alertDialog({ title: 'Batch not approved', message: apiErrorMessage(err, 'Unknown error'), tone: 'danger' })
       }
     }
   }
 
   const handlePost = async (batch) => {
-    if (confirm(`Post Batch ${batch.batch_number} to the General Ledger? This action cannot be undone.`)) {
+    if (await confirmDialog({ title: `Post batch ${batch.batch_number}?`, message: 'The batch is posted to the General Ledger. This cannot be undone.', confirmLabel: 'Post', tone: 'warning' })) {
         try {
             await postMutation.mutateAsync(batch.id)
         } catch (err) {
-            alert("Error posting batch: " + (err.response?.data?.error || "Unknown error"))
+            alertDialog({ title: 'Batch not posted', message: apiErrorMessage(err, 'Unknown error'), tone: 'danger' })
         }
     }
   }

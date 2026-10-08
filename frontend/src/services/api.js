@@ -178,6 +178,16 @@ export const crmAPI = {
     duplicateCheck: (params) => api.get('crm/contacts/duplicate_check/', { params }),
     recomputeScore: (id) => api.post(`crm/contacts/${id}/recompute_score/`),
     inviteToPortal: (id, kind = 'tenant') => api.post(`crm/contacts/${id}/invite_to_portal/`, { kind }),
+    // KYC documents (ID, proof of residence...), kept on the contact's record.
+    documents: {
+      list: (contactId) => api.get('crm/contact-documents/', { params: { contact: contactId, page_size: 100 } }),
+      create: (contactId, formData) => {
+        formData.append('contact', contactId)
+        return api.post('crm/contact-documents/', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+      },
+      verify: (contactId, docId) => api.post(`crm/contact-documents/${docId}/verify/`),
+      delete: (contactId, docId) => api.delete(`crm/contact-documents/${docId}/`),
+    },
   },
   opportunities: {
     list: (params) => api.get('crm/opportunities/', { params }),
@@ -192,6 +202,12 @@ export const crmAPI = {
     markLost: (id, reasonId, reasonText) => api.post(`crm/opportunities/${id}/mark_lost/`, { reason_id: reasonId, reason_text: reasonText }),
     bulkAction: (data) => api.post('crm/opportunities/bulk_action/', data),
     duplicateCheck: (params) => api.get('crm/opportunities/duplicate_check/', { params }),
+  },
+  salesTeams: {
+    list: (params) => api.get('crm/sales-teams/', { params }),
+    create: (data) => api.post('crm/sales-teams/', data),
+    update: (id, data) => api.patch(`crm/sales-teams/${id}/`, data),
+    delete: (id) => api.delete(`crm/sales-teams/${id}/`),
   },
   pipelines: { 
     list: () => api.get('crm/pipelines/'),
@@ -217,7 +233,7 @@ export const crmAPI = {
   },
   notes: {
     list: (params) => api.get('crm/notes/', { params }),
-    create: (data) => api.post('crm/notes/', data),
+    create: (data) => api.post('crm/notes/', data, data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
     delete: (id) => api.delete(`crm/notes/${id}/`),
   },
   lostReasons: {
@@ -275,6 +291,8 @@ export const rentalsAPI = {
     create: (data) => api.post('rentals/invoices/', data),
     update: (id, data) => api.patch(`rentals/invoices/${id}/`, data),
     delete: (id) => api.delete(`rentals/invoices/${id}/`),
+    pdf: (id) => api.get(`rentals/invoices/${id}/download_pdf/`, { responseType: 'blob' }),
+    export: (format, params) => api.get('rentals/invoices/export/', { params: { ...params, export_format: format }, responseType: 'blob' }),
   },
   payments: {
     list: (params) => api.get('rentals/payments/', { params }),
@@ -334,7 +352,7 @@ export const financeAPI = {
     update: (id, data) => api.patch(`finance/entries/${id}/`, data),
     delete: (id) => api.delete(`finance/entries/${id}/`),
     post: (id) => api.post(`finance/entries/${id}/post_entry/`),
-    reverse: (id) => api.post(`finance/entries/${id}/reverse/`),
+    reverse: (id, data = {}) => api.post(`finance/entries/${id}/reverse/`, data),
   },
   allocations: {
     ar: (params) => api.get('finance/ar-allocations/', { params }),
@@ -436,7 +454,19 @@ export const financeAPI = {
     },
     transactions: {
       list: (params) => api.get('fixed-assets/transactions/', { params }),
-    }
+    },
+    books: {
+      list: (params) => api.get('fixed-assets/books/', { params }),
+      create: (data) => api.post('fixed-assets/books/', data),
+      update: (id, data) => api.patch(`fixed-assets/books/${id}/`, data),
+      delete: (id) => api.delete(`fixed-assets/books/${id}/`),
+    },
+    locations: {
+      list: (params) => api.get('fixed-assets/locations/', { params }),
+      create: (data) => api.post('fixed-assets/locations/', data),
+      update: (id, data) => api.patch(`fixed-assets/locations/${id}/`, data),
+      delete: (id) => api.delete(`fixed-assets/locations/${id}/`),
+    },
   },
   ap: {
     suppliers: {
@@ -506,6 +536,7 @@ delete: (id) => api.delete(`finance/supplier-payments/${id}/`),
     receipts: {
       list: (params) => api.get('finance/customer-receipts/', { params }),
       detail: (id) => api.get(`finance/customer-receipts/${id}/`),
+      pdf: (id) => api.get(`finance/customer-receipts/${id}/pdf/`, { responseType: 'blob' }),
       create: (data) => api.post('finance/customer-receipts/', data),
 delete: (id) => api.delete(`finance/customer-receipts/${id}/`),
       post: (id) => api.post(`finance/customer-receipts/${id}/post_receipt/`),
@@ -600,6 +631,11 @@ export const projectsAPI = {
 }
 
 export const propmanAPI = {
+  // Default rates for new leases and properties (Property settings > Defaults).
+  defaults: {
+    get: () => api.get('propman/defaults/'),
+    update: (data) => api.patch('propman/defaults/', data),
+  },
   tariffs: {
     list: (params) => api.get('propman/tariffs/', { params }),
     detail: (id) => api.get(`propman/tariffs/${id}/`),
@@ -764,6 +800,12 @@ export const propmanAPI = {
 
 export const notificationsAPI = {
   messages: (params) => api.get('notifications/messages/', { params }),
+  // The signed-in user's in-app notifications (the bell in the top bar).
+  inbox: (params) => api.get('notifications/inbox/', { params }),
+  unreadCount: () => api.get('notifications/inbox/unread-count/'),
+  markRead: (id) => api.post(`notifications/inbox/${id}/read/`),
+  markAllRead: () => api.post('notifications/inbox/read-all/'),
+  remove: (id) => api.delete(`notifications/inbox/${id}/`),
 }
 
 export const ownerPortalAPI = {
@@ -823,6 +865,14 @@ export const documentsAPI = {
   detail: (id) => api.get(`documents/${id}/`),
   delete: (id) => api.delete(`documents/${id}/`),
   upload: (formData) => api.post('documents/', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  update: (id, data) => api.patch(`documents/${id}/`, data),
+  // Document types, each with document_count.
+  categories: {
+    list: (params) => api.get('documents/categories/', { params }),
+    create: (data) => api.post('documents/categories/', data),
+    update: (id, data) => api.patch(`documents/categories/${id}/`, data),
+    delete: (id) => api.delete(`documents/categories/${id}/`),
+  },
   compliance: {
     list: (params) => api.get('documents/compliance/', { params }),
     summary: () => api.get('documents/compliance/summary/'),
@@ -860,6 +910,18 @@ export const hrAPI = {
   jobPositions: {
     list: (params) => api.get('hr/job-positions/', { params }),
   },
+  attendance: {
+    list: (params) => api.get('hr/attendance/', { params }),
+    create: (data) => api.post('hr/attendance/', data),
+    update: (id, data) => api.patch(`hr/attendance/${id}/`, data),
+    delete: (id) => api.delete(`hr/attendance/${id}/`),
+  },
+  allocations: {
+    list: (params) => api.get('hr/allocations/', { params }),
+    create: (data) => api.post('hr/allocations/', data),
+    update: (id, data) => api.patch(`hr/allocations/${id}/`, data),
+    delete: (id) => api.delete(`hr/allocations/${id}/`),
+  },
 }
 
 export const payrollAPI = {
@@ -890,6 +952,7 @@ export const payrollAPI = {
   },
   settings: {
     list: (params) => api.get('payroll/settings/', { params }),
+    create: (data) => api.post('payroll/settings/', data),
     update: (id, data) => api.patch(`payroll/settings/${id}/`, data),
   },
   taxBrackets: {
@@ -925,8 +988,18 @@ export const adminAPI = {
   modules: {
     list: (params) => api.get('core/modules/', { params }),
   },
+  integrations: {
+    list: () => api.get('core/integrations/'),
+    testEmail: (to) => api.post('core/integrations/test-email/', { to }),
+    testSms: (to) => api.post('core/integrations/test-sms/', { to }),
+  },
+  auditLogs: {
+    list: (params) => api.get('core/audit-logs/', { params }),
+    models: () => api.get('core/audit-logs/models/'),
+  },
   sodRules: {
     list: (params) => api.get('core/sod-rules/', { params }),
+    suggestions: () => api.get('core/sod-rules/suggestions/'),
     create: (data) => api.post('core/sod-rules/', data),
     update: (id, data) => api.patch(`core/sod-rules/${id}/`, data),
     delete: (id) => api.delete(`core/sod-rules/${id}/`),
@@ -948,13 +1021,17 @@ export const dataManagementAPI = {
 // Private files (KYC, contracts, attachments) are only served to an
 // authenticated API request, so a plain <a href> can't fetch them: download
 // through axios (which adds the bearer token) and save the blob.
-export async function downloadPrivateFile(url, fallbackName = 'download') {
+export async function fetchPrivateFile(url, fallbackName = 'download') {
   const path = url.replace(/^\/api\/v1\//, '')
   const response = await api.get(path, { responseType: 'blob' })
   const disposition = response.headers?.['content-disposition'] || ''
   const match = /filename\*=UTF-8''([^;]+)/.exec(disposition)
-  const filename = match ? decodeURIComponent(match[1]) : fallbackName
-  const href = window.URL.createObjectURL(response.data)
+  return { blob: response.data, filename: match ? decodeURIComponent(match[1]) : fallbackName }
+}
+
+export async function downloadPrivateFile(url, fallbackName = 'download') {
+  const { blob, filename } = await fetchPrivateFile(url, fallbackName)
+  const href = window.URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = href
   link.setAttribute('download', filename)

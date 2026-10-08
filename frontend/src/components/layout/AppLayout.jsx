@@ -3,13 +3,14 @@ import React, { Suspense, useState } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  LayoutDashboard, Building2, Users, TrendingUp, Home, Award, FileText, UserCog, ChevronLeft, ChevronRight, Search, Bell, LogOut, Zap, Menu, X, Landmark, Briefcase, FileSearch, Box, ShoppingCart, HardHat, SlidersHorizontal
+  LayoutDashboard, Building2, Users, TrendingUp, Home, Award, FileText, UserCog, ChevronLeft, ChevronRight, Search, LogOut, Zap, Menu, X, Landmark, Briefcase, FileSearch, Box, ShoppingCart, HardHat, SlidersHorizontal
 } from 'lucide-react'
 import { useAuthStore, useUIStore } from '@/stores/authStore'
 import { useCompanyProfile } from '@/hooks/useCompanyProfile'
 import CommandPalette from '@/components/common/CommandPalette'
 import SidePanelContainer from '@/components/common/SidePanelContainer'
-import ExecutiveModeToggle from '@/components/common/ExecutiveModeToggle'
+import NotificationBell from '@/components/layout/NotificationBell'
+import UserMenu from '@/components/layout/UserMenu'
 import ThemeToggle from '@/components/common/ThemeToggle'
 import BrandLogo from '@/components/common/BrandLogo'
 import PageLoader from '@/components/common/PageLoader'
@@ -116,8 +117,8 @@ export default function AppLayout() {
       >
         {/* Logo */}
         <div className={`flex items-center gap-3 px-4 py-5 border-b ${theme === 'light' ? 'border-border-color' : 'border-white/5'}`}>
-          <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
-            <BrandLogo className="w-8 h-8" />
+          <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+            <BrandLogo className="w-10 h-10" />
           </div>
           <AnimatePresence>
             {!sidebarCollapsed && (
@@ -192,7 +193,6 @@ export default function AppLayout() {
 
         {/* Sidebar Footer */}
         <div className="border-t border-white/5 p-3 space-y-2">
-          {!sidebarCollapsed && <ExecutiveModeToggle />}
           <button
             onClick={() => signOut()}
             className="sidebar-item w-full text-red-400/80 hover:text-red-400 hover:bg-red-500/10"
@@ -219,7 +219,7 @@ export default function AppLayout() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Topbar */}
-        <header className={`h-14 flex items-center justify-between px-4 lg:px-6
+        <header className={`relative z-30 h-14 flex items-center justify-between px-4 lg:px-6
                             border-b ${theme === 'light' ? 'border-border-color bg-white/80' : 'border-white/5 bg-dark-900/80'} backdrop-blur-sm flex-shrink-0`}>
           <div className="flex items-center gap-3">
             <button
@@ -252,25 +252,11 @@ export default function AppLayout() {
           <div className="flex items-center gap-3">
             <ThemeToggle />
 
-            <button className="btn-ghost p-2 relative group">
-              <Bell size={18} className="text-dark-400 group-hover:text-white transition-colors" />
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary ring-2 ring-dark-900" />
-            </button>
+            <NotificationBell />
 
             <div className="h-8 w-px bg-white/5 mx-1" />
 
-            <div className="flex items-center gap-2.5">
-              <div className="flex flex-col items-end hidden sm:flex">
-                <p className="text-xs font-semibold text-white leading-none">{user?.full_name || 'Admin User'}</p>
-                <p className="text-[10px] text-primary font-bold uppercase tracking-wider mt-1 opacity-70">
-                  {user?.roles?.[0]?.role_type?.replace(/_/g, ' ') || 'Super Admin'}
-                </p>
-              </div>
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-orange-500 
-                              flex items-center justify-center text-dark-900 text-xs font-bold shadow-lg">
-                {user?.first_name?.[0]}{user?.last_name?.[0]}
-              </div>
-            </div>
+            <UserMenu user={user} />
           </div>
         </header>
 

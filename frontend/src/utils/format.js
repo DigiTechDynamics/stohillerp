@@ -104,3 +104,28 @@ export function truncate(str, maxLen = 50) {
   return str.length > maxLen ? str.substring(0, maxLen) + '…' : str;
 }
 
+
+// ─── Country helpers (company country is an ISO code, e.g. "ZW") ────────────
+
+/** "ZW" -> "Zimbabwe". Unknown or empty codes come back unchanged. */
+export function countryName(code) {
+  if (!code) return ''
+  if (code.length !== 2) return code
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'region' }).of(code.toUpperCase()) || code
+  } catch {
+    return code
+  }
+}
+
+// International dialling codes for the region the business works in.
+const DIALLING_CODES = {
+  ZW: '+263', ZA: '+27', BW: '+267', ZM: '+260', MZ: '+258', NA: '+264', MW: '+265', LS: '+266',
+  SZ: '+268', KE: '+254', TZ: '+255', UG: '+256', NG: '+234', GH: '+233', GB: '+44', US: '+1',
+}
+
+/** Placeholder for a phone field in the company's country, e.g. "+263 77 123 4567". */
+export function phonePlaceholder(code) {
+  const prefix = DIALLING_CODES[(code || '').toUpperCase()]
+  return prefix ? `${prefix}...` : '+<country code> number'
+}

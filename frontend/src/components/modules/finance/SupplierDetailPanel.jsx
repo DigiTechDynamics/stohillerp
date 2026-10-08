@@ -4,6 +4,7 @@ import { apiErrorMessage, financeAPI } from '@/services/api'
 import { formatCurrency } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
+import { confirmDialog } from '@/components/common/Dialogs'
 
 export default function SupplierDetailPanel({ supplier: initialSupplier }) {
   const queryClient = useQueryClient()
@@ -132,8 +133,8 @@ export default function SupplierDetailPanel({ supplier: initialSupplier }) {
           <Mail size={16} /> {inviteMutation.isPending ? 'Sending...' : 'Invite to contractor portal'}
         </button>
         <button
-          onClick={() => {
-            if(window.confirm('Are you sure you want to delete this supplier? This action cannot be undone.')) {
+          onClick={async () => {
+            if (await confirmDialog({ title: 'Delete this supplier?', message: 'This action cannot be undone.', confirmLabel: 'Delete', tone: 'danger' })) {
               deleteMutation.mutate()
             }
           }}

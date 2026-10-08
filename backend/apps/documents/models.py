@@ -7,12 +7,21 @@ from apps.core.models import AuditedModel, TimeStampedModel
 
 
 class DocumentCategory(TimeStampedModel):
+    """A document type (title deeds, lease agreements, KYC...), set up under Documents."""
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=20, unique=True)
     retention_years = models.PositiveSmallIntegerField(default=7)
+    description = models.CharField(max_length=255, blank=True)
+    sort_order = models.PositiveSmallIntegerField(default=100)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         db_table = 'document_categories'
+        ordering = ['sort_order', 'name']
+        verbose_name_plural = 'document categories'
+
+    def __str__(self):
+        return self.name
 
 
 class Document(AuditedModel):
@@ -50,6 +59,23 @@ class Document(AuditedModel):
     class Meta:
         db_table = 'documents'
         ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.reference} {self.title}'
+
+    def save(self, *args, **kwargs):
+        if not self.reference:
+            from apps.core.services.number_sequence import NumberSequenceService
+            self.reference = NumberSequenceService.get_next_number('Document', prefix='DOC-', padding=5)
+            while Document.objects.filter(reference=self.reference).exists():   # imported references
+                self.reference = NumberSequenceService.get_next_number('Document', prefix='DOC-', padding=5)
+        if self.file and not self.file_size:
+            self.file_size = getattr(self.file, 'size', 0) or 0
+        if self.file and not self.mime_type:
+            import mimetypes
+            self.mime_type = (getattr(getattr(self.file, 'file', None), 'content_type', '')
+                              or mimetypes.guess_type(self.file.name)[0] or '')[:100]
+        super().save(*args, **kwargs)
 
 
 class ComplianceRequirement(TimeStampedModel):

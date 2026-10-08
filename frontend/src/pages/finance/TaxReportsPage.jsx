@@ -3,10 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Search, Percent, Edit3, Trash2, FileText, Download, AlertCircle, Loader2, ArrowRight, ShieldCheck, Calculator
 } from 'lucide-react'
-import { apiErrorMessage, financeAPI } from '@/services/api'
+import { apiErrorMessage, financeAPI, saveBlobResponse } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
 import { formatCurrency } from '@/utils/format'
+import { confirmDialog } from '@/components/common/Dialogs'
 
 export default function TaxReportsPage() {
   const queryClient = useQueryClient()
@@ -148,7 +149,7 @@ export default function TaxReportsPage() {
                        </div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-2">
                         <button 
                           onClick={() => openPanel('tax-code-form', { taxCode: tax })}
                           className="p-1.5 text-dark-400 hover:text-white transition-colors"
@@ -156,8 +157,8 @@ export default function TaxReportsPage() {
                           <Edit3 size={14} />
                         </button>
                         <button 
-                          onClick={() => {
-                            if(window.confirm('Delete this tax code?')) {
+                          onClick={async () => {
+                            if (await confirmDialog({ title: 'Delete this tax code?', confirmLabel: 'Delete', tone: 'danger' })) {
                               deleteMutation.mutate(tax.id)
                             }
                           }}
@@ -298,6 +299,17 @@ export default function TaxReportsPage() {
                         className="text-xs text-primary hover:underline flex items-center gap-1"
                       >
                         <Download size={12} /> Detailed CSV
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            saveBlobResponse(await financeAPI.reports.export('vat-return', 'xlsx', { from_date: vatDates.from, to_date: vatDates.to }),
+                              `VAT_Return_${vatDates.from}_to_${vatDates.to}.xlsx`)
+                          } catch { toast.error('Failed to download the Excel file') }
+                        }}
+                        className="text-xs text-primary hover:underline flex items-center gap-1"
+                      >
+                        <Download size={12} /> Excel
                       </button>
                       <button 
                         onClick={async () => {

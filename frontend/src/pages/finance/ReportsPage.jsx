@@ -5,7 +5,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   FileText, Download, Eye, Calendar, Building2, TrendingUp, PieChart, Landmark, ArrowLeft, Loader2, AlertCircle, ChevronRight
 } from 'lucide-react'
-import { financeAPI, propertiesAPI } from '@/services/api'
+import { financeAPI, propertiesAPI, saveBlobResponse, apiErrorMessage } from '@/services/api'
+import { toast } from 'react-hot-toast'
 import { formatCurrency } from '@/utils/format'
 
 export default function ReportsPage() {
@@ -136,17 +137,9 @@ function ReportViewer({ report, params, setParams, periods, fiscalYears, propert
         period: report.id === 'budget-vs-actual' ? params.period_id : undefined
       }
       const response = await financeAPI.reports.export(report.id, format, reportParams)
-      
-      const url = window.URL.createObjectURL(new Blob([response.data]))
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', `${report.id}.${format === 'excel' ? 'csv' : 'csv'}`) // Default to csv for now as backend returns csv
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
+      saveBlobResponse(response, `${report.id}.${format}`)
     } catch (err) {
-      console.error('Export failed:', err)
-      alert('Failed to export report. Please try again.')
+      toast.error(apiErrorMessage(err, 'Failed to export the report. Please try again.'))
     } finally {
       setIsExporting(false)
     }
@@ -316,17 +309,24 @@ function ReportViewer({ report, params, setParams, periods, fiscalYears, propert
             <div className="grid grid-cols-2 gap-2">
               <button 
                 className="btn-secondary h-9 text-[10px] gap-1.5 flex-1"
-                onClick={() => handleExport('csv')}
+                onClick={() => handleExport('pdf')}
                 disabled={isExporting}
               >
                 <Download size={14} /> PDF
               </button>
               <button 
                 className="btn-secondary h-9 text-[10px] gap-1.5 flex-1"
-                onClick={() => handleExport('csv')}
+                onClick={() => handleExport('xlsx')}
                 disabled={isExporting}
               >
                 <Download size={14} /> Excel
+              </button>
+              <button
+                className="btn-ghost h-8 text-[10px] gap-1.5 col-span-2 justify-center"
+                onClick={() => handleExport('csv')}
+                disabled={isExporting}
+              >
+                <Download size={12} /> CSV
               </button>
             </div>
           </div>

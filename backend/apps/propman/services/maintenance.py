@@ -32,7 +32,9 @@ def _raise_purchase_order(quote, user):
 
     job = quote.request
     prop = job.property or (job.lease.property if job.lease_id else None)
-    expense = '2210' if prop and prop.is_managed and not job.billed_to_tenant else '5300'
+    from apps.finance.services.accounting import system_account_code
+    expense = system_account_code('OWNER_FUNDS' if prop and prop.is_managed and not job.billed_to_tenant
+                                  else 'MAINTENANCE')
     order = PurchaseOrder.objects.create(supplier=quote.supplier, order_date=timezone.localdate(),
                                          currency=job.currency, property_ref=prop, created_by=user,
                                          notes=f'Maintenance {job.reference}: {job.category}')

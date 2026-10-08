@@ -10,7 +10,7 @@ import RecordActions from '@/components/common/RecordActions'
 //   api       { list(params), create(data), update(id, data), delete(id) }
 //   params    list filter, also merged into new records (e.g. { property: id })
 //   columns   [{ key, label, render?(row), align? }]
-//   fields    [{ key, label, type?: text|number|date|datetime|select|checkbox|textarea, options?: [[value, label]],
+//   fields    [{ key, label, type?: text|number|date|datetime|select|multiselect|checkbox|textarea, options?: [[value, label]],
 //               required?, placeholder?, span?, readOnlyOnEdit?, get?(row) }]
 //   rowActions(row)  extra buttons per row
 const rows = (res) => res?.data?.results || res?.data || []
@@ -23,6 +23,13 @@ function Field({ field, value, onChange }) {
         <select {...common} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
           {!field.required && <option value="">—</option>}
           {field.required && value in { '': 1, null: 1, undefined: 1 } && <option value="">Choose…</option>}
+          {(field.options || []).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+      )
+    case 'multiselect':
+      return (
+        <select {...common} multiple size={Math.min(6, Math.max(3, (field.options || []).length))} value={value || []}
+          onChange={(e) => onChange([...e.target.selectedOptions].map((o) => o.value))}>
           {(field.options || []).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
       )
@@ -54,8 +61,9 @@ export default function CrudTable({
   const items = rows(data)
 
   const refresh = () => queryClient.invalidateQueries({ queryKey })
-  const startAdd = () => setForm({ ...Object.fromEntries(fields.map((f) => [f.key, f.type === 'checkbox' ? false : ''])), ...defaults })
-  const startEdit = (row) => setForm({ id: row.id, ...Object.fromEntries(fields.map((f) => [f.key, (f.get ? f.get(row) : row[f.key]) ?? (f.type === 'checkbox' ? false : '')])) })
+  const blank = (f) => (f.type === 'checkbox' ? false : f.type === 'multiselect' ? [] : '')
+  const startAdd = () => setForm({ ...Object.fromEntries(fields.map((f) => [f.key, blank(f)])), ...defaults })
+  const startEdit = (row) => setForm({ id: row.id, ...Object.fromEntries(fields.map((f) => [f.key, (f.get ? f.get(row) : row[f.key]) ?? blank(f)])) })
 
   const save = async () => {
     const missing = fields.filter((f) => f.required && (form[f.key] === '' || form[f.key] === null || form[f.key] === undefined))

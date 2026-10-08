@@ -13,6 +13,7 @@ import DeductionSettingsView from '@/components/modules/payroll/DeductionSetting
 import Pagination from '@/components/common/Pagination'
 import RecordActions from '@/components/common/RecordActions'
 import { formatCurrency } from '@/utils/format'
+import { confirmDialog } from '@/components/common/Dialogs'
 
 export default function PayrollPage() {
   const [runs, setRuns] = useState([])
@@ -73,7 +74,7 @@ export default function PayrollPage() {
   }, [selectedRun])
 
   const handleProcess = async (runId) => {
-    if (!confirm('This will purge existing items and recalculate all payments. Continue?')) return
+    if (!(await confirmDialog({ title: 'Process payroll run?', message: 'Existing items are removed and all payments recalculated.', confirmLabel: 'Process', tone: 'warning' }))) return
     try {
       await payrollAPI.runs.process(runId)
       fetchRuns(pagination.page)
@@ -98,7 +99,7 @@ export default function PayrollPage() {
   }
 
   const handlePay = async (runId) => {
-    if (!confirm('Mark all items in this run as PAID and update commission records?')) return
+    if (!(await confirmDialog({ title: 'Mark run as paid?', message: 'All items in this run are marked as paid and commission records updated.', confirmLabel: 'Mark paid', tone: 'warning' }))) return
     try {
       await payrollAPI.runs.payAll(runId)
       fetchRuns(pagination.page)

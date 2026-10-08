@@ -80,10 +80,28 @@ class RoleViewSet(RecordRulesMixin, viewsets.ModelViewSet):
 
 
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    GET core/audit-logs/  ?action=&model_name=&user=&search=&from_date=&to_date=
+    GET core/audit-logs/models/   the record types that appear in the log (for the filter)
+    """
     queryset = AuditLog.objects.select_related('user').order_by('-timestamp')
     serializer_class = AuditLogSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['action', 'model_name', 'user']
+    search_fields = ['object_repr', 'object_id', 'model_name', 'user__email', 'user__first_name', 'user__last_name']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        params = self.request.query_params
+        if params.get('from_date'):
+            qs = qs.filter(timestamp__date__gte=params['from_date'])
+        if params.get('to_date'):
+            qs = qs.filter(timestamp__date__lte=params['to_date'])
+        return qs
+
+    @action(detail=False, methods=['get'])
+    def models(self, request):
+        return Response(sorted(AuditLog.objects.values_list('model_name', flat=True).distinct()))
 
 
 class CurrentUserView(APIView):
@@ -116,3 +134,9 @@ class SODRuleViewSet(viewsets.ModelViewSet):
     queryset = SODRule.objects.all()
     serializer_class = SODRuleSerializer
     permission_classes = [permissions.IsAuthenticated, HasModuleAccess, AccessAdminWritePermission]
+
+    @action(detail=False, methods=['get'])
+    def suggestions(self, request):
+        """Standard conflicting module pairs that no rule covers yet."""
+        from apps.core.sod_suggestions import suggestions
+        return Response(suggestions())

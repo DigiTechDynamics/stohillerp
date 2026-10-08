@@ -155,6 +155,22 @@ class OpportunityViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'reference', 'contact__first_name', 'contact__last_name', 'contact_name', 'email_from']
     ordering_fields = ['created_at', 'expected_revenue', 'expected_closing', 'probability', 'last_activity_at']
 
+    def _notify_assignment(self, opp, previous_agent_id=None):
+        if not opp.assigned_agent_id or opp.assigned_agent_id == previous_agent_id:
+            return
+        from apps.notifications.inbox import notify
+        kind = 'lead' if opp.is_lead else 'opportunity'
+        notify(opp.assigned_agent.user, f'New {kind} assigned to you: {opp.title}',
+               f'{opp.reference}. Assigned by {self.request.user.full_name}.', link='/crm',
+               level='action', category='crm_assignment', related=f'opportunity:{opp.pk}', exclude=self.request.user)
+
+    def perform_create(self, serializer):
+        self._notify_assignment(serializer.save())
+
+    def perform_update(self, serializer):
+        previous = serializer.instance.assigned_agent_id
+        self._notify_assignment(serializer.save(), previous)
+
     @action(detail=False, methods=['get'])
     def kanban(self, request):
         """Returns opportunities grouped by pipeline stage for Kanban view."""
@@ -374,7 +390,8 @@ class ActivityViewSet(viewsets.ModelViewSet):
     queryset = Activity.objects.select_related('opportunity', 'assigned_to', 'email_template')
     serializer_class = ActivitySerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['activity_type', 'status', 'assigned_to', 'opportunity', 'contact']
+    filterset_fields = {'activity_type': ['exact'], 'status': ['exact'], 'assigned_to': ['exact'],
+                        'opportunity': ['exact'], 'contact': ['exact'], 'due_date': ['gte', 'lte']}
     search_fields = ['subject', 'description']
     ordering_fields = ['due_date', 'created_at', 'status']
 

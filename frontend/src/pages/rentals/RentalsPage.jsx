@@ -4,9 +4,10 @@ import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search, Plus, Key, Wrench, AlertTriangle, Building2, DollarSign, MapPin, Users, Receipt, Landmark,
-  Gavel, ClipboardList, CreditCard, BarChart3, MessageSquare,
+  Gavel, ClipboardList, CreditCard, BarChart3, MessageSquare, Download,
 } from 'lucide-react'
-import { rentalsAPI, propertiesAPI, crmAPI } from '@/services/api'
+import { rentalsAPI, propertiesAPI, crmAPI, saveBlobResponse, apiErrorMessage } from '@/services/api'
+import { toast } from 'react-hot-toast'
 import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
@@ -75,6 +76,13 @@ export default function RentalsPage() {
     enabled: activeTab === 'invoices',
   })
   const invoices = invoicesRes?.data?.results || []
+  const exportInvoices = async (format) => {
+    try {
+      saveBlobResponse(await rentalsAPI.invoices.export(format, { search, ordering: sort }), `rental-invoices.${format}`)
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Could not export the invoices.'))
+    }
+  }
 
   const { data: maintRes, isLoading: maintLoading } = useQuery({
     queryKey: ['rental-maintenance', { search, ordering: sort, page }],
@@ -164,9 +172,17 @@ export default function RentalsPage() {
             </button>
           )}
           {activeTab === 'invoices' && (
-            <button className="btn-primary flex items-center gap-2" onClick={() => openPanel('rental-invoice-form')}>
-              <Plus size={16} /> New Invoice
-            </button>
+            <>
+              <button className="btn-secondary flex items-center gap-2" onClick={() => exportInvoices('xlsx')} title="Export the invoice list to Excel">
+                <Download size={16} /> Excel
+              </button>
+              <button className="btn-secondary flex items-center gap-2" onClick={() => exportInvoices('pdf')} title="Export the invoice list to PDF">
+                <Download size={16} /> PDF
+              </button>
+              <button className="btn-primary flex items-center gap-2" onClick={() => openPanel('rental-invoice-form')}>
+                <Plus size={16} /> New Invoice
+              </button>
+            </>
           )}
           {activeTab === 'maintenance' && (
             <button className="btn-primary flex items-center gap-2" onClick={() => openPanel('maintenance-form')}>
@@ -469,6 +485,7 @@ export default function RentalsPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className="hover:bg-white/2 transition-colors cursor-pointer"
+                    onClick={() => openPanel('rental-invoice-detail', { invoice: inv })}
                   >
                     <td className="px-4 py-3 font-mono text-xs text-primary">{inv.invoice_number}</td>
                     <td className="px-4 py-3 text-sm text-white font-medium">{inv.property_name}</td>

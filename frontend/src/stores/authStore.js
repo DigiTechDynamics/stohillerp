@@ -14,11 +14,13 @@ export const useAuthStore = create()(
       executiveMode: false,
 
       setAuth: (user, access) =>
-        set({
+        set((state) => ({
           user,
           accessToken: access,
           isAuthenticated: !!access,
-        }),
+          // The preference is stored on the user record; follow it on sign-in.
+          executiveMode: user ? !!user.executive_mode : state.executiveMode,
+        })),
 
       setAccessToken: (access) => set({ accessToken: access }),
 
@@ -31,8 +33,7 @@ export const useAuthStore = create()(
           isAuthenticated: false,
         }),
 
-      toggleExecutiveMode: () =>
-        set((state) => ({ executiveMode: !state.executiveMode })),
+      setExecutiveMode: (on) => set({ executiveMode: !!on }),
 
       hasPermission: (permission) => {
         const { user } = get()

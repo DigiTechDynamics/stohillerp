@@ -19,9 +19,10 @@ CENT = Decimal('0.01')
 def _post_fee(prop, amount, description, reference, source_id, user=None, on=None):
     posting = PostingData(description=description, entry_date=on or timezone.localdate(),
                           source_module='agency_fee', source_id=source_id, source_reference=reference)
-    posting.add_debit('2210', amount, description, property_ref=prop)
-    posting.add_credit('4300', amount, description, property_ref=prop)
-    return AccountingService(user=user).post_entry(posting, journal_code='RJ')
+    service = AccountingService(user=user)
+    posting.add_debit(service.get_account('OWNER_FUNDS'), amount, description, property_ref=prop)
+    posting.add_credit(service.get_account('MANAGEMENT_FEES'), amount, description, property_ref=prop)
+    return service.post_entry(posting, journal_code='RJ')
 
 
 def charge_letting_fee(lease, user=None):

@@ -114,11 +114,9 @@ class ChartOfAccount(AuditedModel):
 
     def save(self, *args, **kwargs):
         if not self.currency_id:
-            from apps.core.models import Currency
-            try:
-                self.currency = Currency.objects.get(code='USD')
-            except Currency.DoesNotExist:
-                pass
+            # New accounts default to the base (reporting) currency.
+            from apps.finance.services.fx import base_currency
+            self.currency = base_currency()
         super().save(*args, **kwargs)
 
     @property
@@ -588,6 +586,34 @@ class PostingProfile(AuditedModel):
         ChartOfAccount, on_delete=models.RESTRICT,
         related_name='inv_profiles', limit_choices_to={'account_type': 'asset'},
         null=True, blank=True
+    )
+
+    # Property management. Blank falls back to the starter chart's code
+    # (AccountingService.DEFAULT_ACCOUNTS), so existing profiles keep working.
+    owner_funds = models.ForeignKey(
+        ChartOfAccount, on_delete=models.RESTRICT, related_name='owner_funds_profiles',
+        limit_choices_to={'account_type': 'liability'}, null=True, blank=True,
+        help_text='Trust liability for money held for property owners (starter chart: 2210).'
+    )
+    management_fees = models.ForeignKey(
+        ChartOfAccount, on_delete=models.RESTRICT, related_name='mgmt_fee_profiles',
+        limit_choices_to={'account_type': 'revenue'}, null=True, blank=True,
+        help_text='Management, letting and agency fee income (starter chart: 4300).'
+    )
+    recoveries_income = models.ForeignKey(
+        ChartOfAccount, on_delete=models.RESTRICT, related_name='recoveries_profiles',
+        limit_choices_to={'account_type': 'revenue'}, null=True, blank=True,
+        help_text='Recharges to tenants: utilities, recoveries, damages (starter chart: 4920).'
+    )
+    maintenance = models.ForeignKey(
+        ChartOfAccount, on_delete=models.RESTRICT, related_name='maintenance_profiles',
+        limit_choices_to={'account_type': 'expense'}, null=True, blank=True,
+        help_text='Maintenance and repairs on company-owned property (starter chart: 5300).'
+    )
+    withholding_tax = models.ForeignKey(
+        ChartOfAccount, on_delete=models.RESTRICT, related_name='wht_profiles',
+        limit_choices_to={'account_type': 'asset'}, null=True, blank=True,
+        help_text='Tax withheld by tenants and claimable (starter chart: 1120).'
     )
 
     class Meta:

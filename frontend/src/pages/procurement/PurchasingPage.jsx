@@ -9,6 +9,7 @@ import AccountCombobox from '@/components/common/AccountCombobox'
 import ApprovalBox from '@/components/common/ApprovalBox'
 import Pagination from '@/components/common/Pagination'
 import RecordActions from '@/components/common/RecordActions'
+import { confirmDialog } from '@/components/common/Dialogs'
 
 const today = () => new Date().toISOString().split('T')[0]
 const rows = (res) => res?.data?.results || res?.data || []
@@ -188,7 +189,7 @@ function OrderDetail({ id, onClose, onEdit }) {
         )}
         {['draft', 'issued'].includes(order.status) && (
           <button className="btn-ghost text-rose-300" disabled={busy}
-            onClick={() => window.confirm(`Cancel ${order.number}?`) && run(() => procurementAPI.orders.cancel(order.id), 'Order cancelled.')}>
+            onClick={async () => (await confirmDialog({ title: `Cancel ${order.number}?`, confirmLabel: 'Cancel order', cancelLabel: 'Keep order', tone: 'danger' })) && run(() => procurementAPI.orders.cancel(order.id), 'Order cancelled.')}>
             <XCircle size={16} /> Cancel order
           </button>
         )}

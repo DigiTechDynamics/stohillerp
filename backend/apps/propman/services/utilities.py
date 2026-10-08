@@ -12,7 +12,7 @@ from decimal import Decimal
 
 from django.db.models import Sum
 
-from apps.finance.services.accounting import AccountingError
+from apps.finance.services.accounting import AccountingError, system_account_code
 from apps.propman.models import Meter, MeterReading
 
 ZERO = Decimal('0')
@@ -62,7 +62,7 @@ def utility_charge_lines(lease, period_start, period_end, vat_rate):
         vat = (amount * vat_rate).quantize(Decimal('0.01')) if tariff.vat_applicable else Decimal('0.00')
         detail = f'{consumption.normalize():f} {tariff.unit_label}' if consumption else 'fixed charge'
         lines.append({'description': f'{meter.get_utility_display()} {meter.serial_number} ({detail})',
-                      'account_code': tariff.income_account.code if tariff.income_account_id else '4920',
+                      'account_code': tariff.income_account.code if tariff.income_account_id else system_account_code('RECOVERIES_INCOME'),
                       'amount': str(amount), 'vat': str(vat), 'source': f'meter:{meter.pk}'})
         billed.extend(readings)
     return lines, billed

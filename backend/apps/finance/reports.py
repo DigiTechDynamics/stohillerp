@@ -301,10 +301,44 @@ class BudgetLineViewSet(viewsets.ModelViewSet):
     filterset_fields = ['fiscal_period', 'fiscal_period__fiscal_year', 'account']
 
 
-# ─── CSV export rows (used by ReportExportView) ───────────────────────────────
+# ─── Export rows (used by ReportExportView) ───────────────────────────────
+
+def _amount_rows(items):
+    return [[item['code'], item['name'], item['amount']] for item in items]
+
 
 def export_rows(report_id, data):
-    """Flatten one of the reports above into CSV rows, or None if not ours."""
+    """Flatten a report into rows (title row first) for CSV/Excel/PDF, or None if unknown."""
+    if report_id == 'trial-balance':
+        rows = [['Trial Balance', f"Period: {data.get('period', '')}"], [],
+                ['Account Code', 'Account Name', 'Debit', 'Credit']]
+        rows += [[a['code'], a['name'], a['total_debit'], a['total_credit']] for a in data.get('accounts', [])]
+        return rows + [[], ['TOTALS', '', data.get('total_debit'), data.get('total_credit')]]
+    if report_id == 'income-statement':
+        return ([['Income Statement', f"From {data.get('from_date')} to {data.get('to_date')}"], [],
+                 ['REVENUE']] + _amount_rows(data.get('revenue', []))
+                + [['Total Revenue', '', data.get('total_revenue')], [], ['EXPENSES']]
+                + _amount_rows(data.get('expenses', []))
+                + [['Total Expenses', '', data.get('total_expenses')], [], ['NET PROFIT', '', data.get('net_profit')]])
+    if report_id == 'balance-sheet':
+        return ([['Balance Sheet', f"As at {data.get('as_at_date')}"], [], ['ASSETS']]
+                + _amount_rows(data.get('assets', [])) + [['Total Assets', '', data.get('total_assets')], [],
+                                                          ['LIABILITIES']]
+                + _amount_rows(data.get('liabilities', []))
+                + [['Total Liabilities', '', data.get('total_liabilities')], [], ['EQUITY']]
+                + _amount_rows(data.get('equity', [])) + [['Total Equity', '', data.get('total_equity')]])
+    if report_id == 'vat-return':
+        period = data.get('period', {})
+        return [['VAT Return', f"From {period.get('start_date')} to {period.get('end_date')}"], [],
+                ['SUMMARY'],
+                ['Output Tax', data.get('output_tax')],
+                ['Input Tax', data.get('input_tax')],
+                ['Net Liability', data.get('vat_liability')], [],
+                ['DETAILED CATEGORIES'],
+                ['Total Sales Gross', data.get('total_sales_gross')],
+                ['Total Sales Net', data.get('total_sales_net')],
+                ['Total Purchases Gross', data.get('total_purchases_gross')],
+                ['Total Purchases Net', data.get('total_purchases_net')]]
     if report_id in ('ar-aging', 'ap-aging'):
         keys = [b['key'] for b in data['buckets']] + ['unapplied', 'total']
         rows = [[report_id.upper(), f"As at {data['as_at_date']}"], [],

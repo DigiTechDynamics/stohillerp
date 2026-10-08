@@ -14,7 +14,8 @@ export default function ARInvoiceDetailPanel({ invoice: initialInvoice }) {
   const { data, isLoading } = useQuery({
     queryKey: ['ar-invoice', initialInvoice.id],
     queryFn: () => financeAPI.ar.invoices.detail(initialInvoice.id),
-    initialData: { data: initialInvoice }
+    initialData: { data: initialInvoice },
+    initialDataUpdatedAt: 0,   // list rows are a starting point: always fetch the full record
   })
 
   const invoice = data?.data || initialInvoice

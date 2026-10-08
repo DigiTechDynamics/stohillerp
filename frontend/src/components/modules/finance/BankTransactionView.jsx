@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Landmark, ArrowDownLeft, ArrowUpRight, Search, Filter, Calendar } from 'lucide-react'
+import { Landmark, ArrowDownLeft, ArrowUpRight, Search, Filter, Calendar, X } from 'lucide-react'
 import { bankingAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 
@@ -8,12 +8,24 @@ export default function BankTransactionView() {
   const { sidePanelData } = useUIStore()
   const account = sidePanelData?.account
   const [search, setSearch] = useState('')
+  const [show, setShow] = useState('all')          // all | in | out | reconciled | unreconciled
+  const [dates, setDates] = useState({ from: '', to: '' })
+  const [panel, setPanel] = useState(null)         // 'filter' | 'dates' | null
 
+  const filterParams = {
+    in: { amount__gt: 0 }, out: { amount__lt: 0 },
+    reconciled: { is_reconciled: true }, unreconciled: { is_reconciled: false },
+  }[show] || {}
   const { data: linesData, isLoading } = useQuery({
-    queryKey: ['bank-transactions', account?.id, search],
-    queryFn: () => bankingAPI.lines.list({ statement__bank_account: account?.id, search, page_size: 200 }),
+    queryKey: ['bank-transactions', account?.id, search, show, dates],
+    queryFn: () => bankingAPI.lines.list({
+      statement__bank_account: account?.id, search, page_size: 200, ...filterParams,
+      transaction_date__gte: dates.from || undefined, transaction_date__lte: dates.to || undefined,
+    }),
     enabled: !!account?.id
   })
+  const filtersOn = show !== 'all'
+  const datesOn = !!(dates.from || dates.to)
 
   const transactions = linesData?.data?.results || []
 
@@ -47,13 +59,39 @@ export default function BankTransactionView() {
               className="form-input pl-9 w-full"
             />
           </div>
-          <button className="btn-secondary px-3">
+          <button className={`btn-secondary px-3 ${filtersOn ? 'border-primary text-primary' : ''}`} title="Filter"
+            aria-expanded={panel === 'filter'} onClick={() => setPanel(panel === 'filter' ? null : 'filter')}>
             <Filter size={16} />
           </button>
-          <button className="btn-secondary px-3">
+          <button className={`btn-secondary px-3 ${datesOn ? 'border-primary text-primary' : ''}`} title="Date range"
+            aria-expanded={panel === 'dates'} onClick={() => setPanel(panel === 'dates' ? null : 'dates')}>
             <Calendar size={16} />
           </button>
         </div>
+
+        {panel === 'filter' && (
+          <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Show transactions">
+            {[['all', 'All'], ['in', 'Money in'], ['out', 'Money out'], ['unreconciled', 'Unreconciled'], ['reconciled', 'Reconciled']].map(([v, l]) => (
+              <button key={v} type="button" onClick={() => setShow(v)} aria-pressed={show === v}
+                className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${show === v ? 'bg-primary/10 border-primary/40 text-primary' : 'border-white/10 text-dark-400 hover:text-white'}`}>
+                {l}
+              </button>
+            ))}
+          </div>
+        )}
+        {panel === 'dates' && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <label className="text-xs text-dark-400">From
+              <input type="date" className="form-input w-auto ml-2" value={dates.from} onChange={(e) => setDates({ ...dates, from: e.target.value })} />
+            </label>
+            <label className="text-xs text-dark-400">To
+              <input type="date" className="form-input w-auto ml-2" value={dates.to} onChange={(e) => setDates({ ...dates, to: e.target.value })} />
+            </label>
+            {datesOn && (
+              <button type="button" className="btn-ghost text-xs" onClick={() => setDates({ from: '', to: '' })}><X size={12} /> Clear</button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">

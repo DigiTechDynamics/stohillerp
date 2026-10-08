@@ -1,7 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { DollarSign, TrendingUp, User, Edit2, Trash2, Mail, Clock } from 'lucide-react'
+import { DollarSign, TrendingUp, User, Mail, Clock } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
+import { crmAPI } from '@/services/api'
+import RecordActions from '@/components/common/RecordActions'
 
 export default function OpportunityTable({ opportunities, isLoading }) {
   const openPanel = useUIStore((s) => s.openSidePanel)
@@ -93,15 +95,14 @@ export default function OpportunityTable({ opportunities, isLoading }) {
                    </div>
                 </td>
                 <td className="px-4 py-4 text-right">
-                  <div className="flex items-center justify-end gap-2 text-dark-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
-                      className="p-1.5 hover:text-primary transition-colors hover:bg-white/5 rounded-lg"
-                      onClick={(e) => { e.stopPropagation(); openPanel('opportunity-form', { opportunity: opp }) }}
-                    >
-                      <Edit2 size={14} />
-                    </button>
-                    <button className="p-1.5 hover:text-red-400 transition-colors hover:bg-white/5 rounded-lg"><Trash2 size={14} /></button>
-                  </div>
+                  <RecordActions
+                    record={opp}
+                    label={opp.is_lead ? 'lead' : 'opportunity'}
+                    className="justify-end"
+                    onEdit={() => openPanel('opportunity-form', { opportunity: opp })}
+                    deleteFn={crmAPI.opportunities.delete}
+                    invalidate={['crm-opportunities', 'kanban']}
+                  />
                 </td>
               </motion.tr>
             ))}

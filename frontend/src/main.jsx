@@ -6,6 +6,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import App from './App'
+import { DialogHost } from '@/components/common/Dialogs'
 import './index.css'
 
 const queryClient = new QueryClient({
@@ -39,6 +40,7 @@ if (rootElement) {
               },
             }}
           />
+          <DialogHost />
         </BrowserRouter>
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>

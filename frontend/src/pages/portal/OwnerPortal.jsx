@@ -5,6 +5,7 @@ import { Download, Check, X } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { apiErrorMessage, ownerPortalAPI, saveBlobResponse } from '@/services/api'
 import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
+import { promptDialog } from '@/components/common/Dialogs'
 
 const isoDaysAgo = (days) => new Date(Date.now() - days * 864e5).toISOString().split('T')[0]
 
@@ -153,7 +154,11 @@ export function OwnerMaintenance() {
   const [busy, setBusy] = useState(null)
 
   const decide = async (quote, approve) => {
-    const note = approve ? '' : (window.prompt('Reason (optional)') ?? '')
+    let note = ''
+    if (!approve) {
+      note = await promptDialog({ title: 'Decline this quote?', label: 'Reason (optional)', confirmLabel: 'Decline', tone: 'danger', multiline: true })
+      if (note === null) return
+    }
     setBusy(quote.id)
     try {
       await ownerPortalAPI.decide(quote.id, approve, note)

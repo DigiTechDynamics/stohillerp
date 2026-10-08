@@ -7,7 +7,9 @@ from apps.rentals.models import Lease, RentalInvoice, RentalPayment  # type: ign
 from apps.finance.models.ar import CustomerProfile, CustomerInvoice, CustomerInvoiceLine, CustomerReceipt  # type: ignore
 from apps.finance.models.core import ChartOfAccount, Journal  # type: ignore
 from apps.finance.models.bank import BankAccount  # type: ignore
-from apps.finance.services.accounting import AccountingError, AccountingService  # type: ignore
+from apps.finance.services.accounting import (  # type: ignore
+    AccountingError, AccountingService, receiving_bank_account, system_account,
+)
 
 logger = logging.getLogger('stohill.rentals.sync')
 
@@ -129,11 +131,11 @@ class RentalFinanceSyncService:
         if prop.is_managed:
             mgmt_fee = (rent * prop.management_fee_rate / 100).quantize(cent)
             lines.append({'description': f'Rent {period} (held for owner)',
-                          'revenue_account': cls._account('2210', 'Owner Funds Held'),
+                          'revenue_account': system_account('OWNER_FUNDS'),
                           'unit_price': rent - mgmt_fee, 'tax_amount': vat, 'line_total': rent - mgmt_fee + vat})
             if mgmt_fee:
                 lines.append({'description': f'Management fee {prop.management_fee_rate}%',
-                              'revenue_account': cls._account('4300', 'Property Management Fees'),
+                              'revenue_account': system_account('MANAGEMENT_FEES'),
                               'unit_price': mgmt_fee, 'tax_amount': Decimal('0'), 'line_total': mgmt_fee})
         else:
             lines.append({'description': f'Monthly Rent: {period}', 'revenue_account': rental_income_account,
@@ -142,7 +144,8 @@ class RentalFinanceSyncService:
         for charge in rental_invoice.charges or []:
             amount, charge_vat = Decimal(str(charge['amount'])), Decimal(str(charge.get('vat', '0')))
             lines.append({'description': charge['description'],
-                          'revenue_account': cls._account(charge.get('account_code') or '4920', 'Recoveries'),
+                          'revenue_account': (cls._account(charge['account_code'], 'Recoveries') if charge.get('account_code')
+                                              else system_account('RECOVERIES_INCOME')),
                           'unit_price': amount, 'tax_amount': charge_vat, 'line_total': amount + charge_vat})
 
         fee = rental_invoice.late_payment_fee or Decimal('0.00')
@@ -215,12 +218,7 @@ class RentalFinanceSyncService:
         """
         Ensure the CRM Contact (tenant) has a CustomerProfile in Finance AR.
         """
-        try:
-            # 1100 is standard AR account code in stohill GL
-            ar_account = ChartOfAccount.objects.get(code='1100')
-        except ChartOfAccount.DoesNotExist:
-            logger.error("Accounts Receivable account (code 1100) not found in Chart of Accounts.")
-            raise
+        ar_account = system_account('ACCOUNTS_RECEIVABLE')
 
         profile, created = CustomerProfile.objects.get_or_create(
             contact_link=tenant,
@@ -244,7 +242,7 @@ class RentalFinanceSyncService:
         # Get or create AR Customer Profile
         customer = cls.sync_tenant_to_customer(rental_invoice.lease.tenant)
         
-        rental_income_account = cls._account('4100', 'Rental Income')
+        rental_income_account = system_account('RENTAL_INCOME')
 
         # CustomerInvoiceLine.line_total is GROSS (tax inclusive); the posting
         # service credits revenue with line_total - tax_amount. The rent line
@@ -311,10 +309,13 @@ class RentalFinanceSyncService:
         # Ensure the tenant is a customer
         customer = cls.sync_tenant_to_customer(rental_invoice.lease.tenant)
         
-        # Identify bank account (Use main operations account)
-        bank_account = BankAccount.objects.filter(is_active=True).first()
-        if not bank_account:
-            raise AccountingError("No active bank account is set up to receive payments.")
+        # The account chosen on the payment, else the configured default.
+        bank_account = receiving_bank_account(rental_payment.bank_account, setting='RENTAL_PAYMENTS_BANK_ACCOUNT',
+                                              trust=rental_invoice.lease.property.is_managed)
+        if rental_payment.bank_account_id != bank_account.pk:
+            # update(), not save(): RentalPayment.save() would sync (and receipt) again.
+            RentalPayment.objects.filter(pk=rental_payment.pk).update(bank_account=bank_account)
+            rental_payment.bank_account = bank_account
             
         # Determine total amount to credit AR
         total_payment_value = rental_payment.amount + rental_payment.withholding_tax + rental_payment.amount_from_balance
@@ -339,19 +340,9 @@ class RentalFinanceSyncService:
             # We override the standard posting if deductions exist
             if rental_payment.withholding_tax > 0 or rental_payment.amount_from_balance > 0:
                 # Need specific CoA for WHT Receivable and Tenant Deposits
-                try:
-                    # Let's try to get them from PostingProfile or default codes
-                    from apps.finance.models.core import PostingProfile  # type: ignore
-                    profile = PostingProfile.objects.filter(is_default=True).first()
-                    
-                    wht_account = ChartOfAccount.objects.filter(code='1120').first() or \
-                                 ChartOfAccount.objects.filter(name__icontains='Withholding').first() or \
-                                 ChartOfAccount.objects.get(code='2110') # Fallback to VAT Rec
-                                 
-                    deposit_account = profile.tenant_deposits if profile else ChartOfAccount.objects.get(code='2200')
-                except ChartOfAccount.DoesNotExist:
-                    logger.error("Required accounts for rental payment deductions not found.")
-                    raise
+                # Both from the default posting profile (or the starter chart).
+                wht_account = system_account('WITHHOLDING_TAX')
+                deposit_account = system_account('TENANT_DEPOSITS')
                     
                 # Manual JE creation (reusing service helpers where possible)
                 je = service.record_rental_payment_with_deductions(

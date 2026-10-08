@@ -4,6 +4,15 @@ import { Save, X, AlertCircle } from 'lucide-react'
 import { financeAPI } from '@/services/api'
 import AccountCombobox from '@/components/common/AccountCombobox'
 
+// Optional: left blank, postings use the starter chart's account (code shown).
+const PROPERTY_ACCOUNTS = [
+  ['owner_funds', 'Owner Funds Held (trust)', '2210'],
+  ['management_fees', 'Management & Agency Fees', '4300'],
+  ['recoveries_income', 'Recoveries & Recharges', '4920'],
+  ['maintenance', 'Maintenance & Repairs', '5300'],
+  ['withholding_tax', 'Withholding Tax Receivable', '1120'],
+]
+
 export default function PostingProfileForm({ profile, onClose }) {
   const queryClient = useQueryClient()
   const isEditing = !!profile
@@ -23,6 +32,7 @@ export default function PostingProfileForm({ profile, onClose }) {
     retained_earnings: '',
     rental_income: '',
     commission_income: '',
+    ...Object.fromEntries(PROPERTY_ACCOUNTS.map(([field]) => [field, ''])),
   })
 
   useEffect(() => {
@@ -41,6 +51,7 @@ export default function PostingProfileForm({ profile, onClose }) {
         retained_earnings: profile.retained_earnings?.id || profile.retained_earnings || '',
         rental_income: profile.rental_income?.id || profile.rental_income || '',
         commission_income: profile.commission_income?.id || profile.commission_income || '',
+        ...Object.fromEntries(PROPERTY_ACCOUNTS.map(([field]) => [field, profile[field]?.id || profile[field] || ''])),
       })
     }
   }, [profile])
@@ -259,6 +270,21 @@ export default function PostingProfileForm({ profile, onClose }) {
                   onChange={(val) => handleAccountChange('commission_income', val)}
                 />
               </div>
+            </div>
+
+            {/* Property management */}
+            <div className="space-y-4">
+              <h4 className="text-[10px] font-bold text-dark-400 uppercase tracking-widest pl-1">Property Management</h4>
+              {PROPERTY_ACCOUNTS.map(([field, label, code]) => (
+                <div key={field} className="space-y-1.5">
+                  <label className="text-[10px] font-medium text-dark-400 uppercase">{label}</label>
+                  <AccountCombobox
+                    value={formData[field]}
+                    onChange={(val) => handleAccountChange(field, val)}
+                    placeholder={`Default: account ${code}`}
+                  />
+                </div>
+              ))}
             </div>
           </div>
         </div>

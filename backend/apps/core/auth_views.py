@@ -61,7 +61,15 @@ class ThrottledTokenObtainPairView(TokenObtainPairView):
     throttle_scope = "login"
 
     def post(self, request, *args, **kwargs):
-        return _move_refresh_to_cookie(super().post(request, *args, **kwargs))
+        response = _move_refresh_to_cookie(super().post(request, *args, **kwargs))
+        if response.status_code == 200:
+            from apps.core.models import AuditLog, User
+            from utils.audit import record
+
+            user = User.objects.filter(email__iexact=request.data.get('email', '')).first()
+            if user:
+                record(request, AuditLog.ActionType.LOGIN, 'User', user.pk, user.email, user=user)
+        return response
 
 
 class CookieTokenRefreshView(_CookieRefreshInput, TokenRefreshView):
@@ -94,4 +102,9 @@ class LogoutView(_CookieRefreshInput, TokenBlacklistView):
             except TokenError:
                 pass
         clear_refresh_cookie(response)
+        if request.user and request.user.is_authenticated:
+            from apps.core.models import AuditLog
+            from utils.audit import record
+
+            record(request, AuditLog.ActionType.LOGOUT, 'User', request.user.pk, request.user.email)
         return response

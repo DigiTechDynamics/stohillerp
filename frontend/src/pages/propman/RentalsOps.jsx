@@ -9,6 +9,7 @@ import { propmanAPI, propertiesAPI, crmAPI, bankingAPI, financeAPI, notification
 import { formatDate, formatDateTime } from '@/utils/format'
 import CrudTable from '@/components/common/CrudTable'
 import { act, Badge, money, label, rowsOf, saveBlob, useOptions } from './common'
+import { confirmDialog, promptDialog } from '@/components/common/Dialogs'
 
 const today = () => new Date().toISOString().slice(0, 10)
 const firstOfMonth = () => `${today().slice(0, 8)}01`
@@ -117,8 +118,8 @@ function ArrearsRow({ c, open, onToggle, onChanged }) {
                 <div className="space-y-3">
                   <div className="flex flex-wrap gap-2">
                     <button className="btn-secondary text-xs" onClick={() => go(propmanAPI.arrearsCases.nextStage(c.id), 'Next stage sent.')}>Send next stage now</button>
-                    <button className="btn-secondary text-xs" onClick={() => window.confirm('Mark this case settled?') && go(propmanAPI.arrearsCases.close(c.id, { status: 'settled', note: form.note }), 'Case settled.')}>Settled</button>
-                    <button className="btn-secondary text-xs" onClick={() => window.confirm('Close as written off? Write off the debt itself in Accounts Receivable.') && go(propmanAPI.arrearsCases.close(c.id, { status: 'written_off', note: form.note }), 'Case closed.')}>Written off</button>
+                    <button className="btn-secondary text-xs" onClick={async () => (await confirmDialog({ title: 'Mark this case settled?', confirmLabel: 'Settled' })) && go(propmanAPI.arrearsCases.close(c.id, { status: 'settled', note: form.note }), 'Case settled.')}>Settled</button>
+                    <button className="btn-secondary text-xs" onClick={async () => (await confirmDialog({ title: 'Close as written off?', message: 'Write off the debt itself in Accounts Receivable.', confirmLabel: 'Close case', tone: 'warning' })) && go(propmanAPI.arrearsCases.close(c.id, { status: 'written_off', note: form.note }), 'Case closed.')}>Written off</button>
                   </div>
                   <div className="grid grid-cols-3 gap-2 items-end">
                     <Field label="Promise date"><input type="date" aria-label="Promise date" className="form-input text-xs w-full" value={form.promise_date} onChange={(e) => setForm({ ...form, promise_date: e.target.value })} /></Field>
@@ -155,9 +156,13 @@ export function ApplicationsTab() {
   const step = async (promise, msg) => { if (await act(promise, msg)) refresh() }
 
   const creditResult = async (app) => {
-    const status = window.prompt('Credit result: clear, adverse or error', 'clear')
+    const status = await promptDialog({
+      title: 'Record credit result', label: 'Result', confirmLabel: 'Next',
+      options: [{ value: 'clear', label: 'Clear' }, { value: 'adverse', label: 'Adverse' }, { value: 'error', label: 'Error' }],
+    })
     if (!status) return
-    const score = window.prompt('Score (optional)', '') || ''
+    const score = await promptDialog({ title: 'Record credit result', label: 'Score (optional)', confirmLabel: 'Save' })
+    if (score === null) return
     step(propmanAPI.applications.creditResult(app.id, { status, score }), 'Credit result recorded.')
   }
 
@@ -182,7 +187,7 @@ export function ApplicationsTab() {
             {['new', 'screening'].includes(r.status) && (
               <>
                 <button className="btn-ghost text-xs px-2 py-1 text-emerald-400" onClick={() => step(propmanAPI.applications.approve(r.id, ''), 'Approved.')}>Approve</button>
-                <button className="btn-ghost text-xs px-2 py-1 text-rose-400" onClick={() => step(propmanAPI.applications.decline(r.id, window.prompt('Reason (optional)') || ''), 'Declined.')}>Decline</button>
+                <button className="btn-ghost text-xs px-2 py-1 text-rose-400" onClick={async () => { const reason = await promptDialog({ title: 'Decline this application?', label: 'Reason (optional)', confirmLabel: 'Decline', tone: 'danger', multiline: true }); if (reason !== null) step(propmanAPI.applications.decline(r.id, reason), 'Declined.') }}>Decline</button>
               </>
             )}
             {r.status === 'approved' && (
@@ -274,7 +279,7 @@ export function CollectionsTab() {
                   <button className="btn-ghost text-xs px-2 py-1" onClick={async () => { const r = await act(propmanAPI.debitBatches.file(b.id)); if (r) { saveBlob(r, `${b.number}.csv`); refresh() } }}><Download size={13} /> File</button>
                   <button className="btn-ghost text-xs px-2 py-1" onClick={() => setOpenBatch(openBatch === b.id ? null : b.id)}>Results</button>
                   {b.status === 'draft' && (
-                    <button className="btn-ghost text-xs px-2 py-1 text-rose-400" onClick={async () => { if (window.confirm('Delete this draft batch?') && await act(propmanAPI.debitBatches.delete(b.id), 'Batch deleted.')) refresh() }}>Delete</button>
+                    <button className="btn-ghost text-xs px-2 py-1 text-rose-400" onClick={async () => { if (await confirmDialog({ title: 'Delete this draft batch?', confirmLabel: 'Delete', tone: 'danger' }) && await act(propmanAPI.debitBatches.delete(b.id), 'Batch deleted.')) refresh() }}>Delete</button>
                   )}
                 </td>
               </tr>
@@ -357,7 +362,7 @@ export function OwnerPaymentRuns() {
   const total = chosen.reduce((s, r) => s + parseFloat(r.amount), 0)
 
   const run = async () => {
-    if (!window.confirm(`Pay ${chosen.length} owner(s) a total of ${money(total)}?`)) return
+    if (!(await confirmDialog({ title: 'Post owner payment run?', message: `Pay ${chosen.length} owner(s) a total of ${money(total)}?`, confirmLabel: 'Pay owners', tone: 'warning' }))) return
     const r = await act(propmanAPI.ownerRuns.create({ ...form, minimum, owners: chosen.map((c) => c.owner) }), (res) => `Run ${res.data.number} posted.`)
     if (r) {
       saveBlob(await propmanAPI.ownerRuns.file(r.data.id), `${r.data.number}.csv`)
@@ -464,7 +469,7 @@ export function ReportsTab() {
         <button className="btn-primary text-xs" disabled={busy} onClick={run}>{busy ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />} Run</button>
         <button className="btn-secondary text-xs" onClick={async () => { const r = await act(propmanAPI.reports.csv(key, clean())); if (r) saveBlob(r, `${key}.csv`) }}><FileDown size={14} /> CSV</button>
         <button className="btn-secondary text-xs" onClick={async () => {
-          const name = window.prompt('Save these settings as:', REPORTS.find(([v]) => v === key)[1])
+          const name = await promptDialog({ title: 'Save report settings', label: 'Name', defaultValue: REPORTS.find(([v]) => v === key)[1], required: true, confirmLabel: 'Save' })
           if (name && await act(propmanAPI.savedReports.create({ name, report: key, params: clean(), schedule: 'none' }), 'Report saved.')) {
             queryClient.invalidateQueries({ queryKey: ['saved-reports'] })
           }

@@ -4,6 +4,7 @@ import { Receipt, PiggyBank, RefreshCcw, XCircle, ListPlus, Trash2, Loader2 } fr
 import { toast } from 'react-hot-toast'
 import { apiErrorMessage, rentalsAPI } from '@/services/api'
 import { formatCurrency } from '@/utils/format'
+import { confirmDialog } from '@/components/common/Dialogs'
 
 const today = () => new Date().toISOString().split('T')[0]
 
@@ -156,7 +157,7 @@ export default function LeaseActions({ lease }) {
           </div>
           <button className="btn-secondary text-xs w-full py-2 text-rose-300" disabled={busy}
             onClick={async () => {
-              if (!window.confirm('Terminate this lease? Billed periods after the date will be credited.')) return
+              if (!(await confirmDialog({ title: 'Terminate this lease?', message: 'Billed periods after the date will be credited.', confirmLabel: 'Terminate', tone: 'danger' }))) return
               setResult(await run(() => rentalsAPI.leases.terminate(lease.id, termination), 'Lease terminated.'))
             }}>Terminate lease</button>
           {result && (

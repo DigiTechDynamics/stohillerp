@@ -7,6 +7,7 @@ import DocumentActions from './DocumentActions'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
+import { confirmDialog } from '@/components/common/Dialogs'
 
 export default function APInvoiceDetailPanel({ invoice: initialInvoice }) {
   const queryClient = useQueryClient()
@@ -15,7 +16,8 @@ export default function APInvoiceDetailPanel({ invoice: initialInvoice }) {
   const { data, isLoading } = useQuery({
     queryKey: ['ap-invoice', initialInvoice.id],
     queryFn: () => financeAPI.ap.invoices.detail(initialInvoice.id),
-    initialData: { data: initialInvoice }
+    initialData: { data: initialInvoice },
+    initialDataUpdatedAt: 0,   // list rows are a starting point: always fetch the full record
   })
 
   const invoice = data?.data || initialInvoice
@@ -60,8 +62,8 @@ export default function APInvoiceDetailPanel({ invoice: initialInvoice }) {
     openSidePanel('new-ap-invoice', { invoice })
   }
 
-  const handleDelete = () => {
-    if (window.confirm('Are you sure you want to delete this draft invoice?')) {
+  const handleDelete = async () => {
+    if (await confirmDialog({ title: 'Delete this draft invoice?', message: 'This cannot be undone.', confirmLabel: 'Delete', tone: 'danger' })) {
       deleteMutation.mutate()
     }
   }

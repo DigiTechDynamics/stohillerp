@@ -6,6 +6,8 @@ vi.mock('@/services/api', () => {
   const ok = (data) => Promise.resolve({ data })
   return {
     propertiesAPI: { list: vi.fn(() => ok({ results: [] })) },
+    saveBlobResponse: vi.fn(),
+    apiErrorMessage: (e, fallback) => fallback,
     financeAPI: {
       periods: { list: vi.fn(() => ok({ results: [] })) },
       fiscalYears: { list: vi.fn(() => ok({ results: [] })) },

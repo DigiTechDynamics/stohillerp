@@ -32,6 +32,8 @@ from apps.finance.settlement_views import (  # type: ignore
 )
 from apps.finance.statements import CustomerStatementActions, SupplierStatementActions  # type: ignore
 from apps.finance.approval_views import ApprovalActions  # type: ignore
+from apps.notifications.inbox import notify, notify_module, resolve as resolve_notifications
+from apps.notifications.models import Notification
 from apps.procurement.match_views import InvoiceMatchActions  # type: ignore
 from apps.finance.services import approvals  # type: ignore
 from utils.queries import ledger_balance
@@ -202,6 +204,10 @@ class JournalBatchViewSet(RecordRulesMixin, viewsets.ModelViewSet):
             batch.status = JournalBatch.BatchStatus.PENDING_APPROVAL
             batch.save(update_fields=['status'])
             batch.entries.update(status=JournalEntry.EntryStatus.PENDING_APPROVAL)
+        notify_module('finance_gl', f'Journal batch {batch.batch_number} waits for approval',
+                      f'Submitted by {request.user.full_name}.', link='/finance/approvals',
+                      level=Notification.Level.ACTION, category='batch_approval',
+                      related=f'batch:{batch.pk}', exclude=batch.maker)
         return Response({'status': 'submitted', 'batch_number': batch.batch_number})
 
     @action(detail=True, methods=['post'])
@@ -226,6 +232,10 @@ class JournalBatchViewSet(RecordRulesMixin, viewsets.ModelViewSet):
             batch.save(update_fields=['status', 'checker', 'approved_at'])
             batch.entries.update(status=JournalEntry.EntryStatus.APPROVED)
         logger.info('Batch %s approved by user %s', batch.batch_number, request.user.pk)
+        resolve_notifications('batch_approval', f'batch:{batch.pk}')
+        notify(batch.maker, f'Journal batch {batch.batch_number} is approved',
+               f'Approved by {request.user.full_name}. It can now be posted.', link='/finance/approvals',
+               category='batch_result', related=f'batch:{batch.pk}')
         return Response({'status': 'approved'})
 
     @action(detail=True, methods=['post'])
@@ -284,12 +294,15 @@ class JournalEntryViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def reverse(self, request, pk=None):
         """Create a reversal of a posted entry."""
+        from datetime import date as date_type
+
         entry = self.get_object()
         from apps.finance.services.accounting import AccountingService  # type: ignore
         service = AccountingService(user=request.user)
         try:
-            reversal = service.create_reversal(entry)
-            return Response({'reversal_reference': reversal.reference})
+            on = request.data.get('entry_date')
+            reversal = service.create_reversal(entry, entry_date=date_type.fromisoformat(on) if on else None)
+            return Response({'reversal_reference': reversal.reference, 'reversal_id': str(reversal.pk)})
         except Exception as e:
             return Response({'error': str(e)}, status=400)
 
@@ -583,7 +596,7 @@ class BalanceSheetView(APIView):
 
 
 class ReportExportView(APIView):
-    """Export financial reports to CSV format."""
+    """Export a financial report: ?export_format=csv | xlsx (excel) | pdf."""
 
     def get(self, request, report_id):
         logger.debug("Exporting report %s", report_id)
@@ -617,126 +630,13 @@ class ReportExportView(APIView):
         if response.status_code != 200:
             return response
 
-        data = response.data
-        
-        output = HttpResponse(content_type='text/csv')
-        output['Content-Disposition'] = f'attachment; filename="{report_id}.csv"'
-        
-        if format_type == 'pdf':
-            from reportlab.lib import colors
-            from reportlab.lib.pagesizes import letter
-            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-            from reportlab.lib.styles import getSampleStyleSheet
-            
-            output = HttpResponse(content_type='application/pdf')
-            output['Content-Disposition'] = f'attachment; filename="{report_id}.pdf"'
-            
-            doc = SimpleDocTemplate(output, pagesize=letter)
-            elements = []
-            styles = getSampleStyleSheet()
-            
-            if report_id == 'vat-return':
-                period = data.get('period', {})
-                elements.append(Paragraph("VAT Return Report", styles['Title']))
-                elements.append(Paragraph(f"From: {period.get('start_date')} To: {period.get('end_date')}", styles['Normal']))
-                elements.append(Spacer(1, 20))
-                
-                table_data = [
-                    ['SUMMARY', ''],
-                    ['Output Tax', str(data.get('output_tax', 0))],
-                    ['Input Tax', str(data.get('input_tax', 0))],
-                    ['Net Liability', str(data.get('vat_liability', 0))],
-                    ['', ''],
-                    ['DETAILED CATEGORIES', ''],
-                    ['Total Sales Gross', str(data.get('total_sales_gross', 0))],
-                    ['Total Sales Net', str(data.get('total_sales_net', 0))],
-                    ['Total Purchases Gross', str(data.get('total_purchases_gross', 0))],
-                    ['Total Purchases Net', str(data.get('total_purchases_net', 0))]
-                ]
-                
-                t = Table(table_data, colWidths=[200, 200])
-                t.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (1, 0), colors.grey),
-                    ('TEXTCOLOR', (0, 0), (1, 0), colors.whitesmoke),
-                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                    ('BACKGROUND', (0, 5), (1, 5), colors.grey),
-                    ('TEXTCOLOR', (0, 5), (1, 5), colors.whitesmoke),
-                    ('FONTNAME', (0, 5), (-1, 5), 'Helvetica-Bold'),
-                    ('GRID', (0,0), (-1,-1), 1, colors.black)
-                ]))
-                
-                elements.append(t)
-            
-            doc.build(elements)
-            return output
-
-        import csv
-        writer = csv.writer(output)
-
         from apps.finance.reports import export_rows  # type: ignore
-        rows = export_rows(report_id, data)
-        if rows is not None:
-            writer.writerows(rows)
-        elif report_id == 'trial-balance':
-            writer.writerow(['Trial Balance Report', f"Period: {data.get('period', '')}"])
-            writer.writerow([])
-            writer.writerow(['Account Code', 'Account Name', 'Debit', 'Credit'])
-            for acc in data.get('accounts', []):
-                writer.writerow([acc['code'], acc['name'], acc['total_debit'], acc['total_credit']])
-            writer.writerow([])
-            writer.writerow(['TOTALS', '', data.get('total_debit'), data.get('total_credit')])
+        from utils.exports import export_response
 
-        elif report_id == 'income-statement':
-            writer.writerow(['Income Statement', f"From: {data.get('from_date')} To: {data.get('to_date')}"])
-            writer.writerow([])
-            writer.writerow(['REVENUE'])
-            for item in data.get('revenue', []):
-                writer.writerow([item['code'], item['name'], item['amount']])
-            writer.writerow(['Total Revenue', '', data.get('total_revenue')])
-            writer.writerow([])
-            writer.writerow(['EXPENSES'])
-            for item in data.get('expenses', []):
-                writer.writerow([item['code'], item['name'], item['amount']])
-            writer.writerow(['Total Expenses', '', data.get('total_expenses')])
-            writer.writerow([])
-            writer.writerow(['NET PROFIT', '', data.get('net_profit')])
-
-        elif report_id == 'balance-sheet':
-            writer.writerow(['Balance Sheet', f"As At: {data.get('as_at_date')}"])
-            writer.writerow([])
-            writer.writerow(['ASSETS'])
-            for item in data.get('assets', []):
-                writer.writerow([item['code'], item['name'], item['amount']])
-            writer.writerow(['Total Assets', '', data.get('total_assets')])
-            writer.writerow([])
-            writer.writerow(['LIABILITIES'])
-            for item in data.get('liabilities', []):
-                writer.writerow([item['code'], item['name'], item['amount']])
-            writer.writerow(['Total Liabilities', '', data.get('total_liabilities')])
-            writer.writerow([])
-            writer.writerow(['EQUITY'])
-            for item in data.get('equity', []):
-                writer.writerow([item['code'], item['name'], item['amount']])
-            writer.writerow(['Total Equity', '', data.get('total_equity')])
-
-        elif report_id == 'vat-return':
-            period = data.get('period', {})
-            writer.writerow(['VAT Return Report', f"From: {period.get('start_date')} To: {period.get('end_date')}"])
-            writer.writerow([])
-            writer.writerow(['SUMMARY'])
-            writer.writerow(['Output Tax', data.get('output_tax')])
-            writer.writerow(['Input Tax', data.get('input_tax')])
-            writer.writerow(['Net Liability', data.get('vat_liability')])
-            writer.writerow([])
-            writer.writerow(['DETAILED CATEGORIES'])
-            writer.writerow(['Total Sales Gross', data.get('total_sales_gross')])
-            writer.writerow(['Total Sales Net', data.get('total_sales_net')])
-            writer.writerow(['Total Purchases Gross', data.get('total_purchases_gross')])
-            writer.writerow(['Total Purchases Net', data.get('total_purchases_net')])
-
-        return output
+        rows = export_rows(report_id, response.data)
+        if rows is None:
+            return Response({'error': 'This report cannot be exported.'}, status=400)
+        return export_response(rows, format_type, report_id)
 
 # ─── AP Views ────────────────────────────────────────────────────────────────
 
@@ -939,9 +839,20 @@ class CustomerReceiptViewSet(RecordRulesMixin, ReceiptSettlementActions, viewset
         except Exception as e:
             return Response({'error': str(e)}, status=400)
 
+    @action(detail=True, methods=['get'])
+    def pdf(self, request, pk=None):
+        from apps.finance.services.pdf_service import generate_receipt_pdf  # type: ignore
+
+        receipt = self.get_object()
+        response = HttpResponse(generate_receipt_pdf(receipt), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="Receipt_{receipt.receipt_reference}.pdf"'
+        return response
+
 # ─── Bank & Tax Views ────────────────────────────────────────────────────────
 
+
 from apps.finance.models import BankAccount, TaxCode  # type: ignore
+
 
 class BankAccountViewSet(viewsets.ModelViewSet):
     queryset = BankAccount.objects.select_related('gl_account').order_by('name')

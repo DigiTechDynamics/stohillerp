@@ -1,12 +1,13 @@
 """
 Sending email and SMS.
 
-Email goes through Django's configured email backend (SMTP in production).
-SMS goes through the backend named in settings.SMS_BACKEND. The default,
-LogSMSBackend, sends nothing: it records the message as "logged" so the
-history is complete and a real gateway can be added later by writing a class
-with a send(to, text) method returning a provider reference and setting
-SMS_BACKEND to its dotted path.
+Email goes through Django's configured email backend: SMTP once EMAIL_HOST is
+set (see settings), otherwise it is only written to the log.
+SMS goes through the backend named in settings.SMS_BACKEND:
+  apps.notifications.services.TwilioSMSBackend   Twilio
+  apps.notifications.services.HTTPSMSBackend     any JSON HTTP gateway
+  apps.notifications.services.LogSMSBackend      (default) records, sends nothing
+Another gateway is a class with send(to, text) returning a provider reference.
 
 Every attempt is stored as a notifications.Message.
 """
@@ -34,6 +35,83 @@ class LogSMSBackend:
     def send(self, to, text):
         logger.info('SMS (not sent, no gateway) to %s: %s', to, text[:80])
         return ''
+
+
+def _post_json(url, payload, headers, timeout=20):
+    import json
+    from urllib.request import Request, urlopen
+
+    request = Request(url, data=json.dumps(payload).encode(), method='POST',
+                      headers={'Content-Type': 'application/json', 'Accept': 'application/json', **headers})
+    with urlopen(request, timeout=timeout) as response:   # noqa: S310 - configured gateway URL
+        body = response.read().decode() or '{}'
+    try:
+        return json.loads(body)
+    except ValueError:
+        return {'raw': body}
+
+
+class TwilioSMSBackend:
+    """
+    Twilio. Settings: SMS_TWILIO_ACCOUNT_SID, SMS_TWILIO_AUTH_TOKEN and SMS_FROM
+    (a Twilio number or alphanumeric sender ID).
+    """
+    name = 'twilio'
+    delivers = True
+
+    def __init__(self):
+        self.sid = getattr(settings, 'SMS_TWILIO_ACCOUNT_SID', '')
+        self.token = getattr(settings, 'SMS_TWILIO_AUTH_TOKEN', '')
+        self.sender = getattr(settings, 'SMS_FROM', '')
+        if not (self.sid and self.token and self.sender):
+            raise SMSError('Twilio is not configured (SMS_TWILIO_ACCOUNT_SID, SMS_TWILIO_AUTH_TOKEN, SMS_FROM).')
+
+    def send(self, to, text):
+        import base64
+        import json
+        from urllib.error import HTTPError
+        from urllib.parse import urlencode
+        from urllib.request import Request, urlopen
+
+        url = f'https://api.twilio.com/2010-04-01/Accounts/{self.sid}/Messages.json'
+        auth = base64.b64encode(f'{self.sid}:{self.token}'.encode()).decode()
+        request = Request(url, data=urlencode({'To': to, 'From': self.sender, 'Body': text}).encode(), method='POST',
+                          headers={'Authorization': f'Basic {auth}',
+                                   'Content-Type': 'application/x-www-form-urlencoded'})
+        try:
+            with urlopen(request, timeout=20) as response:   # noqa: S310 - fixed https URL
+                data = json.loads(response.read().decode())
+        except HTTPError as e:
+            raise SMSError(f'Twilio refused the message: {e.read().decode()[:200]}')
+        return data.get('sid', '')
+
+
+class HTTPSMSBackend:
+    """
+    Any gateway with a JSON API (local Zimbabwean aggregators, Africa's Talking
+    bridges...). POSTs {"to", "message", "from"} to SMS_HTTP_URL with
+    "Authorization: Bearer SMS_HTTP_TOKEN"; the reply's "id" (or "message_id")
+    is kept as the provider reference.
+    """
+    name = 'http'
+    delivers = True
+
+    def __init__(self):
+        self.url = getattr(settings, 'SMS_HTTP_URL', '')
+        self.token = getattr(settings, 'SMS_HTTP_TOKEN', '')
+        self.sender = getattr(settings, 'SMS_FROM', '')
+        if not self.url:
+            raise SMSError('The SMS gateway URL is not configured (SMS_HTTP_URL).')
+
+    def send(self, to, text):
+        from urllib.error import HTTPError
+
+        headers = {'Authorization': f'Bearer {self.token}'} if self.token else {}
+        try:
+            data = _post_json(self.url, {'to': to, 'message': text, 'from': self.sender}, headers)
+        except HTTPError as e:
+            raise SMSError(f'The SMS gateway refused the message: {e.read().decode()[:200]}')
+        return str(data.get('id') or data.get('message_id') or '')
 
 
 def sms_backend():
@@ -65,8 +143,9 @@ def send_sms(to, text, *, contact=None, category='', related='', user=None):
         return Message.objects.create(channel=Message.Channel.SMS, recipient='', body=text,
                                       status=Message.Status.SKIPPED, error='No mobile number.', contact=contact,
                                       category=category, related_object=related, sent_by=user)
-    backend = sms_backend()
+    backend = None
     try:
+        backend = sms_backend()   # a misconfigured gateway is recorded as a failure, not raised
         reference = backend.send(to, text)
         status = Message.Status.SENT if getattr(backend, 'delivers', True) else Message.Status.LOGGED
         error = ''
@@ -74,7 +153,7 @@ def send_sms(to, text, *, contact=None, category='', related='', user=None):
         logger.warning('SMS to %s failed: %s', to, e)
         reference, status, error = '', Message.Status.FAILED, str(e)
     return Message.objects.create(channel=Message.Channel.SMS, recipient=to, body=text, status=status, error=error,
-                                  provider=getattr(backend, 'name', backend.__class__.__name__),
+                                  provider=getattr(backend, 'name', settings.SMS_BACKEND.rsplit('.', 1)[-1]),
                                   provider_reference=reference or '', contact=contact, category=category,
                                   related_object=related, sent_by=user)
 

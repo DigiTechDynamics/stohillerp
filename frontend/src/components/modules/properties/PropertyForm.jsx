@@ -1,10 +1,15 @@
-import { useState, forwardRef } from 'react'
+import { useState, forwardRef, lazy, Suspense } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { MapPin, Home, Info, Square, BedDouble, Bath, Car, Save, Loader2 } from 'lucide-react'
+import { MapPin, Home, Info, Square, BedDouble, Bath, Car, Save, Loader2, LocateFixed } from 'lucide-react'
 import { propertiesAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
 import CurrencySelect from '@/components/common/CurrencySelect'
+import { useCompanyProfile } from '@/hooks/useCompanyProfile'
+import { countryName } from '@/utils/format'
+
+// Leaflet is only downloaded when a form with a map is opened.
+const PropertyMap = lazy(() => import('@/components/common/PropertyMap'))
 
 const PropertyForm = forwardRef((props, ref) => {
   const queryClient = useQueryClient()
@@ -12,6 +17,8 @@ const PropertyForm = forwardRef((props, ref) => {
   const closeSidePanel = useUIStore(s => s.closeSidePanel)
   const property = sidePanelData?.property
   const isEdit = !!property
+  const company = useCompanyProfile()
+  const [locating, setLocating] = useState(false)
 
   const [formData, setFormData] = useState({
     name: property?.name || '',
@@ -24,7 +31,9 @@ const PropertyForm = forwardRef((props, ref) => {
     city: property?.city || '',
     province: property?.province || '',
     postal_code: property?.postal_code || '',
-    country: property?.country || 'South Africa',
+    country: property?.country || countryName(company.data?.country),
+    latitude: property?.latitude ?? '',
+    longitude: property?.longitude ?? '',
     erf_size: property?.erf_size || '',
     floor_size: property?.floor_size || '',
     bedrooms: property?.bedrooms || '',
@@ -67,6 +76,29 @@ const PropertyForm = forwardRef((props, ref) => {
     }))
   }
 
+  // Look the address up on OpenStreetMap (Nominatim) and drop the pin there.
+  const locateAddress = async () => {
+    const query = [formData.address_line1, formData.suburb, formData.city, formData.province, formData.country]
+      .filter(Boolean).join(', ')
+    setLocating(true)
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`,
+        { referrerPolicy: 'strict-origin-when-cross-origin', headers: { Accept: 'application/json' } },
+      )
+      const [hit] = res.ok ? await res.json() : []
+      if (!hit) {
+        toast.error('Address not found on the map. Click the map to place the property instead.')
+        return
+      }
+      setFormData((prev) => ({ ...prev, latitude: parseFloat(hit.lat).toFixed(7), longitude: parseFloat(hit.lon).toFixed(7) }))
+    } catch {
+      toast.error('The map lookup is unavailable. Click the map to place the property instead.')
+    } finally {
+      setLocating(false)
+    }
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!formData.name || !formData.property_type_id || !formData.address_line1) {
@@ -77,7 +109,7 @@ const PropertyForm = forwardRef((props, ref) => {
     const payload = { ...formData }
     const numericFields = [
       'erf_size', 'floor_size', 'bedrooms', 'bathrooms',
-      'garages', 'parking_bays', 'asking_price', 'rental_rate'
+      'garages', 'parking_bays', 'asking_price', 'rental_rate', 'latitude', 'longitude'
     ]
     numericFields.forEach(field => {
       if (payload[field] === '') {
@@ -217,6 +249,41 @@ const PropertyForm = forwardRef((props, ref) => {
                 className="form-input"
               />
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs text-dark-400 ml-1" htmlFor="property-country">Country</label>
+            <input
+              id="property-country"
+              name="country"
+              value={formData.country}
+              onChange={handleChange}
+              className="form-input"
+            />
+          </div>
+
+          {/* Map location */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-dark-400 ml-1">Map location</label>
+              <button type="button" className="btn-ghost text-xs px-2 py-1" onClick={locateAddress} disabled={locating || !formData.address_line1}>
+                {locating ? <Loader2 size={13} className="animate-spin" /> : <LocateFixed size={13} />} Find address on map
+              </button>
+            </div>
+            <Suspense fallback={<div className="h-56 rounded-xl bg-dark-800 animate-pulse" />}>
+              <PropertyMap
+                picker
+                className="h-56"
+                value={{ lat: formData.latitude, lng: formData.longitude }}
+                onPick={({ lat, lng }) => setFormData((prev) => ({ ...prev, latitude: lat.toFixed(7), longitude: lng.toFixed(7) }))}
+              />
+            </Suspense>
+            <div className="grid grid-cols-2 gap-4">
+              <input name="latitude" type="number" step="any" value={formData.latitude} onChange={handleChange}
+                placeholder="Latitude" aria-label="Latitude" className="form-input" />
+              <input name="longitude" type="number" step="any" value={formData.longitude} onChange={handleChange}
+                placeholder="Longitude" aria-label="Longitude" className="form-input" />
+            </div>
+            <p className="text-[11px] text-dark-500 ml-1">Click the map to place the property, or find it from the address.</p>
           </div>
         </div>
       </section>

@@ -4,6 +4,7 @@ import { Settings, Plus, Search, Edit2, Trash2, CheckCircle2, AlertCircle, Arrow
 import { Link } from 'react-router-dom'
 import { financeAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
+import { confirmDialog } from '@/components/common/Dialogs'
 
 export default function PostingProfilesPage() {
   const [search, setSearch] = useState('')
@@ -22,8 +23,8 @@ export default function PostingProfilesPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['posting-profiles'] }),
   })
 
-  const handleDelete = (id) => {
-    if (window.confirm('Are you sure you want to delete this posting profile?')) {
+  const handleDelete = async (id) => {
+    if (await confirmDialog({ title: 'Delete this posting profile?', message: 'This cannot be undone.', confirmLabel: 'Delete', tone: 'danger' })) {
       deleteMutation.mutate(id)
     }
   }
@@ -126,7 +127,7 @@ export default function PostingProfilesPage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1">
                     <button 
                       onClick={() => openPanel('posting-profile-form', { profile })}
                       className="p-2 rounded-lg bg-white/5 text-dark-400 hover:text-white hover:bg-white/10"

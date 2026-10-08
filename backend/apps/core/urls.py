@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from . import views
 from .company import CompanyView
 from .data_management import TemplateDownloadView, DataExportView, DataImportView
+from apps.notifications.integrations import IntegrationsView, TestEmailView, TestSMSView
 
 router = DefaultRouter()
 router.register('users', views.UserViewSet, basename='users')
@@ -17,6 +18,9 @@ urlpatterns = [
     path('', include(router.urls)),
     path('me/', views.CurrentUserView.as_view(), name='current-user'),
     path('company/', CompanyView.as_view(), name='company'),
+    path('integrations/', IntegrationsView.as_view(), name='integrations'),
+    path('integrations/test-email/', TestEmailView.as_view(), name='integrations-test-email'),
+    path('integrations/test-sms/', TestSMSView.as_view(), name='integrations-test-sms'),
     path('data/template/<str:module_name>/', TemplateDownloadView.as_view(), name='data-template'),
     path('data/export/<str:module_name>/', DataExportView.as_view(), name='data-export'),
     path('data/import/<str:module_name>/', DataImportView.as_view(), name='data-import'),

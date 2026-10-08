@@ -316,7 +316,19 @@ export default function AccountsReceivablePage() {
                         {r.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <button className="p-1.5 rounded-lg text-dark-400 hover:text-primary hover:bg-primary/10 transition-colors"
+                        title="Download receipt (PDF)" aria-label={`Download receipt ${r.receipt_reference}`}
+                        onClick={async (e) => {
+                          e.stopPropagation()
+                          try {
+                            saveBlobResponse(await financeAPI.ar.receipts.pdf(r.id), `Receipt_${r.receipt_reference}.pdf`)
+                          } catch (err) {
+                            toast.error(apiErrorMessage(err, 'Could not download the receipt.'))
+                          }
+                        }}>
+                        <Download size={14} />
+                      </button>
                       <RecordActions record={r} label="receipt" deleteFn={financeAPI.ar.receipts.delete}
                         invalidate={['ar-receipts', 'ar-aging-total']} />
                     </td>

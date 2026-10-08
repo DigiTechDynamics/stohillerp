@@ -151,6 +151,16 @@ class Attendance(AuditedModel):
         db_table = 'hr_attendances'
         ordering = ['-check_in']
 
+    def save(self, *args, **kwargs):
+        # Hours worked follow the check-in and check-out times.
+        if self.check_in and self.check_out:
+            from decimal import Decimal
+            seconds = (self.check_out - self.check_in).total_seconds()
+            self.worked_hours = (Decimal(seconds) / Decimal(3600)).quantize(Decimal('0.01'))
+        else:
+            self.worked_hours = None
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.employee.full_name} in at {self.check_in}"
 
