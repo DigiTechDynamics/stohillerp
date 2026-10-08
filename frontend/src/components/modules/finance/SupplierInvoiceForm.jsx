@@ -209,6 +209,7 @@ export default function SupplierInvoiceForm() {
               value={formData.currency}
               onChange={(val) => setFormData(prev => ({ ...prev, currency: val }))}
               label="Invoice Currency"
+              defaultToBase
             />
           </div>
 

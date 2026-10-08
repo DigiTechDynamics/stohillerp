@@ -2,7 +2,7 @@
 from django.conf import settings
 from rest_framework import serializers
 
-from apps.documents.models import ComplianceRecord, Document, DocumentCategory
+from apps.documents.models import ComplianceRecord, ComplianceRequirement, Document, DocumentCategory
 
 
 class DocumentCategorySerializer(serializers.ModelSerializer):
@@ -39,6 +39,15 @@ class DocumentSerializer(serializers.ModelSerializer):
         if file and file.size > limit:
             raise serializers.ValidationError(f'The file is larger than the {limit // (1024 * 1024)} MB limit.')
         return file
+
+
+class ComplianceRequirementSerializer(serializers.ModelSerializer):
+    record_count = serializers.IntegerField(read_only=True, default=0)
+
+    class Meta:
+        model = ComplianceRequirement
+        fields = ['id', 'name', 'regulation', 'applies_to', 'is_mandatory', 'renewal_period_months',
+                  'description', 'record_count']
 
 
 class ComplianceRecordSerializer(serializers.ModelSerializer):

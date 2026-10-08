@@ -101,7 +101,8 @@ class CrmTagSerializer(serializers.ModelSerializer):
 class PipelineStageSerializer(serializers.ModelSerializer):
     class Meta:
         model = PipelineStage
-        fields = ['id', 'name', 'stage_type', 'position', 'color', 'probability', 'is_terminal', 'is_won', 'sla_days']
+        fields = ['id', 'pipeline', 'name', 'stage_type', 'position', 'color', 'probability', 'is_terminal', 'is_won',
+                  'sla_days']
 
 
 class PipelineSerializer(serializers.ModelSerializer):
@@ -109,7 +110,7 @@ class PipelineSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Pipeline
-        fields = ['id', 'name', 'pipeline_type', 'is_default', 'stages']
+        fields = ['id', 'name', 'pipeline_type', 'is_default', 'description', 'stages']
 
 
 class CrmNoteSerializer(serializers.ModelSerializer):

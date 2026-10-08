@@ -53,6 +53,10 @@ const ContractorOpenJobs = lazy(() => import('@/pages/portal/ContractorPortal').
 const ContractorQuotes = lazy(() => import('@/pages/portal/ContractorPortal').then(m => ({ default: m.ContractorQuotes })))
 const PropertyWorkspace = lazy(() => import('@/pages/properties/PropertyWorkspace'))
 const PropertySettingsPage = lazy(() => import('@/pages/propman/PropertySettingsPage'))
+const CrmSettingsPage = lazy(() => import('@/pages/crm/CrmSettingsPage'))
+const HRSettingsPage = lazy(() => import('@/pages/hr/HRSettingsPage'))
+const DocumentSettingsPage = lazy(() => import('@/pages/documents/DocumentSettingsPage'))
+const AssetSettingsPage = lazy(() => import('@/pages/finance/AssetSettingsPage'))
 
 // Auth guard for the ERP. Portal-only logins (tenants, owners, contractors) go to their portal.
 function PrivateRoute({ children }) {
@@ -125,6 +129,7 @@ export default function App() {
         <Route path="properties/settings" element={<PropertySettingsPage />} />
         <Route path="properties/:id" element={<PropertyWorkspace />} />
         <Route path="crm" element={<CRMPage />} />
+        <Route path="crm/settings" element={<CrmSettingsPage />} />
         <Route path="sales" element={<SalesPage />} />
         <Route path="rentals" element={<RentalsPage />} />
         <Route path="finance" element={<FinancePage />} />
@@ -140,12 +145,15 @@ export default function App() {
         <Route path="finance/periods" element={<FiscalPeriodsPage />} />
         <Route path="finance/posting-profiles" element={<PostingProfilesPage />} />
         <Route path="finance/assets" element={<AssetsPage />} />
+        <Route path="finance/assets/settings" element={<AssetSettingsPage />} />
         <Route path="finance/settings" element={<FinanceSettingsPage />} />
         <Route path="procurement" element={<PurchasingPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="commissions" element={<CommissionsPage />} />
         <Route path="documents" element={<DocumentsPage />} />
+        <Route path="documents/settings" element={<DocumentSettingsPage />} />
         <Route path="hr" element={<HRPage />} />
+        <Route path="hr/settings" element={<HRSettingsPage />} />
         <Route path="hr/leave-management" element={<HRPage />} />
         <Route path="payroll" element={<PayrollPage />} />
         <Route path="agents" element={<AgentsPage />} />

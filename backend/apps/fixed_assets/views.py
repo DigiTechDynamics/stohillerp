@@ -13,7 +13,8 @@ from .services.depreciation import DepreciationService
 from utils.record_rules import RecordRulesMixin
 
 class AssetCategoryViewSet(viewsets.ModelViewSet):
-    queryset = AssetCategory.objects.all()
+    queryset = AssetCategory.objects.select_related(
+        'asset_cost_account', 'accum_depr_account', 'depr_expense_account', 'disposal_gain_loss_account').order_by('code')
     serializer_class = AssetCategorySerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'code']

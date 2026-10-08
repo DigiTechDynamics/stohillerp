@@ -18,6 +18,7 @@ import {
   ArrearsTab, ApplicationsTab, CollectionsTab, OwnerPaymentRuns, ReportsTab, MessagesTab, MaintenanceQuotes,
 } from '@/pages/propman/RentalsOps'
 import { useQueryClient } from '@tanstack/react-query'
+import { SettingsButton } from '@/components/common/SettingsPage'
 
 const TABS = [
   { id: 'properties', label: 'Managed Properties', icon: Building2 },
@@ -142,6 +143,7 @@ export default function RentalsPage() {
           <p className="text-dark-400 text-sm mt-1">Manage properties, leases, invoicing and maintenance</p>
         </div>
         <div className="flex items-center gap-3">
+          <SettingsButton to="/properties/settings" />
           {activeTab === 'properties' && (
             <DataManagementButtons 
               module="properties" 

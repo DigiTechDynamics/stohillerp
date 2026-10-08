@@ -11,6 +11,7 @@ import RecordActions from '@/components/common/RecordActions'
 import { useQueryClient } from '@tanstack/react-query'
 import { useLocation } from 'react-router-dom'
 import { AttendanceTab, LeaveAllocationsTab } from '@/components/modules/hr/HRTabs'
+import { SettingsButton } from '@/components/common/SettingsPage'
 
 const TABS = [['employees', 'Employees'], ['attendance', 'Attendance'], ['allocations', 'Leave allocations']]
 
@@ -51,6 +52,7 @@ export default function HRPage() {
           <p className="text-dark-400 text-sm mt-1">Manage staff, departments and leave</p>
         </div>
         <div className="flex items-center gap-3">
+          <SettingsButton to="/hr/settings" />
           <DataManagementButtons 
             module="employees" 
             filters={{ search, ordering: sort, page }}

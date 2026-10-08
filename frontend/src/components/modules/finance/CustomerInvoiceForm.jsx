@@ -125,7 +125,9 @@ export default function CustomerInvoiceForm() {
     }
   })
 
-  const handleSubmit = () => {
+  const handleSubmit = (e) => {
+    e?.preventDefault()   // without this the browser reloads the page and nothing is saved
+    setError(null)
     if (!formData.customer) {
       setError('Please select a customer.')
       return
@@ -204,6 +206,7 @@ export default function CustomerInvoiceForm() {
               value={formData.currency}
               onChange={(val) => setFormData(prev => ({ ...prev, currency: val }))}
               label="Invoice Currency"
+              defaultToBase
             />
           </div>
 

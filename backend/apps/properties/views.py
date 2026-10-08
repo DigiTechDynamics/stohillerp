@@ -60,7 +60,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
 
 class PropertyTypeViewSet(viewsets.ModelViewSet):
-    queryset = PropertyType.objects.all()
+    queryset = PropertyType.objects.annotate(property_count=Count('properties')).order_by('name')
     serializer_class = PropertyTypeSerializer
     pagination_class = None
 

@@ -104,8 +104,8 @@ export default function AssetDetailPanel({ asset }) {
               { key: 'method', label: 'Method', type: 'select', options: METHODS, required: true },
               { key: 'useful_life_months', label: 'Useful life (months)', type: 'number', required: true },
               { key: 'salvage_value', label: 'Salvage value', type: 'number' },
-              { key: 'depreciation_rate', label: 'Rate % (declining)', type: 'number' },
-              { key: 'total_expected_units', label: 'Expected units', type: 'number' },
+              { key: 'depreciation_rate', label: 'Rate % (declining)', type: 'number', nullable: true },
+              { key: 'total_expected_units', label: 'Expected units', type: 'number', nullable: true },
               { key: 'posts_to_gl', label: 'Posts to the GL', type: 'checkbox' },
             ]}
             defaults={{ book_type: 'Tax', method: 'straight_line', useful_life_months: 60, salvage_value: 0, posts_to_gl: false }}

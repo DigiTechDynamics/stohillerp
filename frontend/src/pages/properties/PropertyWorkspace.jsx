@@ -185,10 +185,10 @@ function Units({ property }) {
         { key: 'unit_number', label: 'Unit number', required: true },
         { key: 'unit_type', label: 'Type', type: 'select', options: UNIT_TYPES, required: true },
         { key: 'floor', label: 'Floor' },
-        { key: 'floor_size', label: 'Floor area (GLA) m²', type: 'number' },
-        { key: 'bedrooms', label: 'Bedrooms', type: 'number' },
-        { key: 'bathrooms', label: 'Bathrooms', type: 'number' },
-        { key: 'monthly_rental', label: 'Market rent', type: 'number' },
+        { key: 'floor_size', label: 'Floor area (GLA) m²', type: 'number', nullable: true },
+        { key: 'bedrooms', label: 'Bedrooms', type: 'number', nullable: true },
+        { key: 'bathrooms', label: 'Bathrooms', type: 'number', nullable: true },
+        { key: 'monthly_rental', label: 'Market rent', type: 'number', nullable: true },
         { key: 'status', label: 'Status', type: 'select', options: UNIT_STATUS, required: true },
         { key: 'notes', label: 'Notes', type: 'textarea', span: 4 },
         ...customFieldInputs(defs),
@@ -662,7 +662,7 @@ function RecoveryDetail({ schedule, property, currency, onClose }) {
         ]}
         fields={[
           { key: 'lease', label: 'Lease', type: 'select', options: leases, required: true },
-          { key: 'percent', label: 'Share % (percentage basis only)', type: 'number' },
+          { key: 'percent', label: 'Share % (percentage basis only)', type: 'number', nullable: true },
         ]} />
       <div className="card p-4 space-y-3">
         <div className="flex flex-wrap items-end gap-3">
@@ -738,7 +738,7 @@ function Plans({ property, currency }) {
           { key: 'next_due', label: 'Next due', type: 'date', required: true },
           { key: 'lead_days', label: 'Raise days before', type: 'number' },
           { key: 'contractor', label: 'Contractor', type: 'select', options: suppliers },
-          { key: 'estimated_cost', label: 'Estimated cost', type: 'number' },
+          { key: 'estimated_cost', label: 'Estimated cost', type: 'number', nullable: true },
           { key: 'priority', label: 'Priority', type: 'select', options: [['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['emergency', 'Emergency']] },
           { key: 'is_active', label: 'Active', type: 'checkbox' },
           { key: 'description', label: 'Description', type: 'textarea', span: 4 },

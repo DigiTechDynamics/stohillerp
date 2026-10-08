@@ -11,7 +11,8 @@ import RecordActions from '@/components/common/RecordActions'
 //   params    list filter, also merged into new records (e.g. { property: id })
 //   columns   [{ key, label, render?(row), align? }]
 //   fields    [{ key, label, type?: text|number|date|datetime|select|multiselect|checkbox|textarea, options?: [[value, label]],
-//               required?, placeholder?, span?, readOnlyOnEdit?, get?(row) }]
+//               required?, placeholder?, span?, readOnlyOnEdit?, nullable?, get?(row) }]
+//             a blank number is left out (server default) unless the field is nullable
 //   rowActions(row)  extra buttons per row
 const rows = (res) => res?.data?.results || res?.data || []
 
@@ -73,7 +74,13 @@ export default function CrudTable({
     }
     const { id, ...values } = form
     let payload = { ...params, ...values }
-    for (const f of fields) if (payload[f.key] === '' && f.type !== 'text' && f.type !== 'textarea' && f.type !== undefined) payload[f.key] = null
+    for (const f of fields) {
+      if (payload[f.key] !== '' || f.type === 'text' || f.type === 'textarea' || f.type === undefined) continue
+      // A blank number is left out so the server keeps its default (e.g. rate 0), since most
+      // number columns can't hold "no value"; mark a field `nullable` to clear it instead.
+      if (f.type === 'number' && !f.nullable) delete payload[f.key]
+      else payload[f.key] = null
+    }
     if (toPayload) payload = toPayload(payload, !!id)
     setBusy(true)
     try {

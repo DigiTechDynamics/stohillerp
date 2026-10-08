@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from 'react'
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, Save, AlertCircle } from 'lucide-react'
 import { financeAPI } from '@/services/api'
+import { useCurrencies } from '@/hooks/useCurrencies'
 import { useUIStore } from '@/stores/authStore'
 
 const SUB_TYPE_OPTIONS = {
@@ -68,11 +69,7 @@ export default function AccountForm() {
   })
 
   // Fetch Currencies
-  const { data: currenciesData } = useQuery({
-    queryKey: ['currencies'],
-    queryFn: () => financeAPI.currencies.list(),
-  })
-  const currencies = useMemo(() => currenciesData?.data?.results || currenciesData?.data || [], [currenciesData])
+  const { currencies } = useCurrencies()
 
   // Ensure default currency is set for new accounts
   useEffect(() => {

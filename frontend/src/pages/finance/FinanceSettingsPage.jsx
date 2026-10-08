@@ -1,7 +1,9 @@
-// Finance configuration: cost centres, recurring journals, approval rules and FX revaluation.
+// Finance configuration: currencies, tax codes, cost centres, recurring journals, approval rules and FX revaluation.
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Layers, Repeat, ShieldCheck, ArrowLeftRight, Plus, Trash2, Play } from 'lucide-react'
+import { Coins, Percent, Layers, Repeat, ShieldCheck, ArrowLeftRight, Plus, Trash2, Play } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import CurrenciesTab from './CurrenciesTab'
 import { toast } from 'react-hot-toast'
 import { adminAPI, apiErrorMessage, financeAPI } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
@@ -13,6 +15,8 @@ const TABS = [
   { id: 'recurring', label: 'Recurring Journals', icon: Repeat },
   { id: 'approvals', label: 'Approval Rules', icon: ShieldCheck },
   { id: 'fx', label: 'FX Revaluation', icon: ArrowLeftRight },
+  { id: 'currencies', label: 'Currencies', icon: Coins },
+  { id: 'tax-codes', label: 'Tax Codes', icon: Percent },
 ]
 const DOC_TYPES = { supplier_invoice: 'Supplier invoice / credit note', supplier_payment: 'Supplier payment', purchase_order: 'Purchase order' }
 const today = () => new Date().toISOString().split('T')[0]
@@ -358,7 +362,7 @@ export default function FinanceSettingsPage() {
     <div className="p-4 lg:p-6 space-y-6">
       <div>
         <h1 className="font-display text-2xl text-white">Finance Settings</h1>
-        <p className="text-dark-400 text-sm mt-1">Dimensions, automation, controls and period-end revaluation</p>
+        <p className="text-dark-400 text-sm mt-1">Currencies, tax codes, dimensions, automation, controls and period-end revaluation</p>
       </div>
       <div className="flex items-center gap-1 border-b border-white/5 overflow-x-auto">
         {TABS.map(t => (
@@ -369,6 +373,13 @@ export default function FinanceSettingsPage() {
           </button>
         ))}
       </div>
+      {tab === 'currencies' && <CurrenciesTab />}
+      {tab === 'tax-codes' && (
+        <div className="card p-5 space-y-2 max-w-xl">
+          <p className="text-sm text-dark-300">Tax codes (VAT rates and the accounts they post to) are set up on the Tax &amp; VAT page.</p>
+          <Link to="/finance/tax" className="btn-secondary inline-flex items-center gap-2"><Percent size={14} /> Open tax codes</Link>
+        </div>
+      )}
       {tab === 'cost-centres' && <CostCentres />}
       {tab === 'recurring' && <RecurringJournals />}
       {tab === 'approvals' && <ApprovalRules />}

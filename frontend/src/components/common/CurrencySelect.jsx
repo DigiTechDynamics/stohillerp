@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { ChevronDown, Check, Coins } from 'lucide-react'
-import { authAPI } from '@/services/api'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useQuery } from '@tanstack/react-query'
+import { useCurrencies } from '@/hooks/useCurrencies'
 
 export default function CurrencySelect({ 
   value, 
@@ -13,18 +12,16 @@ export default function CurrencySelect({
   disabled = false,
   required = false,
   valueKey = 'id',   // 'code' for models keyed by currency code (e.g. bank accounts)
+  defaultToBase = false,  // pick the base currency when nothing is chosen yet
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef(null)
 
-  const { data: currencies = [], isLoading } = useQuery({
-    queryKey: ['currencies'],
-    queryFn: async () => {
-      const res = await authAPI.currencies.list()
-      return res.data?.results || res.data || []
-    },
-    staleTime: 1000 * 60 * 60, // 1 hour
-  })
+  const { currencies, baseCurrency, isLoading } = useCurrencies()
+
+  useEffect(() => {
+    if (defaultToBase && !value && baseCurrency) onChange(baseCurrency[valueKey])
+  }, [defaultToBase, value, baseCurrency, valueKey, onChange])
 
   // Handle click outside to close
   useEffect(() => {

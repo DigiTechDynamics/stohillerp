@@ -1,5 +1,6 @@
 import { useState, forwardRef, lazy, Suspense } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { MapPin, Home, Info, Square, BedDouble, Bath, Car, Save, Loader2, LocateFixed } from 'lucide-react'
 import { propertiesAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
@@ -160,6 +161,12 @@ const PropertyForm = forwardRef((props, ref) => {
                   <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </select>
+              {typesData && propertyTypes.length === 0 && (
+                <p className="text-xs text-amber-400 ml-1">
+                  No property types yet.{' '}
+                  <Link to="/properties/settings?tab=types" onClick={closeSidePanel} className="underline">Add them in Property settings</Link>.
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <label className="text-xs text-dark-400 ml-1">Ownership</label>

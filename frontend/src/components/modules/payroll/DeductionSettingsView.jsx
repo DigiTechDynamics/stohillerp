@@ -169,7 +169,7 @@ const DeductionSettingsView = ({ selectedRun }) => {
                 ]}
                 fields={[
                   { key: 'min_amount', label: 'From', type: 'number', required: true },
-                  { key: 'max_amount', label: 'To (blank: no limit)', type: 'number' },
+                  { key: 'max_amount', label: 'To (blank: no limit)', type: 'number', nullable: true },
                   { key: 'tax_rate', label: 'Rate %', type: 'number', required: true },
                   { key: 'fixed_deduction', label: 'Fixed deduction', type: 'number' },
                 ]}

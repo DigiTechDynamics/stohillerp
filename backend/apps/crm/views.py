@@ -123,9 +123,16 @@ class CrmTagViewSet(viewsets.ModelViewSet):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class LostReasonViewSet(viewsets.ModelViewSet):
-    queryset = LostReason.objects.filter(is_active=True)
+    """Active reasons for the lost-deal picker; ?all=1 includes retired ones (settings page)."""
+    queryset = LostReason.objects.all()
     serializer_class = LostReasonSerializer
     pagination_class = None
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.action == 'list' and self.request.query_params.get('all') != '1':
+            qs = qs.filter(is_active=True)
+        return qs
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -377,9 +384,11 @@ class PipelineViewSet(viewsets.ModelViewSet):
 
 
 class PipelineStageViewSet(viewsets.ModelViewSet):
-    queryset = PipelineStage.objects.all()
+    queryset = PipelineStage.objects.select_related('pipeline').order_by('pipeline__name', 'position')
     serializer_class = PipelineStageSerializer
     pagination_class = None
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['pipeline']
 
 
 # ─────────────────────────────────────────────────────────────────────────────

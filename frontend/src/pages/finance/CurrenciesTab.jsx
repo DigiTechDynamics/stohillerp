@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { DollarSign, Percent, Plus, RefreshCw, Loader2 } from 'lucide-react'
+import { useCurrencies } from '@/hooks/useCurrencies'
 import api, { financeAPI } from '@/services/api'
 import RecordActions from '@/components/common/RecordActions'
 import { formatDate } from '@/utils/format'
@@ -42,13 +43,8 @@ export default function CurrenciesTab() {
 }
 
 function CurrenciesList() {
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ['currencies'],
-    queryFn: () => api.get('/finance/currencies/').then(r => r.data)
-  })
+  const { currencies, isLoading, refetch } = useCurrencies()
   const openPanel = useUIStore(s => s.openSidePanel)
-
-  const currencies = data?.results || data || []
 
   if (isLoading) return <div className="flex py-20 justify-center"><Loader2 className="animate-spin text-primary" size={32} /></div>
 

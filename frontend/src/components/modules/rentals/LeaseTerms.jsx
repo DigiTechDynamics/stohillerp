@@ -40,8 +40,8 @@ export default function LeaseTerms({ lease: initial }) {
           ]}
           fields={[
             { key: 'effective_date', label: 'Effective', type: 'date', required: true },
-            { key: 'new_rent', label: 'New rent', type: 'number' },
-            { key: 'percent', label: 'or % increase', type: 'number' },
+            { key: 'new_rent', label: 'New rent', type: 'number', nullable: true },
+            { key: 'percent', label: 'or % increase', type: 'number', nullable: true },
           ]} />
       )}
 
@@ -63,7 +63,7 @@ export default function LeaseTerms({ lease: initial }) {
               options: [['renewal', 'Option to renew'], ['break', 'Break clause'], ['purchase', 'Option to purchase'], ['expansion', 'Option to expand']] },
             { key: 'notice_deadline', label: 'Notice deadline', type: 'date', required: true },
             { key: 'effective_date', label: 'Takes effect', type: 'date' },
-            { key: 'term_months', label: 'Term (months)', type: 'number' },
+            { key: 'term_months', label: 'Term (months)', type: 'number', nullable: true },
             { key: 'alert_days', label: 'Alert days before', type: 'number' },
             { key: 'terms', label: 'Terms', type: 'textarea', span: 2 },
           ]}
@@ -199,7 +199,7 @@ function DebitOrder({ lease, currency }) {
           { key: 'collection_day', label: 'Collection day (1-28)', type: 'number', required: true },
           { key: 'signed_on', label: 'Signed on', type: 'date', required: true },
           { key: 'collect_full_balance', label: 'Collect the full balance', type: 'checkbox' },
-          { key: 'fixed_amount', label: 'Or fixed amount', type: 'number' },
+          { key: 'fixed_amount', label: 'Or fixed amount', type: 'number', nullable: true },
           { key: 'status', label: 'Status', type: 'select', options: [['active', 'Active'], ['suspended', 'Suspended'], ['cancelled', 'Cancelled']] },
         ]}
         defaults={{ account_type: 'current', collection_day: 1, collect_full_balance: true, status: 'active' }} />

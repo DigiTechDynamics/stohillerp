@@ -15,6 +15,7 @@ import RecordActions from '@/components/common/RecordActions'
 import { useQueryClient } from '@tanstack/react-query'
 
 import CurrenciesTab from './CurrenciesTab'
+import { SettingsButton } from '@/components/common/SettingsPage'
 
 export default function FinancePage() {
   const [tab, setTab] = useState('gl') // 'gl' or 'currencies'
@@ -45,6 +46,7 @@ export default function FinancePage() {
           <p className="text-dark-400 text-sm mt-1">Manage Chart of Accounts, Journal Entries and Reports</p>
         </div>
         <div className="flex items-center gap-3">
+          <SettingsButton to="/finance/settings" />
           <Link to="/finance/entries" className="btn-secondary flex items-center gap-2">
             <ArrowRightLeft size={16} /> Journal Entries
           </Link>
