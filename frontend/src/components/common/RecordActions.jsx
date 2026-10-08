@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Edit2, Trash2, Loader2 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { apiErrorMessage } from '@/services/api'
+import { confirmDialog } from '@/components/common/Dialogs'
 
 // Edit / delete buttons for a record in a list or panel.
 //
@@ -25,7 +26,10 @@ export default function RecordActions({
       toast.error(deleteLock)
       return
     }
-    if (!window.confirm(`Delete this ${label}? This cannot be undone.`)) return
+    const ok = await confirmDialog({
+      title: `Delete this ${label}?`, message: 'This cannot be undone.', confirmLabel: 'Delete', tone: 'danger',
+    })
+    if (!ok) return
     setBusy(true)
     try {
       await deleteFn(record.id)

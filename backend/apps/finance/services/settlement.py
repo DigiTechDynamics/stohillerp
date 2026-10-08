@@ -194,7 +194,7 @@ class SettlementService:
         base = base_currency()
         posting = PostingData(description=f'FX revaluation of open items at {as_of}', entry_date=as_of,
                               source_module='fx_revaluation', source_reference=f'FXREV-{as_of}',
-                              currency_code=base.code if base else 'USD')
+                              currency_code=currency_code(base))
         total = ZERO
         detail = []
         for side, docs in self._open_foreign_items(as_of):
@@ -316,7 +316,7 @@ class SettlementService:
         base = base_currency()
         return PostingData(description=description, entry_date=on, source_module=side.name,
                            source_id=doc.pk, source_reference=self._doc_ref(doc),
-                           currency_code=base.code if base else 'USD')
+                           currency_code=currency_code(base))
 
     @staticmethod
     def _add_fx(posting, gain, realised):

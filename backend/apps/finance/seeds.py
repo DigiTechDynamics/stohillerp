@@ -35,6 +35,7 @@ STARTER_ACCOUNTS = [
     ("1520", "Office Equipment", "asset", "fixed_asset", "1500", True),
     ("1530", "Motor Vehicles", "asset", "fixed_asset", "1500", True),
     ("1540", "Development Work in Progress", "asset", "fixed_asset", "1500", True),
+    ("1550", "Furniture & Fittings", "asset", "fixed_asset", "1500", True),
     ("1590", "Accumulated Depreciation", "contra", "depreciation", "1500", True),
     # Liabilities
     ("2000", "Current Liabilities", "liability", "current_liability", None, False),
@@ -67,6 +68,7 @@ STARTER_ACCOUNTS = [
     ("4920", "Recoveries & Recharges", "revenue", "other_income", "4000", True),
     ("4950", "Realised Exchange Gains", "revenue", "other_income", "4000", True),
     ("4960", "Unrealised Exchange Gains", "revenue", "other_income", "4000", True),
+    ("4970", "Profit / Loss on Disposal of Assets", "revenue", "other_income", "4000", True),
     # Expenses
     ("5000", "Cost of Sales", "expense", "cost_of_sales", None, False),
     ("5100", "Commission Expense", "expense", "cost_of_sales", "5000", True),
@@ -114,6 +116,11 @@ DEFAULT_PROFILE = {
     "sale_revenue": "4400",
     "commission_expense": "5100",
     "property_inventory": "1510",
+    "owner_funds": "2210",
+    "management_fees": "4300",
+    "recoveries_income": "4920",
+    "maintenance": "5300",
+    "withholding_tax": "1120",
 }
 
 
@@ -153,6 +160,33 @@ def seed_posting_profile() -> None:
         name="Default", is_default=True,
         **{field: accounts[code] for field, code in DEFAULT_PROFILE.items()},
     )
+
+
+# Fixed asset categories: (code, name, asset cost account, description).
+ASSET_CATEGORIES = [
+    ("IT", "Office Equipment & Computers", "1520", "Computers, printers and office equipment"),
+    ("VEH", "Motor Vehicles", "1530", "Company vehicles"),
+    ("FURN", "Furniture & Fittings", "1550", "Office furniture and fittings"),
+]
+
+
+@transaction.atomic
+def seed_asset_categories() -> None:
+    """Starter fixed asset categories (only those whose accounts exist; never overwrites)."""
+    from apps.fixed_assets.models import AssetCategory
+
+    codes = ["1520", "1530", "1550", "1590", "5700", "4970"]
+    accounts = {a.code: a for a in ChartOfAccount.objects.filter(code__in=codes)}
+    if not {"1590", "5700", "4970"} <= set(accounts):
+        logger.warning("Depreciation accounts missing; starter asset categories not created.")
+        return
+    for code, name, cost_code, description in ASSET_CATEGORIES:
+        if cost_code not in accounts:
+            continue
+        AssetCategory.objects.get_or_create(code=code, defaults={
+            "name": name, "description": description, "asset_cost_account": accounts[cost_code],
+            "accum_depr_account": accounts["1590"], "depr_expense_account": accounts["5700"],
+            "disposal_gain_loss_account": accounts["4970"]})
 
 
 @transaction.atomic
@@ -204,4 +238,5 @@ def seed_finance_defaults() -> None:
     seed_journals()
     seed_posting_profile()
     seed_tax_codes()
+    seed_asset_categories()
     ensure_fiscal_year(timezone.localdate())

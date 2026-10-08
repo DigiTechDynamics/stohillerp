@@ -12,6 +12,17 @@ from django.db import models  # type: ignore
 from apps.core.models import AuditedModel, TimeStampedModel  # type: ignore
 
 
+def default_management_fee_rate():
+    from apps.propman.defaults import default_management_fee_rate as configured
+    return configured()
+
+
+def default_country():
+    """New properties default to the company's own country (COMPANY_COUNTRY)."""
+    from apps.core.company import company_country_name
+    return company_country_name()
+
+
 class PropertyType(TimeStampedModel):
     """Configurable property types (e.g., Residential, Commercial, Industrial)."""
     name = models.CharField(max_length=100)
@@ -62,7 +73,7 @@ class Property(AuditedModel):
     city = models.CharField(max_length=100, blank=True)
     province = models.CharField(max_length=100, blank=True)
     postal_code = models.CharField(max_length=10, blank=True)
-    country = models.CharField(max_length=50, default='South Africa')
+    country = models.CharField(max_length=50, default=default_country)
     latitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     longitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
 
@@ -97,7 +108,7 @@ class Property(AuditedModel):
     # (held in trust) less the agency's management fee.
     owner = models.ForeignKey('crm.Contact', null=True, blank=True, on_delete=models.PROTECT,
                               related_name='owned_properties', help_text='Landlord, for managed properties')
-    management_fee_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('10.00'),
+    management_fee_rate = models.DecimalField(max_digits=5, decimal_places=2, default=default_management_fee_rate,
                                               help_text='% of rent retained as management fee (managed properties)')
     # One-off agency fees charged to the owner (managed properties).
     letting_fee_percent = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'),

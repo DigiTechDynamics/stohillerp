@@ -119,7 +119,7 @@ def _receipt(customer, bank, amount, on=D0, currency=None, **kwargs):
 def test_documents_are_downloaded_through_the_api(auth_client, superuser):
     from apps.documents.models import DocumentCategory
 
-    category = DocumentCategory.objects.create(name='KYC', code='KYC')
+    category, _ = DocumentCategory.objects.get_or_create(code='KYC', defaults={'name': 'KYC'})
     client = auth_client(superuser)
     upload = SimpleUploadedFile('passport.pdf', b'%PDF-1.4 secret', content_type='application/pdf')
     response = client.post('/api/v1/documents/', {'title': 'Passport', 'reference': 'DOC-1',
@@ -135,7 +135,7 @@ def test_documents_are_downloaded_through_the_api(auth_client, superuser):
 def test_confidential_documents_need_documents_module(auth_client, superuser):
     from apps.documents.models import Document, DocumentCategory
 
-    category = DocumentCategory.objects.create(name='HR', code='HR')
+    category, _ = DocumentCategory.objects.get_or_create(code='HR', defaults={'name': 'HR'})
     doc = Document.objects.create(title='Payslip', reference='DOC-2', category=category, is_confidential=True,
                                   file=SimpleUploadedFile('p.pdf', b'x'), created_by=superuser)
     rental = _make_user('rm@test.local', role_type='rental_manager')   # has the documents module

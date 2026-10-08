@@ -9,6 +9,7 @@ import { toast } from 'react-hot-toast'
 import { propertiesAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import { formatCurrency, getStatusColor } from '@/utils/format'
+import { confirmDialog } from '@/components/common/Dialogs'
 // Module forms/panels load on demand: importing them eagerly pulled every
 // module's UI into the initial bundle for every user.
 const AccountForm = lazy(() => import('@/components/modules/finance/AccountForm'))
@@ -18,12 +19,14 @@ const EmployeeForm = lazy(() => import('@/components/modules/hr/EmployeeForm'))
 const EmployeeDetailPanel = lazy(() => import('@/components/modules/hr/EmployeeDetailPanel'))
 const LeaveManagementPanel = lazy(() => import('@/components/modules/hr/LeaveManagementPanel'))
 const DocumentUploadForm = lazy(() => import('@/components/modules/documents/DocumentUploadForm'))
+const DocumentDetailPanel = lazy(() => import('@/components/modules/documents/DocumentDetailPanel'))
 const ComplianceAuditPanel = lazy(() => import('@/components/modules/documents/ComplianceAuditPanel'))
 const DepartmentForm = lazy(() => import('@/components/modules/hr/DepartmentForm'))
 const DepartmentListPanel = lazy(() => import('@/components/modules/hr/DepartmentListPanel'))
 const LeaseForm = lazy(() => import('@/components/modules/rentals/LeaseForm'))
 const LeaseDetailPanel = lazy(() => import('@/components/modules/rentals/LeaseDetailPanel'))
 const RentalInvoiceForm = lazy(() => import('@/components/modules/rentals/RentalInvoiceForm'))
+const RentalInvoiceDetailPanel = lazy(() => import('@/components/modules/rentals/RentalInvoiceDetailPanel'))
 const RentalPaymentForm = lazy(() => import('@/components/modules/rentals/RentalPaymentForm'))
 const TenantForm = lazy(() => import('@/components/modules/rentals/TenantForm'))
 const MaintenanceForm = lazy(() => import('@/components/modules/rentals/MaintenanceForm'))
@@ -86,8 +89,8 @@ function PropertyDetailPanel({ property }) {
 
   if (!property) return null
 
-  const handleArchive = () => {
-    if (window.confirm('Are you sure you want to archive this property record?')) {
+  const handleArchive = async () => {
+    if (await confirmDialog({ title: 'Archive this property?', message: 'The property record will be archived.', confirmLabel: 'Archive', tone: 'danger' })) {
       deleteMutation.mutate()
     }
   }
@@ -192,6 +195,10 @@ function PropertyDetailPanel({ property }) {
   )
 }
 
+// Record panels with a two-column layout (details beside the chatter) need
+// more room than a form; in the standard width their content overflowed.
+const WIDE_PANELS = new Set(['crm-detail', 'contact-detail', 'bank-transaction-view'])
+
 function PanelLoader() {
   return (
     <div role="status" className="flex items-center justify-center py-16">
@@ -220,7 +227,7 @@ export default function SidePanelContainer() {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 h-screen w-full max-w-lg bg-dark-900 border-l border-white/10 z-[90] shadow-2xl overflow-y-auto custom-scrollbar"
+            className={`side-panel-shell fixed right-0 top-0 h-screen w-full ${WIDE_PANELS.has(activeSidePanel) ? 'max-w-4xl' : 'max-w-xl'} bg-dark-900 border-l border-white/10 z-[90] shadow-2xl overflow-y-auto overflow-x-hidden custom-scrollbar`}
           >
             {/* Panel Header */}
             <div className="sticky top-0 bg-dark-900/90 backdrop-blur-md border-b border-white/5 px-6 py-4 flex items-center justify-between z-10">
@@ -237,12 +244,14 @@ export default function SidePanelContainer() {
                     activeSidePanel === 'employee-detail' ? 'Employee Profile' :
                     activeSidePanel === 'leave-management' ? 'Leave Management' :
                     activeSidePanel === 'document-upload' ? 'Upload Document' :
+                    activeSidePanel === 'document-detail' ? 'Document' :
                     activeSidePanel === 'compliance-check' ? 'Compliance Audit' :
                     activeSidePanel === 'department-form' ? (sidePanelData?.department ? 'Edit Department' : 'New Department') :
                     activeSidePanel === 'department-list' ? 'Departments' :
                     activeSidePanel === 'lease-form' ? (sidePanelData?.lease ? 'Edit Lease' : 'New Lease') :
                     activeSidePanel === 'lease-detail' ? 'Lease Overview' :
                     activeSidePanel === 'rental-invoice-form' ? 'New Rental Invoice' :
+                    activeSidePanel === 'rental-invoice-detail' ? 'Rental Invoice' :
                     activeSidePanel === 'rental-payment-form' ? 'Record Payment' :
                     activeSidePanel === 'tenant-form' ? 'New Tenant' :
                     activeSidePanel === 'maintenance-form' ? (sidePanelData?.ticket ? 'Edit Maintenance Ticket' : 'Log Maintenance') :
@@ -364,6 +373,10 @@ export default function SidePanelContainer() {
                 <DocumentUploadForm />
               )}
 
+              {activeSidePanel === 'document-detail' && sidePanelData?.document && (
+                <DocumentDetailPanel document={sidePanelData.document} />
+              )}
+
               {activeSidePanel === 'compliance-check' && (
                 <ComplianceAuditPanel />
               )}
@@ -382,6 +395,10 @@ export default function SidePanelContainer() {
 
               {activeSidePanel === 'lease-detail' && sidePanelData?.lease && (
                 <LeaseDetailPanel />
+              )}
+
+              {activeSidePanel === 'rental-invoice-detail' && sidePanelData?.invoice && (
+                <RentalInvoiceDetailPanel invoice={sidePanelData.invoice} />
               )}
 
               {activeSidePanel === 'rental-invoice-form' && (
@@ -543,7 +560,7 @@ export default function SidePanelContainer() {
               )}
 
               {/* Fallback for other panels if not implemented yet */}
-              {!['property-detail', 'contact-detail', 'contact-form', 'account-form', 'account-detail', 'journal-entry-detail', 'employee-form', 'employee-detail', 'leave-management', 'document-upload', 'compliance-check', 'department-form', 'department-list', 'lease-form', 'lease-detail', 'rental-invoice-form', 'rental-payment-form', 'tenant-form', 'maintenance-form', 'property-form', 'new-customer', 'new-ar-invoice', 'new-ar-receipt', 'new-supplier', 'new-ap-invoice', 'new-ap-payment', 'customer-receipt-detail', 'supplier-payment-detail', 'ar-invoice-detail', 'ap-invoice-detail', 'supplier-detail', 'tax-code-form', 'posting-profile-form', 'commission-structure-form', 'commission-calculator', 'commission-detail', 'currency-form', 'exchange-rate-form', 'opportunity-form', 'crm-detail', 'activity-form', 'bank-account-form', 'bank-transaction-view', 'statement-upload-form', 'reconciliation-rules-form', 'user-form', 'role-form', 'sod-rule-form', 'sale-form', 'sale-detail', 'asset-form', 'asset-category-form', 'asset-detail', 'asset-disposal', 'run-depreciation', 'payroll-run-form', 'fiscal-year-form'].includes(activeSidePanel) && (
+              {!['property-detail', 'contact-detail', 'contact-form', 'account-form', 'account-detail', 'journal-entry-detail', 'employee-form', 'employee-detail', 'leave-management', 'document-upload', 'document-detail', 'compliance-check', 'department-form', 'department-list', 'lease-form', 'lease-detail', 'rental-invoice-form', 'rental-invoice-detail', 'rental-payment-form', 'tenant-form', 'maintenance-form', 'property-form', 'new-customer', 'new-ar-invoice', 'new-ar-receipt', 'new-supplier', 'new-ap-invoice', 'new-ap-payment', 'customer-receipt-detail', 'supplier-payment-detail', 'ar-invoice-detail', 'ap-invoice-detail', 'supplier-detail', 'tax-code-form', 'posting-profile-form', 'commission-structure-form', 'commission-calculator', 'commission-detail', 'currency-form', 'exchange-rate-form', 'opportunity-form', 'crm-detail', 'activity-form', 'bank-account-form', 'bank-transaction-view', 'statement-upload-form', 'reconciliation-rules-form', 'user-form', 'role-form', 'sod-rule-form', 'sale-form', 'sale-detail', 'asset-form', 'asset-category-form', 'asset-detail', 'asset-disposal', 'run-depreciation', 'payroll-run-form', 'fiscal-year-form'].includes(activeSidePanel) && (
                 <div className="p-20 text-center">
                   <div className="w-16 h-16 rounded-2xl bg-dark-800 flex items-center justify-center mx-auto mb-4 border border-white/5">
                     <FileText size={32} className="text-dark-600" />

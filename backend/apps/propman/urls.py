@@ -2,6 +2,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from apps.propman import views
+from apps.propman.defaults import DefaultsView
 
 router = DefaultRouter()
 router.register('tariffs', views.UtilityTariffViewSet, basename='tariffs')
@@ -28,6 +29,7 @@ router.register('saved-reports', views.SavedReportViewSet, basename='saved-repor
 
 urlpatterns = [
     path('reports/<str:key>/', views.ReportView.as_view(), name='propman-report'),
+    path('defaults/', DefaultsView.as_view(), name='propman-defaults'),
     path('distribution/<str:kind>/', views.DistributionView.as_view(), name='propman-distribution'),
     path('', include(router.urls)),
 ]

@@ -116,3 +116,9 @@ class SODRuleViewSet(viewsets.ModelViewSet):
     queryset = SODRule.objects.all()
     serializer_class = SODRuleSerializer
     permission_classes = [permissions.IsAuthenticated, HasModuleAccess, AccessAdminWritePermission]
+
+    @action(detail=False, methods=['get'])
+    def suggestions(self, request):
+        """Standard conflicting module pairs that no rule covers yet."""
+        from apps.core.sod_suggestions import suggestions
+        return Response(suggestions())

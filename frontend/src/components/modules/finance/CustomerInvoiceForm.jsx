@@ -241,7 +241,7 @@ export default function CustomerInvoiceForm() {
                   <button 
                     type="button" 
                     onClick={() => removeLine(index)}
-                    className="absolute -right-2 -top-2 w-6 h-6 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white"
+                    className="absolute -right-2 -top-2 w-6 h-6 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white"
                   >
                     <Trash2 size={12} />
                   </button>

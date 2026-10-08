@@ -7,11 +7,15 @@ document's creator. A rejection blocks posting until the steps are approved
 again after it.
 """
 
+import logging
 from decimal import Decimal
 
 from apps.finance.models import ApprovalRecord, ApprovalRule, SupplierInvoice, SupplierPayment
 from apps.finance.services.accounting import AccountingError
 from apps.finance.services.fx import get_rate, to_base
+
+logger = logging.getLogger('stohill.finance')
+
 
 def _doc_type(doc):
     from apps.procurement.models import PurchaseOrder
@@ -95,3 +99,53 @@ def reject(doc, user, comment=''):
     ApprovalRecord.objects.create(document_type=_doc_type(doc), object_id=doc.pk, user=user,
                                   decision=ApprovalRecord.Decision.REJECTED, comment=comment[:500])
     return status(doc)
+
+
+def _describe(doc):
+    """(label, number, web link) for notifications."""
+    kind = _doc_type(doc)
+    if kind == ApprovalRule.DocumentType.SUPPLIER_INVOICE:
+        return 'Supplier invoice', doc.invoice_number, '/finance/ap'
+    if kind == ApprovalRule.DocumentType.SUPPLIER_PAYMENT:
+        return 'Supplier payment', doc.payment_reference, '/finance/ap'
+    return 'Purchase order', doc.number, '/procurement'
+
+
+def notify_progress(doc, rejected_by=None, comment=''):
+    """
+    In-app notifications as a document moves through approval: the holders of
+    the next step's role are told it waits for them; the creator is told when
+    it is fully approved or rejected. Never raises: a missing exchange rate,
+    say, must not block saving the document.
+    """
+    try:
+        _notify_progress(doc, rejected_by, comment)
+    except Exception:
+        logger.exception('Approval notification failed for %s', doc.pk)
+
+
+def _notify_progress(doc, rejected_by, comment):
+    from apps.notifications.inbox import notify, notify_role, resolve
+    from apps.notifications.models import Notification
+
+    label, number, link = _describe(doc)
+    related = f'{_doc_type(doc)}:{doc.pk}'
+    resolve('approval_request', related)
+    if rejected_by is not None:
+        notify(doc.created_by, f'{label} {number} was rejected',
+               f'{rejected_by.full_name}: {comment}', link=link, level=Notification.Level.WARNING,
+               category='approval_result', related=related)
+        return
+    state = status(doc)
+    if not state['required']:
+        return
+    pending = [s for s in state['steps'] if not s['approved']]
+    if pending:
+        rule = ApprovalRule.objects.select_related('role').get(pk=pending[0]['rule_id'])
+        notify_role(rule.role, f'{label} {number} waits for your approval',
+                    f'Approval step "{rule.name}". Amount {base_amount(doc):,.2f}.', link=link,
+                    level=Notification.Level.ACTION, category='approval_request', related=related,
+                    exclude=doc.created_by)
+    elif state['history']:
+        notify(doc.created_by, f'{label} {number} is approved', 'Every approval step is complete; it can be posted.',
+               link=link, category='approval_result', related=related)

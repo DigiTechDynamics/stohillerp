@@ -28,14 +28,18 @@ from rest_framework.response import Response
 
 from apps.crm.models import Contact
 from apps.finance.models import BankAccount, JournalEntry, JournalLine
-from apps.finance.services.accounting import AccountingError, AccountingService, PostingData
+from apps.finance.services.accounting import AccountingError, AccountingService, PostingData, system_account_code
 from apps.finance.statements import _dates, _pdf_response, build_statement
 from apps.rentals.models import RentalInvoice
 
 ZERO = Decimal('0.00')
 ONE = Decimal('1')
 CENT = Decimal('0.01')
-OWNER_FUNDS = '2210'
+
+
+def owner_funds_code() -> str:
+    """The trust liability holding owners' money (posting profile 'owner funds', starter chart 2210)."""
+    return system_account_code('OWNER_FUNDS')
 
 
 def owner_shares(owner) -> dict:
@@ -56,7 +60,7 @@ def owners_queryset():
 
 def owner_lines(owner, shares=None):
     shares = owner_shares(owner) if shares is None else shares
-    return JournalLine.objects.filter(account__code=OWNER_FUNDS).filter(
+    return JournalLine.objects.filter(account__code=owner_funds_code()).filter(
         Q(property_ref_id__in=list(shares)) | Q(contact_ref=owner, property_ref__isnull=True))
 
 
@@ -118,7 +122,7 @@ def pay_owner(owner, amount: Decimal, bank_account, on: date, user=None):
     posting = PostingData(description=f'Owner payout - {owner.full_name}', entry_date=on,
                           source_module='owner_payout', source_id=owner.pk,
                           source_reference=f'OWNPAY-{owner.last_name.upper()}-{on:%Y%m%d}')
-    posting.add_debit(OWNER_FUNDS, amount, 'Paid to owner', contact_ref=owner)
+    posting.add_debit(owner_funds_code(), amount, 'Paid to owner', contact_ref=owner)
     posting.add_credit(bank_account.gl_account.code, amount, f'Owner payout {owner.full_name}')
     return AccountingService(user=user).post_entry(posting, journal_code='RJ')
 

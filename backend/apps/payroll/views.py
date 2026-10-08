@@ -9,7 +9,8 @@ from .serializers import PayrollRunSerializer, PayslipSerializer
 from apps.hr.models import Employee, EmployeeContract
 from apps.commissions.models import CommissionRecord
 from apps.core.models import Currency
-from .services.zimbabwe import ZimbabweTaxService
+from .services.zimbabwe import PayrollConfigError, ZimbabweTaxService
+from apps.finance.services.fx import currency_code as currency_code_of
 from apps.finance.models.ap import Supplier, SupplierInvoice, SupplierInvoiceLine
 from apps.finance.models.core import ChartOfAccount, Journal, JournalEntry, JournalLine, FiscalPeriod
 from apps.core.services.number_sequence import NumberSequenceService
@@ -21,6 +22,13 @@ class PayrollRunViewSet(RecordRulesMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def process(self, request, pk=None):
+        try:
+            return self._process(request)
+        except PayrollConfigError as e:
+            # Nothing is saved: the run is processed in one transaction.
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def _process(self, request):
         payroll_run = self.get_object()
         if payroll_run.status in [PayrollRun.Status.APPROVED, PayrollRun.Status.PAID, PayrollRun.Status.CANCELLED]:
             return Response({'error': 'Can only process draft or processing payroll runs'}, status=status.HTTP_400_BAD_REQUEST)
@@ -67,7 +75,7 @@ class PayrollRunViewSet(RecordRulesMixin, viewsets.ModelViewSet):
                     approved_date__range=(payroll_run.period_start, payroll_run.period_end)
                 ).aggregate(total=models.Sum('net_commission'))['total'] or Decimal('0.00')
 
-                currency_code = payroll_run.currency.code if payroll_run.currency else "USD"
+                currency_code = currency_code_of(payroll_run.currency)
                 
                 rule_totals = {}
                 emp_gross = Decimal('0.00')
@@ -312,7 +320,7 @@ class PayrollRunViewSet(RecordRulesMixin, viewsets.ModelViewSet):
             .aggregate(total=models.Sum('amount'))['total'] or Decimal('0.00')
         return Response({
             'run': payroll_run.name, 'period_start': payroll_run.period_start, 'period_end': payroll_run.period_end,
-            'currency': payroll_run.currency.code if payroll_run.currency else 'USD',
+            'currency': currency_code_of(payroll_run.currency),
             'gross_pay': str(gross),
             'zimra_p2': {'paye': str(totals['PAYE']), 'aids_levy': str(totals['AIDS']),
                          'total': str(totals['PAYE'] + totals['AIDS'])},
@@ -336,7 +344,7 @@ class PayrollRunViewSet(RecordRulesMixin, viewsets.ModelViewSet):
         writer = csv.writer(response)
         writer.writerow(['employee_number', 'name', 'bank_name', 'branch_code', 'account_number', 'amount',
                          'currency', 'reference'])
-        currency = payroll_run.currency.code if payroll_run.currency else 'USD'
+        currency = currency_code_of(payroll_run.currency)
         missing = []
         for slip in payroll_run.payslips.select_related('employee').order_by('employee__employee_number'):
             emp = slip.employee
@@ -393,7 +401,7 @@ class PayslipViewSet(RecordRulesMixin, viewsets.ModelViewSet):
             'run': {
                 'name': payslip.payroll_run.name,
                 'period': f"{payslip.payroll_run.period_start} to {payslip.payroll_run.period_end}",
-                'currency': payslip.payroll_run.currency.code if payslip.payroll_run.currency else "USD",
+                'currency': currency_code_of(payslip.payroll_run.currency),
                 'symbol': payslip.payroll_run.currency.symbol if payslip.payroll_run.currency else "$",
             },
             'lines': [

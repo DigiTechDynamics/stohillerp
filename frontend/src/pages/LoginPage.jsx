@@ -136,7 +136,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs text-dark-600 mt-4">
-          © 2026 Stohill Properties. All rights reserved.
+          © {new Date().getFullYear()} Stohill Properties. All rights reserved.
         </p>
       </motion.div>
     </div>

@@ -7,19 +7,23 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-r
  * @param {number} totalPages - Total number of pages
  * @param {function} onPageChange - Callback when a page is selected
  * @param {number} totalCount - Total number of items
+ * @param {number} pageSize - Rows per page; with onPageSizeChange the bar is
+ *   always shown (even for one page) with a rows-per-page selector
  */
 export default function Pagination({ 
   currentPage, page, 
   totalPages, total_pages,
   onPageChange, onChange, 
-  totalCount, count 
+  totalCount, count,
+  pageSize, onPageSizeChange, pageSizeOptions = [12, 24, 48, 96],
 }) {
   const current = currentPage || page || 1;
   const totalPgs = totalPages || total_pages || 1;
   const onPage = onPageChange || onChange;
   const total = totalCount !== undefined ? totalCount : count;
 
-  if (!totalPgs || totalPgs <= 1) return null;
+  if (!onPageSizeChange && (!totalPgs || totalPgs <= 1)) return null;
+  if (onPageSizeChange && !total) return null;
 
   // Generate page numbers to show (e.g., 1, 2, 3, ..., 10)
   const getPageNumbers = () => {
@@ -43,10 +47,27 @@ export default function Pagination({
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/5 mt-6">
-      <div className="text-xs text-dark-400">
-        Showing <span className="text-white font-medium">Page {current}</span> of <span className="text-white font-medium">{totalPgs}</span>
-        {total !== undefined && (
-          <span className="ml-1">· <span className="text-white font-medium">{total}</span> total results</span>
+      <div className="flex items-center gap-3 text-xs text-dark-400">
+        {pageSize && total !== undefined ? (
+          <span>
+            Showing <span className="text-white font-medium">{(current - 1) * pageSize + 1}–{Math.min(current * pageSize, total)}</span> of <span className="text-white font-medium">{total}</span>
+          </span>
+        ) : (
+          <span>
+            Showing <span className="text-white font-medium">Page {current}</span> of <span className="text-white font-medium">{totalPgs}</span>
+            {total !== undefined && (
+              <span className="ml-1">· <span className="text-white font-medium">{total}</span> total results</span>
+            )}
+          </span>
+        )}
+        {onPageSizeChange && (
+          <label className="flex items-center gap-2">
+            <span>Per page</span>
+            <select className="form-input py-1 px-2 w-auto text-xs" value={pageSize} aria-label="Rows per page"
+              onChange={(e) => onPageSizeChange(Number(e.target.value))}>
+              {pageSizeOptions.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
         )}
       </div>
 

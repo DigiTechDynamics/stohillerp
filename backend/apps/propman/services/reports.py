@@ -186,6 +186,9 @@ def arrears(params):
 
 def property_income(params):
     from apps.finance.models import JournalEntry, JournalLine
+    from apps.rentals.owners import owner_funds_code
+
+    owner_funds = owner_funds_code()
 
     today = timezone.localdate()
     date_to = _as_date(params.get('to_date')) or today
@@ -204,8 +207,8 @@ def property_income(params):
 
         revenue = net('revenue', 'credit')
         expenses = net('expense', 'debit')
-        # Managed properties: rent belongs to the owner (2210); show it for context.
-        owner_rent = net('liability', 'credit', account__code='2210') if prop.is_managed else ZERO
+        # Managed properties: rent belongs to the owner (owner funds); show it for context.
+        owner_rent = net('liability', 'credit', account__code=owner_funds) if prop.is_managed else ZERO
         noi = revenue - expenses
         annual = noi * 12 / months
         valuation = prop.current_valuation or ZERO

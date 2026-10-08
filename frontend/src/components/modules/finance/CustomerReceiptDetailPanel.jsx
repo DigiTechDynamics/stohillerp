@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Calendar, Hash, User, Clock, CheckCircle2, Building2, Send } from 'lucide-react'
-import { financeAPI } from '@/services/api'
+import { Calendar, Hash, User, Clock, CheckCircle2, Building2, Send, Download } from 'lucide-react'
+import { financeAPI, saveBlobResponse } from '@/services/api'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
@@ -14,7 +14,8 @@ export default function CustomerReceiptDetailPanel({ receipt: initialReceipt }) 
   const { data, isLoading } = useQuery({
     queryKey: ['customer-receipt', initialReceipt.id],
     queryFn: () => financeAPI.ar.receipts.detail(initialReceipt.id),
-    initialData: { data: initialReceipt }
+    initialData: { data: initialReceipt },
+    initialDataUpdatedAt: 0,   // list rows are a starting point: always fetch the full record
   })
 
   const receipt = data?.data || initialReceipt
@@ -43,9 +44,21 @@ export default function CustomerReceiptDetailPanel({ receipt: initialReceipt }) 
             <Hash size={12} />
             {receipt.receipt_reference}
           </div>
-          <span className={`badge text-[10px] uppercase font-bold
-            ${receipt.status === 'posted' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-dark-700 text-dark-400'}`}>
-            {receipt.status}
+          <span className="flex items-center gap-2">
+            <button type="button" className="btn-ghost text-xs px-2 py-1" title="Download receipt (PDF)"
+              onClick={async () => {
+                try {
+                  saveBlobResponse(await financeAPI.ar.receipts.pdf(receipt.id), `Receipt_${receipt.receipt_reference}.pdf`)
+                } catch (err) {
+                  toast.error(apiErrorMessage(err, 'Could not download the receipt.'))
+                }
+              }}>
+              <Download size={14} /> PDF
+            </button>
+            <span className={`badge text-[10px] uppercase font-bold
+              ${receipt.status === 'posted' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-dark-700 text-dark-400'}`}>
+              {receipt.status}
+            </span>
           </span>
         </div>
 

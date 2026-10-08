@@ -37,6 +37,8 @@ POLICY = {
     "contractor-portal/": (ANY, ANY),
     "payments/": (ANY, ANY),   # gateway webhooks (views allow anonymous)
 
+    # The caller's own in-app notifications (the view only returns their own).
+    "notifications/inbox/": (ANY, ANY),
     # Message history (read-only).
     "notifications/": ({"rentals", "crm", "properties", "finance_ar", "admin"}, set()),
 
@@ -71,6 +73,8 @@ POLICY = {
     "rentals/owners/": ({"rentals", "properties", "finance_ap", "finance_gl"}, {"finance_ap", "finance_gl"}),
     "rentals/": ({"rentals", "properties", "finance_ar", "finance_gl"}, {"rentals"}),
     "commissions/": ({"commissions", "sales", "payroll", "finance_gl", "finance_ap"}, {"commissions"}),
+    # Document types: everyone who uses documents reads them; the Documents module sets them up.
+    "documents/categories/": ({"documents", "crm", "rentals", "sales", "properties", "hr"} | FINANCE, {"documents"}),
     # Supporting documents (e.g. supplier invoice scans) are uploaded from finance too.
     "documents/": ({"documents", "crm", "rentals", "sales", "properties", "hr"} | FINANCE,
                    {"documents", "crm", "rentals", "sales", "properties", "hr"} | FINANCE),

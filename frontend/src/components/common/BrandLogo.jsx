@@ -20,7 +20,15 @@ const logoSrc =
 
 export default function BrandLogo({ className = 'w-8 h-8' }) {
   if (logoSrc) {
-    return <img src={logoSrc} alt="Stohill Properties" className={`${className} object-contain`} />
+    // The artwork has a white background and black lettering, so it sits on a
+    // white tile to stay legible on the dark theme.
+    return (
+      <img
+        src={logoSrc}
+        alt="Stohill Properties"
+        className={`${className} object-contain rounded-md bg-white p-0.5`}
+      />
+    )
   }
   return (
     <span

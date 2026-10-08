@@ -146,12 +146,12 @@ def start_payment(contact, invoice_ids, return_url, result_url) -> OnlinePayment
 
 
 def _bank_account():
-    code = getattr(settings, 'ONLINE_PAYMENTS_BANK_ACCOUNT', '')
-    account = BankAccount.objects.filter(code=code).first() if code else None
-    account = account or BankAccount.objects.filter(is_active=True).order_by('code').first()
-    if account is None:
-        raise AccountingError('No bank account is set up to receive online payments.')
-    return account
+    from apps.finance.services.accounting import receiving_bank_account
+    try:
+        return receiving_bank_account(setting='ONLINE_PAYMENTS_BANK_ACCOUNT')
+    except AccountingError:
+        raise AccountingError('Set ONLINE_PAYMENTS_BANK_ACCOUNT to the code of the bank account that receives '
+                              'online payments.')
 
 
 @transaction.atomic
@@ -171,6 +171,10 @@ def apply_status(payment: OnlinePayment, status: str, raw_status='', gateway_ref
         _receipt(payment)
         payment.receipted = True
         payment.status = OnlinePayment.Status.PAID
+        from apps.notifications.inbox import notify_module
+        notify_module('finance_ar', f'Online payment {payment.reference} received',
+                      f'{payment.contact} paid {payment.currency.code if payment.currency_id else ""} {payment.amount:,.2f}.',
+                      link='/finance/ar', category='online_payment', related=f'online_payment:{payment.pk}')
     elif status == 'failed' and payment.status != OnlinePayment.Status.PAID:
         payment.status = OnlinePayment.Status.FAILED
     payment.save()

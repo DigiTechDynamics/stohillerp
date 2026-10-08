@@ -1,8 +1,8 @@
 // Stohill Properties - Lease Form (Create/Edit)
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Save, AlertCircle, Key } from 'lucide-react'
-import { rentalsAPI, propertiesAPI, crmAPI, hrAPI } from '@/services/api'
+import { rentalsAPI, propertiesAPI, crmAPI, hrAPI, propmanAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import CurrencySelect from '@/components/common/CurrencySelect'
 
@@ -23,7 +23,7 @@ export default function LeaseForm() {
     start_date: lease?.start_date || '',
     end_date: lease?.end_date || '',
     monthly_rental: lease?.monthly_rental || '',
-    rental_escalation_rate: lease?.rental_escalation_rate || '8.00',
+    rental_escalation_rate: lease?.rental_escalation_rate ?? '',
     deposit_amount: lease?.deposit_amount || '0.00',
     deposit_paid: lease?.deposit_paid || false,
     vat_applicable: lease?.vat_applicable || false,
@@ -34,6 +34,20 @@ export default function LeaseForm() {
     managing_agent: lease?.managing_agent || '',
     notes: lease?.notes || '',
   })
+
+  // New leases start from the configured default escalation rate.
+  const { data: defaults } = useQuery({
+    queryKey: ['propman-defaults'],
+    queryFn: async () => (await propmanAPI.defaults.get()).data,
+    enabled: !isEditing,
+    staleTime: 5 * 60 * 1000,
+  })
+  useEffect(() => {
+    const rate = defaults?.rent_escalation_rate?.value
+    if (rate !== undefined) {
+      setFormData((prev) => (prev.rental_escalation_rate === '' ? { ...prev, rental_escalation_rate: rate } : prev))
+    }
+  }, [defaults])
 
   // Fetch dropdown data
   const { data: propsRes } = useQuery({
@@ -82,6 +96,8 @@ export default function LeaseForm() {
     e.preventDefault()
     setError(null)
     const payload = { ...formData }
+    // Blank: the server applies the configured default rate.
+    if (payload.rental_escalation_rate === '') delete payload.rental_escalation_rate
     // Clean empty optional fields
     if (!payload.unit) delete payload.unit
     if (!payload.managing_agent) delete payload.managing_agent

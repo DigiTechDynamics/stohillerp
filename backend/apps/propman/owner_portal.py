@@ -21,7 +21,7 @@ from rest_framework.views import APIView
 from apps.finance.statements import _dates, _pdf_response
 from apps.propman.models import MaintenanceQuote
 from apps.propman.services.maintenance import owner_decision
-from apps.rentals.owners import owner_shares, owner_statement, owner_summary
+from apps.rentals.owners import owner_funds_code, owner_shares, owner_statement, owner_summary
 
 ZERO = Decimal('0.00')
 
@@ -67,7 +67,7 @@ class OwnerPropertiesView(APIView):
             billed = invoices.aggregate(t=Sum('rental_amount'))['t'] or ZERO
             collected = invoices.aggregate(t=Sum('amount_paid'))['t'] or ZERO
             costs = JournalLine.objects.filter(
-                account__code='2210', property_ref=prop, side='debit', entry__status__in=JournalEntry.LEDGER_STATUSES,
+                account__code=owner_funds_code(), property_ref=prop, side='debit', entry__status__in=JournalEntry.LEDGER_STATUSES,
                 entry__entry_date__range=(date_from, date_to)).aggregate(t=Sum('amount'))['t'] or ZERO
             units = list(prop.units.all())
             occupied = sum(1 for u in units if u.status == 'occupied') if units else \
@@ -117,4 +117,8 @@ class OwnerQuoteDecisionView(APIView):
         quote = get_object_or_404(MaintenanceQuote, pk=pk)
         approve = request.data.get('approve') in (True, 'true', 'True', '1', 1)
         quote = owner_decision(quote, owner, approve, request.data.get('note', ''))
+        from apps.notifications.inbox import notify_module
+        notify_module('rentals', f'Owner {"approved" if approve else "declined"} the quote for job {quote.request.reference}',
+                      request.data.get('note', ''), link='/rentals', category='owner_quote_decision',
+                      related=f'quote:{quote.pk}')
         return Response({'status': quote.status, 'decided_at': timezone.now()})

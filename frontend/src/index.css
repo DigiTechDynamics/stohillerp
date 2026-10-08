@@ -95,13 +95,40 @@ html.light .border-white\/10 { border-color: var(--border-subtle) !important; }
 html.light .text-dark-400 { color: var(--text-muted) !important; }
 html.light .text-dark-300 { color: var(--text-muted) !important; }
 html.light .text-dark-100 { color: var(--text-main) !important; }
-html.light .text-dark-500 { color: #999 !important; }
+html.light .text-dark-200 { color: var(--text-main) !important; }
+html.light .text-white\/80 { color: rgba(26,26,26,0.85) !important; }
+html.light .text-white\/50 { color: rgba(26,26,26,0.6) !important; }
+html.light .hover\:text-white:hover,
+html.light .hover\:text-dark-200:hover,
+html.light .group:hover .group-hover\:text-white { color: var(--text-main) !important; }
+html.light .text-dark-500 { color: #707070 !important; }
+html.light .text-dark-600 { color: #5C5C5C !important; }
 html.light .text-dark-900 { color: #1A1A1A !important; }
 html.light .bg-white\/5 { background-color: rgba(0,0,0,0.04) !important; }
 html.light .bg-dark-800\/50 { background-color: rgba(255,255,255,0.7) !important; }
 html.light .bg-dark-900\/80 { background-color: var(--topbar-bg) !important; }
 html.light .bg-black\/70 { background-color: rgba(0,0,0,0.5) !important; }
 html.light .ring-dark-900 { --tw-ring-color: var(--bg-card) !important; }
+
+/* Side panel in light mode: a white sheet with light-grey cards and visible
+   borders. With the default mapping the sheet was grey and its cards white,
+   too close to tell apart. */
+html.light .side-panel-shell,
+html.light .side-panel-shell .bg-dark-900,
+html.light .side-panel-shell .bg-dark-950 { background-color: var(--bg-card) !important; }
+html.light .side-panel-shell .bg-dark-900\/90,
+html.light .side-panel-shell .bg-dark-900\/80 { background-color: rgba(255,255,255,0.95) !important; }
+html.light .side-panel-shell .bg-dark-800,
+html.light .side-panel-shell .bg-dark-800\/30,
+html.light .side-panel-shell .bg-dark-800\/40,
+html.light .side-panel-shell .bg-dark-800\/50,
+html.light .side-panel-shell .bg-dark-800\/60,
+html.light .side-panel-shell .bg-dark-800\/80,
+html.light .side-panel-shell .bg-dark-700\/30,
+html.light .side-panel-shell .bg-dark-700\/50,
+html.light .side-panel-shell .bg-dark-700\/60 { background-color: #F4F4F5 !important; }
+html.light .side-panel-shell .border-white\/5,
+html.light .side-panel-shell .border-white\/10 { border-color: #D4D4D8 !important; }
 
 @layer components {
   /* Card Components */

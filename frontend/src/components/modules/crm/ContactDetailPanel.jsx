@@ -10,6 +10,7 @@ import { formatCurrency, formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
 import Chatter from '@/components/common/Chatter'
+import { confirmDialog } from '@/components/common/Dialogs'
 
 const LEAD_SCORE_LABEL = (score) => {
   if (score >= 70) return { label: 'Hot', color: 'text-red-400 bg-red-500/10 border-red-500/20', Icon: Flame }
@@ -177,7 +178,7 @@ function DocumentList({ contactId }) {
               </div>
               <p className="text-[10px] text-dark-500 uppercase tracking-widest">{doc.document_type} • {formatDate(doc.created_at)}</p>
             </div>
-            <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-1.5">
               {!doc.is_verified && (
                 <button
                   onClick={() => verifyMutation.mutate(doc.id)}
@@ -188,7 +189,7 @@ function DocumentList({ contactId }) {
                 </button>
               )}
               <button
-                onClick={() => downloadPrivateFile(doc.download_url, doc.name).catch(() => alert('Download failed.'))}
+                onClick={() => downloadPrivateFile(doc.download_url, doc.name).catch(() => toast.error('Download failed.'))}
                 disabled={!doc.download_url}
                 className="p-2 text-dark-400 hover:text-primary hover:bg-white/5 rounded-lg transition-colors"
                 title="Download"
@@ -196,7 +197,7 @@ function DocumentList({ contactId }) {
                 <Download size={14} />
               </button>
               <button
-                onClick={() => window.confirm('Delete document?') && deleteMutation.mutate(doc.id)}
+                onClick={async () => { if (await confirmDialog({ title: 'Delete this document?', message: doc.name, confirmLabel: 'Delete', tone: 'danger' })) deleteMutation.mutate(doc.id) }}
                 className="p-2 text-dark-400 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors"
               >
                 <Trash2 size={14} />

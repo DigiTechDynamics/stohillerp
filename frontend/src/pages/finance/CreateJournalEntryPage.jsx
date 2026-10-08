@@ -283,7 +283,7 @@ export default function JournalBatchGrid() {
                                placeholder="0.00" value={line.credit || ''} onChange={(e) => updateLine(idx, 'credit', e.target.value)} onKeyDown={(e) => handleKeyDown(e, idx)} />
                     </td>
                     <td className="p-1 text-center">
-                        <button onClick={() => removeLine(idx)} className="p-1.5 text-dark-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-0" title="Remove row">
+                        <button onClick={() => removeLine(idx)} className="p-1.5 text-dark-600 hover:text-red-500 transition-colors disabled:opacity-0" title="Remove row">
                           <Trash2 size={14} />
                         </button>
                     </td>

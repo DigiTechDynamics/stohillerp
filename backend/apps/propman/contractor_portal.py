@@ -101,6 +101,10 @@ class ContractorJobDoneView(ContractorJobView):
                    f'{job.contractor.name} reports job {job.reference} ({job.category}) done. '
                    f'{request.data.get("notes", "")}\nComplete it in Rental Management to raise their bill.',
                    category='contractor', related=f'maintenance:{job.reference}')
+        from apps.notifications.inbox import notify_module
+        notify_module('rentals', f'Contractor reports job {job.reference} done',
+                      f'{job.contractor.name}: {request.data.get("notes", "")}'.strip(), link='/rentals',
+                      level='action', category='contractor_done', related=f'maintenance:{job.pk}')
         return Response(_job_row(job))
 
 
@@ -133,4 +137,7 @@ class ContractorQuotesView(APIView):
         quote = MaintenanceQuote.objects.create(
             request=job, supplier=s, amount=amount, description=request.data.get('description', ''),
             valid_until=valid_until, document=request.FILES.get('document'), created_by=request.user)
+        from apps.notifications.inbox import notify_module
+        notify_module('rentals', f'New quote for job {job.reference}', f'{s.name} quoted {amount:,.2f}.',
+                      link='/rentals', category='maintenance_quote', related=f'quote:{quote.pk}')
         return Response({'id': quote.pk, 'status': quote.status}, status=201)

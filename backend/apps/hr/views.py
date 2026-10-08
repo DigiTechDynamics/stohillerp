@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from decimal import Decimal
 from django_filters.rest_framework import DjangoFilterBackend
 from apps.hr.models import Employee, Department, LeaveRequest, JobPosition, EmployeeContract, Attendance, LeaveAllocation
+from apps.finance.services.fx import currency_code as currency_code_of
 from utils.record_rules import RecordRulesMixin
 
 class EmployeeViewSet(viewsets.ModelViewSet):
@@ -34,7 +35,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         
         for item in items:
             run = item.payroll_run
-            currency = run.currency.code if run.currency else "USD"
+            currency = currency_code_of(run.currency)
             
             # Since Payslip fields don't have direct gross/deduction columns, we can calculate from lines
             # For simplicity in this endpoint we can just use net_amount. 
@@ -92,11 +93,27 @@ class LeaveRequestViewSet(RecordRulesMixin, viewsets.ModelViewSet):
         from apps.hr.serializers import LeaveRequestSerializer
         return LeaveRequestSerializer
 
+    def perform_create(self, serializer):
+        from apps.notifications.inbox import notify_module
+        leave = serializer.save()
+        notify_module('hr', f'Leave request from {leave.employee.full_name}',
+                      f'{leave.get_leave_type_display()}: {leave.start_date} to {leave.end_date} '
+                      f'({leave.days_requested} days).', link='/hr', level='action', category='leave_request',
+                      related=f'leave:{leave.pk}', exclude=leave.employee.user)
+
     def perform_update(self, serializer):
+        from apps.notifications.inbox import notify, resolve
+        previous = serializer.instance.status
         instance = serializer.save()
         if instance.status == 'approved':
             instance.employee.status = 'on_leave'
             instance.employee.save(update_fields=['status'])
+        if instance.status != previous and instance.status in ('approved', 'rejected'):
+            resolve('leave_request', f'leave:{instance.pk}')
+            notify(instance.employee.user, f'Your leave request was {instance.status}',
+                   f'{instance.get_leave_type_display()}: {instance.start_date} to {instance.end_date}.',
+                   link='/hr', level='info' if instance.status == 'approved' else 'warning',
+                   category='leave_result', related=f'leave:{instance.pk}')
 
 
 class JobPositionViewSet(viewsets.ModelViewSet):

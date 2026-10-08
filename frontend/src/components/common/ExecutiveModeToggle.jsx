@@ -1,35 +1,53 @@
 // Stohill Properties - Executive Mode Toggle
-// Switches between standard and executive dashboard views
+// Switches between the standard and the executive dashboard. The preference is
+// saved on the user record (PATCH core/me/), so it follows the user across
+// devices and sign-ins.
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Zap } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 import { useAuthStore } from '@/stores/authStore'
-import { authAPI } from '@/services/api'
+import { authAPI, apiErrorMessage } from '@/services/api'
 
-export default function ExecutiveModeToggle() {
-  const { user, executiveMode, toggleExecutiveMode } = useAuthStore()
+export function canUseExecutiveMode(user) {
+  return !!user && (user.is_superuser || user.roles?.some((r) =>
+    r.role_type === 'super_admin' || r.role_type === 'executive' || r.can_view_executive_dashboard
+  ))
+}
+
+export default function ExecutiveModeToggle({ className = '' }) {
+  const user = useAuthStore((s) => s.user)
+  const executiveMode = useAuthStore((s) => s.executiveMode)
+  const setExecutiveMode = useAuthStore((s) => s.setExecutiveMode)
+  const setUser = useAuthStore((s) => s.setUser)
+  const [saving, setSaving] = useState(false)
+
+  if (!canUseExecutiveMode(user)) return null
 
   const handleToggle = async () => {
-    toggleExecutiveMode()
-    // Persist to backend
+    const next = !executiveMode
+    setExecutiveMode(next)
+    setSaving(true)
     try {
-      await authAPI.updateMe({ executive_mode: !executiveMode })
+      const { data } = await authAPI.updateMe({ executive_mode: next })
+      setUser({ ...user, ...data })
+      toast.success(next ? 'Executive mode on.' : 'Executive mode off.')
     } catch (err) {
-      console.warn('Failed to persist executive mode preference:', err)
-      /* Ignore — local state already updated */
+      setExecutiveMode(!next)
+      toast.error(apiErrorMessage(err, 'Could not save the executive mode setting.'))
+    } finally {
+      setSaving(false)
     }
   }
 
-  // Only show for users with executive dashboard access
-  const canUse = user?.roles?.some((r) =>
-    r.role_type === 'super_admin' || r.role_type === 'executive' || r.can_view_executive_dashboard
-  )
-  if (!canUse) return null
-
   return (
     <button
+      type="button"
+      role="switch"
+      aria-checked={executiveMode}
+      disabled={saving}
       onClick={handleToggle}
-      className={`sidebar-item w-full justify-between transition-all ${executiveMode ? 'text-primary bg-primary/10 border border-primary/20' : ''
-        }`}
+      className={`sidebar-item w-full justify-between transition-all ${executiveMode ? 'text-primary bg-primary/10 border border-primary/20' : ''} ${className}`}
     >
       <div className="flex items-center gap-2.5">
         <Zap size={16} className={executiveMode ? 'text-primary' : 'text-dark-500'} />
@@ -38,8 +56,7 @@ export default function ExecutiveModeToggle() {
 
       {/* Toggle pill */}
       <div
-        className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${executiveMode ? 'bg-primary' : 'bg-dark-600'
-          }`}
+        className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${executiveMode ? 'bg-primary' : 'bg-dark-600'}`}
       >
         <motion.div
           animate={{ x: executiveMode ? 16 : 2 }}

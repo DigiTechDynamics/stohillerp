@@ -259,7 +259,7 @@ export default function JournalEntryForm() {
                   </div>
                   <button 
                     onClick={() => removeLine(idx)}
-                    className="p-1.5 text-dark-600 hover:text-red-500 transition-colors bg-white/5 rounded-lg opacity-0 group-hover:opacity-100"
+                    className="p-1.5 text-dark-600 hover:text-red-500 transition-colors bg-white/5 rounded-lg"
                   >
                     <Trash2 size={14} />
                   </button>

@@ -245,37 +245,46 @@ class RentalInvoiceViewSet(RecordRulesMixin, viewsets.ModelViewSet):
         from apps.rentals.serializers import RentalInvoiceSerializer  # type: ignore
         return RentalInvoiceSerializer
 
+    @action(detail=False, methods=['get'])
+    def export(self, request):
+        """The (filtered) invoice list: ?export_format=xlsx | pdf | csv."""
+        from django.utils import timezone  # type: ignore
+
+        from utils.exports import export_response
+
+        rows = [['Rental Invoices', timezone.localdate().isoformat()], [],
+                ['Invoice', 'Tenant', 'Property', 'Lease', 'Period start', 'Period end', 'Due', 'Status',
+                 'Currency', 'Total', 'Paid', 'Balance']]
+        for inv in self.filter_queryset(self.get_queryset()).select_related(
+                'lease__tenant', 'lease__property', 'currency'):
+            rows.append([inv.invoice_number, inv.lease.tenant.full_name if inv.lease.tenant_id else '',
+                         inv.lease.property.name, inv.lease.lease_number, inv.period_start.isoformat(),
+                         inv.period_end.isoformat(), inv.due_date.isoformat(), inv.get_status_display(),
+                         inv.currency.code if inv.currency_id else '', inv.total_amount, inv.amount_paid,
+                         inv.balance_due])
+        return export_response(rows, request.query_params.get('export_format'), 'rental-invoices')
+
     @action(detail=True, methods=['get'])
     def download_pdf(self, request, pk=None):
-        """Generate and download a printable PDF invoice."""
+        """The invoice as a printable PDF (the tenant's tax invoice, from its AR mirror)."""
         from django.http import HttpResponse  # type: ignore
-        from apps.finance.models.ar import CustomerInvoice  # type: ignore
-        
-        rental_invoice = self.get_object()
-        
-        if not rental_invoice.is_posted_to_finance:
-            return Response(
-                {"error": "Invoice must be posted to finance before generating a PDF."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-            
-        ar_invoice = CustomerInvoice.objects.filter(journal_entry=rental_invoice.journal_entry).first()
-        if not ar_invoice:
-            return Response(
-                {"error": "Mirrored Accounts Receivable invoice not found."}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-            
-        try:
-            from apps.finance.services.pdf_service import PDFService  # type: ignore
-            pdf_bytes = PDFService.generate_invoice_pdf(ar_invoice)
-            
-            response = HttpResponse(pdf_bytes, content_type='application/pdf')
-            response['Content-Disposition'] = f'attachment; filename="Invoice_{rental_invoice.invoice_number}.pdf"'
-            return response
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+        from apps.finance.models.ar import CustomerInvoice  # type: ignore
+        from apps.finance.services.pdf_service import generate_invoice_pdf  # type: ignore
+        from apps.rentals.services.finance_sync import RentalFinanceSyncService
+
+        rental_invoice = self.get_object()
+        ar_invoice = None
+        if rental_invoice.journal_entry_id:
+            ar_invoice = CustomerInvoice.objects.filter(journal_entry=rental_invoice.journal_entry_id).first()
+        ar_invoice = ar_invoice or RentalFinanceSyncService._mirrored_ar_invoices(rental_invoice)             .exclude(document_type=CustomerInvoice.DocumentType.CREDIT_NOTE).first()
+        if ar_invoice is None:
+            return Response({'error': 'This invoice has not been posted to finance yet, so it has no tax invoice.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        response = HttpResponse(generate_invoice_pdf(ar_invoice), content_type='application/pdf')
+        disposition = 'inline' if request.query_params.get('inline') else 'attachment'
+        response['Content-Disposition'] = f'{disposition}; filename="Invoice_{rental_invoice.invoice_number}.pdf"'
+        return response
 
 class RentalPaymentViewSet(RecordRulesMixin, viewsets.ModelViewSet):
     queryset = RentalPayment.objects.select_related(

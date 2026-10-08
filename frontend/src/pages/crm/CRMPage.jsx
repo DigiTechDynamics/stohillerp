@@ -16,6 +16,7 @@ import FilterPanel from '@/components/modules/crm/FilterPanel'
 import BulkActionBar from '@/components/modules/crm/BulkActionBar'
 import CrmReportingPage from '@/pages/crm/CrmReportingPage'
 import CrmCalendar from '@/components/modules/crm/CrmCalendar'
+import { confirmDialog } from '@/components/common/Dialogs'
 
 const TABS = [
   { id: 'leads', label: 'Leads', icon: Mail },
@@ -62,7 +63,7 @@ export default function CRMPage() {
 
   // ── Handlers ──────────────────────────────────────────────────────
   const handleDeleteContact = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this contact?')) return
+    if (!(await confirmDialog({ title: 'Delete this contact?', message: 'This cannot be undone.', confirmLabel: 'Delete', tone: 'danger' }))) return
     try {
       await crmAPI.contacts.delete(id)
       refetchContacts()
@@ -313,7 +314,7 @@ export default function CRMPage() {
                           </span>
                         </td>
                         <td className="px-4 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2 text-dark-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center justify-end gap-2 text-dark-500">
                             <button className="p-1.5 hover:text-primary transition-colors hover:bg-white/5 rounded-lg" onClick={(e) => { e.stopPropagation(); openPanel('contact-form', { contact }) }}>
                               <Edit2 size={14} />
                             </button>

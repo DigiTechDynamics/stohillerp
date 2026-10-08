@@ -8,7 +8,7 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 
-from apps.finance.services.accounting import AccountingError
+from apps.finance.services.accounting import AccountingError, system_account, system_account_code
 from apps.rentals.models import Lease, LeaseCharge, MaintenanceRequest, RentalInvoice
 from apps.rentals.services.billing import proration_factor
 from apps.rentals.services.finance_sync import RentalFinanceSyncService
@@ -125,7 +125,7 @@ def complete_maintenance(job: MaintenanceRequest, actual_cost: Decimal, contract
     today = timezone.localdate()
 
     managed = prop is not None and prop.is_managed
-    expense_code = '2210' if managed and not bill_to_tenant else '5300'
+    expense_code = system_account_code('OWNER_FUNDS' if managed and not bill_to_tenant else 'MAINTENANCE')
     bill = SupplierInvoice.objects.create(
         supplier=contractor, invoice_number=contractor_invoice_number or '', invoice_date=today,
         due_date=today + timedelta(days=contractor.payment_terms_days), currency=job.currency,
@@ -152,7 +152,7 @@ def complete_maintenance(job: MaintenanceRequest, actual_cost: Decimal, contract
             subtotal=actual_cost, total_amount=actual_cost)
         CustomerInvoiceLine.objects.create(
             invoice=recharge, description=f'Repair recharge: {job.category}',
-            revenue_account=ChartOfAccount.objects.get(code='5300'), unit_price=actual_cost,
+            revenue_account=system_account('MAINTENANCE'), unit_price=actual_cost,
             line_total=actual_cost, property_ref=prop)
         # Credit the repairs expense: the tenant reimburses the company's cost.
         entry = AccountingService(user=user).post_customer_invoice(recharge)

@@ -14,7 +14,8 @@ export default function SupplierPaymentDetailPanel({ payment: initialPayment }) 
   const { data, isLoading } = useQuery({
     queryKey: ['supplier-payment', initialPayment.id],
     queryFn: () => financeAPI.ap.payments.detail(initialPayment.id),
-    initialData: { data: initialPayment }
+    initialData: { data: initialPayment },
+    initialDataUpdatedAt: 0,   // list rows are a starting point: always fetch the full record
   })
 
   const payment = data?.data || initialPayment

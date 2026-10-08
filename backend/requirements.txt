@@ -10,6 +10,7 @@ Pillow==10.4.0
 psycopg[binary]==3.3.6
 python-dateutil==2.9.0.post0
 reportlab==5.0.1
+openpyxl==3.1.5
 whitenoise==6.12.0
 gunicorn==22.0.0
 sentry-sdk[django]==2.71.0

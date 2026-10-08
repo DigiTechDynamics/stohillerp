@@ -260,8 +260,16 @@ PORTAL_BASE_URL = env("PORTAL_BASE_URL", default="http://localhost:5173")
 PAYMENT_GATEWAY = env("PAYMENT_GATEWAY", default="test" if DEBUG else "paynow")
 PAYNOW_INTEGRATION_ID = env("PAYNOW_INTEGRATION_ID", default="")
 PAYNOW_INTEGRATION_KEY = env("PAYNOW_INTEGRATION_KEY", default="")
-# Bank account (code) that receives online payments; defaults to the first active one.
+# Bank account (code) that receives online payments. Blank: the account on the
+# posting profile's main bank GL account, or the only active bank account.
 ONLINE_PAYMENTS_BANK_ACCOUNT = env("ONLINE_PAYMENTS_BANK_ACCOUNT", default="")
+# Bank account code rental payments are banked into when the payment doesn't say.
+# Blank: the bank account on the posting profile's trust (managed properties) or
+# main bank GL account, or the only active bank account.
+RENTAL_PAYMENTS_BANK_ACCOUNT = env("RENTAL_PAYMENTS_BANK_ACCOUNT", default="")
+# Starting values for Property settings > Defaults (editable there).
+DEFAULT_RENT_ESCALATION_RATE = env("DEFAULT_RENT_ESCALATION_RATE", default="8.00")
+DEFAULT_MANAGEMENT_FEE_RATE = env("DEFAULT_MANAGEMENT_FEE_RATE", default="10.00")
 # The in-app test gateway completes payments without money moving: dev/tests only.
 PAYMENT_TEST_GATEWAY_ENABLED = env.bool("PAYMENT_TEST_GATEWAY_ENABLED", default=DEBUG)
 

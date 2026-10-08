@@ -1,8 +1,8 @@
 // Stohill Properties - Rental Payment Form
 import { useState, useEffect } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Save, AlertCircle, DollarSign, Calculator, Info } from 'lucide-react'
-import { rentalsAPI } from '@/services/api'
+import { rentalsAPI, financeAPI } from '@/services/api'
 import { formatCurrency } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 
@@ -21,11 +21,20 @@ export default function RentalPaymentForm() {
     withholding_tax: '0.00',
     amount_from_balance: '0.00',
     payment_method: 'bank_transfer',
+    bank_account: '',
     reference: '',
     notes: '',
   })
 
   const [totalApplied, setTotalApplied] = useState(0)
+
+  const { data: bankAccounts = [] } = useQuery({
+    queryKey: ['bank-accounts', 'active'],
+    queryFn: async () => {
+      const { data } = await financeAPI.bank.accounts.list({ is_active: true, page_size: 100 })
+      return data.results || data
+    },
+  })
 
   // Auto-calculate total applied payment
   useEffect(() => {
@@ -63,7 +72,8 @@ export default function RentalPaymentForm() {
       return
     }
 
-    mutation.mutate(formData)
+    // Blank bank account: the server uses the configured default account.
+    mutation.mutate({ ...formData, bank_account: formData.bank_account || null })
   }
 
   return (
@@ -126,6 +136,16 @@ export default function RentalPaymentForm() {
                   <option value="other">Other</option>
                 </select>
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest" htmlFor="rental-payment-bank">Banked into</label>
+              <select id="rental-payment-bank" name="bank_account" value={formData.bank_account} onChange={handleChange} className="form-input w-full">
+                <option value="">{bankAccounts.length === 1 ? bankAccounts[0].name : 'Default receiving account'}</option>
+                {bankAccounts.length > 1 && bankAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>{a.name}{a.account_number ? ` (...${String(a.account_number).slice(-4)})` : ''}</option>
+                ))}
+              </select>
             </div>
 
             {/* Deduction Fields */}

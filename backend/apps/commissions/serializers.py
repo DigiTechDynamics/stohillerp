@@ -45,4 +45,5 @@ class CommissionRecordSerializer(serializers.ModelSerializer):
     def get_currency_code(self, obj):
         if obj.property and obj.property.currency:
             return obj.property.currency.code
-        return 'USD'  # Fallback
+        from apps.finance.services.fx import currency_code
+        return currency_code(None)  # the company's base currency

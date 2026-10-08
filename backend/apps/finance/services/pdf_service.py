@@ -4,13 +4,15 @@ Production-grade PDF engine using ReportLab.
 
 Generates branded, professional PDFs for:
   - Customer Invoices  (generate_invoice_pdf)
+  - Customer Receipts  (generate_receipt_pdf)
   - Payslips          (generate_payslip_pdf)
   - Employee Statements (generate_statement_pdf)
 """
 
 import io
-from decimal import Decimal
 from datetime import date
+from decimal import Decimal
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -71,8 +73,6 @@ def _fmt(amount, currency_code=None):
 
 def _header_block(story, s, title, ref_label='', ref_value='', date_label='Date', date_value=None):
     """Shared company header + document title block."""
-    from xml.sax.saxutils import escape
-
     from apps.core.company import company_profile, contact_line, tax_line
 
     company = company_profile()
@@ -83,7 +83,7 @@ def _header_block(story, s, title, ref_label='', ref_value='', date_label='Date'
         ],
         [
             Paragraph(escape(company['tagline']), s['tagline']),
-            Paragraph(f'<font color="#64748B">{ref_label}</font>  <b>{ref_value}</b>' if ref_value else '', s['right']),
+            Paragraph(f'<font color="#64748B">{ref_label}</font>  <b>{escape(str(ref_value))}</b>' if ref_value else '', s['right']),
         ],
         [
             Paragraph(escape(contact_line(company)), s['tagline']),
@@ -116,7 +116,8 @@ def _footer_paragraph(s, doc_type='Document'):
 
 def _info_table(data, s):
     """Renders a 2-column key/value info block."""
-    rows = [[Paragraph(k, s['body']), Paragraph(str(v), s['body_bold'])] for k, v in data]
+    # Values are user data (names, references): escape them for ReportLab markup.
+    rows = [[Paragraph(k, s['body']), Paragraph(escape(str(v)), s['body_bold'])] for k, v in data]
     t = Table(rows, colWidths=[45 * mm, 80 * mm])
     t.setStyle(TableStyle([
         ('LEFTPADDING', (0, 0), (-1, -1), 0),
@@ -207,7 +208,7 @@ def generate_invoice_pdf(invoice) -> bytes:
     rows = []
     for line in lines:
         rows.append([
-            Paragraph(str(line.description), s['body']),
+            Paragraph(escape(str(line.description)), s['body']),
             Paragraph(str(line.quantity), s['right']),
             Paragraph(_fmt(line.unit_price, currency), s['right']),
             Paragraph(_fmt(line.tax_amount, currency), s['right']),
@@ -246,6 +247,58 @@ def generate_invoice_pdf(invoice) -> bytes:
     story.append(totals_table)
     story.extend(_footer_paragraph(s, 'Invoice'))
 
+    doc.build(story)
+    return buf.getvalue()
+
+
+# ─── Customer Receipt PDF ───────────────────────────────────────────────────
+
+def generate_receipt_pdf(receipt) -> bytes:
+    """A branded A4 receipt for money received from a customer, with what it paid."""
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=MARGIN, bottomMargin=MARGIN, leftMargin=MARGIN, rightMargin=MARGIN)
+    s = _base_styles()
+    story = []
+    currency = receipt.currency.code if receipt.currency_id else None
+    contact = getattr(receipt.customer, 'contact_link', None)
+
+    _header_block(story, s, 'RECEIPT', ref_label='Receipt No.', ref_value=receipt.receipt_reference,
+                  date_label='Date', date_value=receipt.receipt_date.strftime('%d %b %Y'))
+    story.append(Paragraph('RECEIVED FROM', s['section']))
+    story.append(_info_table([
+        ('Customer:', str(receipt.customer)),
+        ('Email:', getattr(contact, 'email', '') or '—'),
+        ('Paid into:', str(receipt.bank_account.name) if receipt.bank_account_id else '—'),
+        ('Status:', receipt.get_status_display()),
+    ], s))
+    story.append(Spacer(1, 8 * mm))
+
+    usable_w = PAGE_W - 2 * MARGIN
+    allocations = receipt.allocations.select_related('invoice').order_by('allocation_date')
+    rows = [[
+        Paragraph(escape(a.invoice.invoice_number if a.invoice_id else (a.get_kind_display() or 'Applied')), s['body']),
+        Paragraph(a.allocation_date.strftime('%d %b %Y'), s['right']),
+        Paragraph(_fmt(a.amount, currency), s['right_bold']),
+    ] for a in allocations]
+    if rows:
+        story.append(Paragraph('APPLIED TO', s['section']))
+        story.append(_line_items_table(['Invoice', 'Date', 'Amount'], rows,
+                                       [usable_w * 0.5, usable_w * 0.25, usable_w * 0.25], s))
+        story.append(Spacer(1, 6 * mm))
+
+    totals = [['AMOUNT RECEIVED:', _fmt(receipt.amount, currency)]]
+    if receipt.unapplied_amount:
+        totals.append(['Unapplied (on account):', _fmt(receipt.unapplied_amount, currency)])
+    t = Table([[Paragraph(label, s['body_bold']), Paragraph(value, s['right_bold'])] for label, value in totals],
+              colWidths=[usable_w * 0.7, usable_w * 0.3])
+    t.setStyle(TableStyle([
+        ('LINEABOVE', (0, 0), (-1, 0), 1.5, BRAND_GOLD),
+        ('BACKGROUND', (0, 0), (-1, 0), BRAND_LIGHT),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+    ]))
+    story.append(t)
+    story.extend(_footer_paragraph(s, 'Receipt'))
     doc.build(story)
     return buf.getvalue()
 
@@ -307,7 +360,7 @@ def generate_payslip_pdf(payslip) -> bytes:
                Paragraph('Amount', ParagraphStyle('thr', fontName='Helvetica-Bold', fontSize=7.5, textColor=BRAND_WHITE, alignment=TA_RIGHT))]
         data = [hdr]
         for line in lines:
-            data.append([Paragraph(line.name, s['body']), Paragraph(_fmt(line.amount, currency), s['right'])])
+            data.append([Paragraph(escape(line.name), s['body']), Paragraph(_fmt(line.amount, currency), s['right'])])
         if not lines:
             data.append([Paragraph('None', s['body']), Paragraph('—', s['right'])])
         t = Table(data, colWidths=[half_w * 0.6, half_w * 0.4])
@@ -394,7 +447,7 @@ def generate_statement_pdf(statement_data: dict) -> bytes:
     for record in history:
         currency = record.get('currency')
         rows.append([
-            Paragraph(f"<b>{record.get('run_name', '—')}</b><br/><font color='#64748B' size='7'>{record.get('period', '—')}</font>", s['body']),
+            Paragraph(f"<b>{escape(str(record.get('run_name', '—')))}</b><br/><font color='#64748B' size='7'>{escape(str(record.get('period', '—')))}</font>", s['body']),
             Paragraph(record.get('status', '').upper(), s['body']),
             Paragraph(record.get('reference') or '—', s['mono']),
             Paragraph(_fmt(record.get('gross', 0), currency), s['right']),
@@ -464,7 +517,7 @@ def generate_account_statement_pdf(statement: dict, title: str = 'STATEMENT OF A
         rows.append([
             Paragraph(line['date'], s['body']),
             Paragraph(line.get('reference') or '—', s['mono']),
-            Paragraph(line.get('description', ''), s['body']),
+            Paragraph(escape(str(line.get('description', ''))), s['body']),
             Paragraph(_fmt(line['debit'], currency) if Decimal(line['debit']) else '', s['right']),
             Paragraph(_fmt(line['credit'], currency) if Decimal(line['credit']) else '', s['right']),
             Paragraph(_fmt(line['balance'], currency), s['right']),
@@ -503,6 +556,7 @@ class PDFService:
     import `PDFService`, which previously didn't exist, so both always failed.
     """
     generate_invoice_pdf = staticmethod(generate_invoice_pdf)
+    generate_receipt_pdf = staticmethod(generate_receipt_pdf)
     generate_payslip_pdf = staticmethod(generate_payslip_pdf)
     generate_statement_pdf = staticmethod(generate_statement_pdf)
     generate_account_statement_pdf = staticmethod(generate_account_statement_pdf)

@@ -15,6 +15,7 @@ import {
   Tabs, Badge, money, label, useOptions, act, saveBlob, UTILITIES, customFieldInputs, packCustomFields,
   useCustomFieldDefs, rowsOf,
 } from '@/pages/propman/common'
+import { confirmDialog, promptDialog } from '@/components/common/Dialogs'
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: Info },
@@ -359,7 +360,10 @@ function InspectionDetail({ id, currency, onBack }) {
     if (await act(propertiesAPI.inspectionItems.uploadPhoto(item.id, fd), 'Photo added.')) refresh()
   }
   const complete = async () => {
-    const rating = window.prompt('Overall condition rating (1-10):', inspection.condition_rating || '')
+    const rating = await promptDialog({
+      title: 'Complete inspection', label: 'Overall condition rating (1-10)', inputType: 'number',
+      defaultValue: String(inspection.condition_rating || ''), required: true, confirmLabel: 'Complete',
+    })
     if (!rating) return
     if (await act(propertiesAPI.inspections.complete(id, { condition_rating: rating }), 'Inspection completed.')) refresh()
   }
@@ -632,7 +636,7 @@ function RecoveryDetail({ schedule, property, currency, onClose }) {
   const { data: history } = useQuery({ queryKey: ['recovery-recs', schedule.id], queryFn: () => propmanAPI.recoveryReconciliations.list({ schedule: schedule.id }) })
 
   const run = async (post) => {
-    if (post && !window.confirm('Post the reconciliation? Under-recoveries are invoiced and over-recoveries credited to each tenant.')) return
+    if (post && !(await confirmDialog({ title: 'Post the reconciliation?', message: 'Under-recoveries are invoiced and over-recoveries credited to each tenant.', confirmLabel: 'Post', tone: 'warning' }))) return
     const res = post
       ? await act(propmanAPI.recoverySchedules.reconcile(schedule.id, { ...period, post: true }), 'Reconciliation posted.')
       : await act(propmanAPI.recoverySchedules.preview(schedule.id, period))

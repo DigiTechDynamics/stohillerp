@@ -56,7 +56,7 @@ def fixed_asset():
 
     acc = ChartOfAccount.objects.get
     category = AssetCategory.objects.create(
-        code="VEH", name="Vehicles",
+        code="VEH-R", name="Vehicles",
         asset_cost_account=acc(code="1010"), accum_depr_account=acc(code="1010"),
         depr_expense_account=acc(code="5800"), disposal_gain_loss_account=acc(code="5800"),
     )

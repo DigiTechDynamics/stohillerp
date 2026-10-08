@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Users, Shield, LayoutGrid, Wand2, Plus, Search, ShieldCheck, ShieldAlert, UserPlus, AlertTriangle, Key
 } from 'lucide-react'
-import { adminAPI } from '@/services/api'
+import { adminAPI, apiErrorMessage } from '@/services/api'
+import { alertDialog, confirmDialog } from '@/components/common/Dialogs'
 import { useUIStore } from '@/stores/authStore'
 import Pagination from '@/components/common/Pagination'
 import RecordActions from '@/components/common/RecordActions'
@@ -234,7 +236,7 @@ function RoleList({ page, setPage }) {
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
               <Shield size={20} />
             </div>
-            <RecordActions record={role} label="role" className="opacity-0 group-hover:opacity-100 transition-opacity"
+            <RecordActions record={role} label="role"
               onEdit={() => openPanel('role-form', { id: role.id, initialData: role })}
               deleteFn={adminAPI.roles.delete} invalidate={['admin-roles']} />
           </div>
@@ -321,6 +323,37 @@ function ModuleList({ page, setPage }) {
 
 function SODMatrix({ page, setPage }) {
   const openPanel = useUIStore(s => s.openSidePanel)
+  const queryClient = useQueryClient()
+  const [suggesting, setSuggesting] = useState(false)
+
+  // Offer the standard conflicting pairs that no rule covers yet.
+  const suggestRules = async () => {
+    setSuggesting(true)
+    try {
+      const { data: suggestions } = await adminAPI.sodRules.suggestions()
+      if (!suggestions.length) {
+        await alertDialog({ title: 'Nothing to suggest', message: 'Every standard conflict is already covered by a rule.' })
+        return
+      }
+      const list = suggestions.map((s) => `• ${s.name} (${s.module_a_name} / ${s.module_b_name}, ${s.severity})`).join('\n')
+      const ok = await confirmDialog({
+        title: `Add ${suggestions.length} suggested rule${suggestions.length === 1 ? '' : 's'}?`,
+        message: `${list}\n\nYou can edit or delete them afterwards.`,
+        confirmLabel: 'Add rules',
+      })
+      if (!ok) return
+      // The display names are not fields of a rule.
+      await Promise.all(suggestions.map((s) => adminAPI.sodRules.create({
+        name: s.name, module_a: s.module_a, module_b: s.module_b, severity: s.severity, description: s.description,
+      })))
+      queryClient.invalidateQueries({ queryKey: ['admin-sod-rules'] })
+      toast.success(`${suggestions.length} rule(s) added.`)
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Could not add the suggested rules.'))
+    } finally {
+      setSuggesting(false)
+    }
+  }
   const { data: rulesData } = useQuery({
     queryKey: ['admin-sod-rules', { page }],
     queryFn: () => adminAPI.sodRules.list({ page })
@@ -337,9 +370,9 @@ function SODMatrix({ page, setPage }) {
     >
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-white">Conflicting Module Pairs</h3>
-        <button className="btn-ghost text-xs gap-1.5 px-3">
+        <button className="btn-ghost text-xs gap-1.5 px-3" onClick={suggestRules} disabled={suggesting}>
           <Wand2 size={13} />
-          Auto-Suggest Rules
+          {suggesting ? 'Checking...' : 'Auto-Suggest Rules'}
         </button>
       </div>
 

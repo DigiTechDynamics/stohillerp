@@ -63,7 +63,7 @@ export default function DepartmentListPanel() {
                 <RecordActions record={dept} label="department" size={16}
                   onEdit={() => openPanel('department-form', { department: dept })}
                   deleteFn={hrAPI.departments.delete} invalidate={['hr-departments']}
-                  className="opacity-0 group-hover:opacity-100 transition-all" />
+                  />
               </div>
             </div>
           ))

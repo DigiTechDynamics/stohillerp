@@ -98,7 +98,7 @@ export default function ReconciliationRulesForm() {
             </div>
             <button 
               onClick={() => deleteMutation.mutate(rule.id)}
-              className="p-2 text-dark-500 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+              className="p-2 text-dark-500 hover:text-rose-500 transition-colors"
             >
               <Trash2 size={16} />
             </button>

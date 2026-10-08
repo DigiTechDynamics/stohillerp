@@ -13,6 +13,7 @@ from django.core.management.base import BaseCommand
 
 from apps.core import seeds as core_seeds
 from apps.crm.seeds import seed_crm_defaults
+from apps.documents.seeds import seed_document_types
 from apps.finance.seeds import seed_finance_defaults
 from apps.payroll.seeds import seed_payroll_config
 from apps.propman.seeds import seed_arrears_stages
@@ -28,6 +29,7 @@ STEPS = [
     ("Payroll configuration (ZW)", seed_payroll_config),
     ("CRM pipeline & lost reasons", seed_crm_defaults),
     ("Arrears collection stages", seed_arrears_stages),
+    ("Document types", seed_document_types),
 ]
 
 

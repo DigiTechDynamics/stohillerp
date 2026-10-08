@@ -9,6 +9,7 @@ import { financeAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import RecordActions from '@/components/common/RecordActions'
 import { formatDate } from '@/utils/format'
+import { confirmDialog } from '@/components/common/Dialogs'
 
 export default function FiscalPeriodsPage() {
   const queryClient = useQueryClient()
@@ -103,21 +104,21 @@ export default function FiscalPeriodsPage() {
     openPanel('fiscal-year-form', { fiscalYear: year })
   }
 
-  const handleGeneratePeriods = () => {
+  const handleGeneratePeriods = async () => {
     if (!selectedYearId) return
-    if (periods.length > 0 && !window.confirm('Periods already exist. Re-generating will not delete existing but may cause duplicates. Proceed?')) return
+    if (periods.length > 0 && !(await confirmDialog({ title: 'Regenerate periods?', message: 'Periods already exist. Regenerating will not delete them but may create duplicates.', confirmLabel: 'Regenerate', tone: 'warning' }))) return
     generatePeriodsMutation.mutate(selectedYearId)
   }
 
-  const handleCloseYear = () => {
+  const handleCloseYear = async () => {
     if (!selectedYearId || !selectedYear) return
-    if (!window.confirm(`Are you sure you want to close the fiscal year ${selectedYear.year}? This will also close all its periods.`)) return
+    if (!(await confirmDialog({ title: `Close fiscal year ${selectedYear.year}?`, message: 'All of its periods are closed too.', confirmLabel: 'Close year', tone: 'warning' }))) return
     closeYearMutation.mutate(selectedYearId)
   }
 
-  const handleReopenYear = () => {
+  const handleReopenYear = async () => {
     if (!selectedYearId || !selectedYear) return
-    if (!window.confirm(`Are you sure you want to reopen the fiscal year ${selectedYear.year}?`)) return
+    if (!(await confirmDialog({ title: `Reopen fiscal year ${selectedYear.year}?`, confirmLabel: 'Reopen', tone: 'warning' }))) return
     reopenYearMutation.mutate(selectedYearId)
   }
 
@@ -156,13 +157,13 @@ export default function FiscalPeriodsPage() {
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={(e) => handleEditYear(y, e)}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded transition-all text-dark-400 hover:text-white"
+                      className="p-1 hover:bg-white/10 rounded transition-all text-dark-400 hover:text-white"
                     >
                       <Settings2 size={12} />
                     </button>
                     <RecordActions record={y} label="fiscal year" size={12} deleteFn={financeAPI.fiscalYears.delete}
                       invalidate={['fiscal-years']} onDeleted={() => setSelectedYearId(null)}
-                      className="opacity-0 group-hover:opacity-100" />
+                      />
                     {y.is_closed ? (
                       <CheckCircle2 size={14} className="text-emerald-400" />
                     ) : (
@@ -289,7 +290,7 @@ export default function FiscalPeriodsPage() {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex items-center justify-end gap-1">
                               {p.status === 'open' && (
                                 <>
                                   <button 

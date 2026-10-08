@@ -3,7 +3,9 @@ from rest_framework import viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
-from apps.documents.models import Document, ComplianceRecord
+from django.db.models import Count, Q
+
+from apps.documents.models import ComplianceRecord, Document, DocumentCategory
 from utils.permissions import user_modules
 from utils.private_media import private_file_response
 
@@ -16,24 +18,44 @@ def can_see_confidential(user, document):
     return user.is_superuser or 'documents' in user_modules(user) or document.created_by_id == user.pk
 
 
+def visible_documents(user, qs=None):
+    """Documents the user may see: all for the Documents module, else non-confidential plus their own."""
+    qs = Document.objects.all() if qs is None else qs
+    if user.is_superuser or 'documents' in user_modules(user):
+        return qs
+    return qs.filter(Q(is_confidential=False) | Q(created_by=user))
+
+
+class DocumentCategoryViewSet(viewsets.ModelViewSet):
+    """Document types, each with the number of documents of that type the caller can see."""
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['is_active']
+    pagination_class = None
+
+    def get_serializer_class(self):
+        from apps.documents.serializers import DocumentCategorySerializer
+        return DocumentCategorySerializer
+
+    def get_queryset(self):
+        visible = visible_documents(self.request.user).values('pk')
+        return DocumentCategory.objects.annotate(
+            document_count=Count('document', filter=Q(document__in=visible), distinct=True)
+        ).order_by('sort_order', 'name')   # Meta.ordering is dropped on aggregate queries
+
+
 class DocumentViewSet(viewsets.ModelViewSet):
-    queryset = Document.objects.select_related('category')
+    queryset = Document.objects.select_related('category', 'created_by', 'property', 'contact', 'lease', 'employee')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status', 'category', 'is_confidential']
-    search_fields = ['title', 'reference', 'tags']
+    filterset_fields = ['status', 'category', 'is_confidential', 'property', 'contact', 'lease', 'employee']
+    search_fields = ['title', 'reference', 'description']
     ordering_fields = ['title', 'updated_at', 'file_size']
     def get_serializer_class(self):
         from apps.documents.serializers import DocumentSerializer
         return DocumentSerializer
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        user = self.request.user
-        if user.is_superuser or 'documents' in user_modules(user):
-            return qs
         # Other modules see non-confidential documents plus their own uploads.
-        from django.db.models import Q
-        return qs.filter(Q(is_confidential=False) | Q(created_by=user))
+        return visible_documents(self.request.user, super().get_queryset())
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
