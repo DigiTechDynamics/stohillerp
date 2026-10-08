@@ -61,9 +61,11 @@ class CustomFieldsMixin:
 
 
 class PropertyTypeSerializer(serializers.ModelSerializer):
+    property_count = serializers.IntegerField(read_only=True, default=0)
+
     class Meta:
         model = PropertyType
-        fields = ['id', 'name', 'code']
+        fields = ['id', 'name', 'code', 'description', 'property_count']
 
 
 class PropertyImageSerializer(serializers.ModelSerializer):

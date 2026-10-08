@@ -13,6 +13,7 @@ import Pagination from '@/components/common/Pagination'
 import RecordActions from '@/components/common/RecordActions'
 import PropertyMap, { hasCoordinates } from '@/components/common/PropertyMap'
 import { useQueryClient } from '@tanstack/react-query'
+import { SettingsButton } from '@/components/common/SettingsPage'
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Status' },
@@ -187,6 +188,7 @@ export default function PropertiesPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <SettingsButton to="/properties/settings" />
           <DataManagementButtons 
             module="properties" 
             onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['properties'] })} 

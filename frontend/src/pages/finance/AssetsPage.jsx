@@ -8,6 +8,7 @@ import { useUIStore } from '@/stores/authStore'
 import RecordActions from '@/components/common/RecordActions'
 import DataManagementButtons from '@/components/common/DataManagementButtons'
 import Pagination from '@/components/common/Pagination'
+import { SettingsButton } from '@/components/common/SettingsPage'
 
 export default function AssetsPage() {
   const queryClient = useQueryClient()
@@ -52,6 +53,7 @@ export default function AssetsPage() {
           <p className="text-dark-400 mt-1">Manage non-current assets and automated depreciation runs.</p>
         </div>
         <div className="flex items-center gap-3">
+          <SettingsButton to="/finance/assets/settings" />
           <DataManagementButtons 
             module="assets" 
             onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['fixed-assets'] })} 

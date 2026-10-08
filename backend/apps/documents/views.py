@@ -1,11 +1,11 @@
 """Stohil Properties - Documents Views"""
 from rest_framework import viewsets, filters
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count, Q
 
-from apps.documents.models import ComplianceRecord, Document, DocumentCategory
+from apps.documents.models import ComplianceRecord, ComplianceRequirement, Document, DocumentCategory
 from utils.permissions import user_modules
 from utils.private_media import private_file_response
 
@@ -66,6 +66,25 @@ class DocumentViewSet(viewsets.ModelViewSet):
         if document.is_confidential and not can_see_confidential(request.user, document):
             raise PermissionDenied('This document is confidential.')
         return private_file_response(document.file)
+
+
+class ComplianceRequirementViewSet(viewsets.ModelViewSet):
+    """The rules compliance records are kept against (FICA, EAAB, ...), with how many records each has."""
+    queryset = ComplianceRequirement.objects.annotate(record_count=Count('compliancerecord')).order_by('name')
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['applies_to', 'is_mandatory']
+    pagination_class = None
+
+    def get_serializer_class(self):
+        from apps.documents.serializers import ComplianceRequirementSerializer
+        return ComplianceRequirementSerializer
+
+    def perform_destroy(self, instance):
+        # Records cascade with their requirement, so deleting one in use would erase compliance history.
+        if instance.compliancerecord_set.exists():
+            raise ValidationError('This requirement has compliance records. Edit it instead of deleting it.')
+        instance.delete()
+
 
 class ComplianceRecordViewSet(viewsets.ModelViewSet):
     queryset = ComplianceRecord.objects.select_related('requirement')

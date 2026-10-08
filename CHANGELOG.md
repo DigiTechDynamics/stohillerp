@@ -1,6 +1,52 @@
 # Changelog
 
-## [Unreleased] - UAT findings
+## [Unreleased] - Module settings and invoicing fixes
+
+Branch `fix/module-settings`. Tests are in `backend/tests/test_module_settings.py`
+and `CrudTable.test.jsx`.
+
+### Upgrade notes
+- Run `migrate`: it adds the starter property types (Residential, Sectional
+  Title, Commercial, Industrial, Agricultural, Vacant Land, Mixed Use) to
+  installs that have none. `bootstrap_system` seeds them too.
+
+### Fixed
+- **Sales invoices could not be saved.** "Save & Post Invoice" reloaded the
+  page, so nothing reached the server and any error disappeared. The invoice
+  currency now also defaults to the base currency, on supplier invoices too.
+- **Currency picker** could come up empty after opening the chart of accounts
+  or a journal entry, because screens stored the currency list in different
+  shapes under the same cache key. All of them now share one `useCurrencies` hook.
+- **Utility tariffs failed to save** when the flat rate (or another number) was
+  left blank, e.g. for a stepped tariff ("rate: This field may not be null").
+  Editable tables now leave a blank number out so the server default applies;
+  fields that may genuinely be empty are marked `nullable`. This also fixes the
+  same error on document types, meters, recovery schedules, lease options and
+  maintenance plans.
+- **Property types could not be added**: there was no screen for them, and a
+  new install had none, so no property could be created.
+- **New pipeline stages failed to save** (the stage's pipeline was dropped by
+  the API), which also broke creating a pipeline from the CRM board.
+- The rental invoice form explains that only active leases can be invoiced
+  when there are none.
+
+### Added: a settings page per module
+Each module page has a **Settings** button. The open tab is kept in the URL,
+e.g. `/properties/settings?tab=types`.
+- **Property & rental** (`/properties/settings`): new Property types tab, plus
+  the existing tariffs, CPI, arrears stages, custom fields, portfolios and
+  defaults.
+- **CRM** (`/crm/settings`): pipelines, stages, lost reasons (including retired
+  ones), tags, email templates and sales teams.
+- **HR** (`/hr/settings`): departments and job positions.
+- **Documents** (`/documents/settings`): document types and compliance
+  requirements (new API; only the Documents module can change them, and a
+  requirement with records cannot be deleted).
+- **Fixed assets** (`/finance/assets/settings`): asset categories with their
+  four GL accounts.
+- **Finance** (`/finance/settings`): adds Currencies and a link to tax codes.
+
+## UAT findings
 
 Branch `fix/uat-findings`. Fixes the findings in `uat-findings.md`. Tests are in
 `backend/tests/test_uat_findings.py`, `test_notifications_inbox.py`,

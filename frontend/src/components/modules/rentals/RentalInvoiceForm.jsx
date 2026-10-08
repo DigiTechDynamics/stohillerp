@@ -33,6 +33,7 @@ export default function RentalInvoiceForm() {
     queryFn: () => rentalsAPI.leases.list({ status: 'active', page_size: 500 }),
   })
   const leases = leasesRes?.data?.results || []
+  const leasesLoaded = !!leasesRes
 
   // Auto-calculate totals
   useEffect(() => {
@@ -119,6 +120,11 @@ export default function RentalInvoiceForm() {
                   </option>
                 ))}
               </select>
+              {leasesLoaded && leases.length === 0 && (
+                <p className="text-xs text-amber-400">
+                  No active leases. Only active leases can be invoiced: open the lease and set its status to Active.
+                </p>
+              )}
             </div>
 
             {lease && (

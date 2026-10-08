@@ -16,6 +16,7 @@ from apps.crm.seeds import seed_crm_defaults
 from apps.documents.seeds import seed_document_types
 from apps.finance.seeds import seed_finance_defaults
 from apps.payroll.seeds import seed_payroll_config
+from apps.properties.seeds import seed_property_types
 from apps.propman.seeds import seed_arrears_stages
 
 # Order matters: later steps depend on earlier ones (e.g. payroll brackets
@@ -30,6 +31,7 @@ STEPS = [
     ("CRM pipeline & lost reasons", seed_crm_defaults),
     ("Arrears collection stages", seed_arrears_stages),
     ("Document types", seed_document_types),
+    ("Property types", seed_property_types),
 ]
 
 

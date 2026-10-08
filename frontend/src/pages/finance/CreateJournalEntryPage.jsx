@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2, Save, Send, ChevronLeft } from 'lucide-react'
 import { financeAPI } from '@/services/api'
+import { useCurrencies } from '@/hooks/useCurrencies'
 import { formatCurrency } from '@/utils/format'
 import { motion } from 'framer-motion'
 import AccountCombobox from '@/components/common/AccountCombobox'
@@ -16,7 +17,7 @@ export default function JournalBatchGrid() {
   const isEditing = !!id
 
   const { data: journalsRes } = useQuery({ queryKey: ['finance-journals'], queryFn: () => financeAPI.journals.list() })
-  const { data: currenciesRes } = useQuery({ queryKey: ['currencies'], queryFn: () => financeAPI.currencies.list() })
+  const { currencies, baseCurrency } = useCurrencies()
   
   const { data: batchRes, isLoading: isLoadingBatch } = useQuery({
     queryKey: ['journal-batch', id],
@@ -32,8 +33,6 @@ export default function JournalBatchGrid() {
   })
 
   const journals = journalsRes?.data?.results || []
-  const currencies = currenciesRes?.data?.results || []
-  const baseCurrency = currencies.find(c => c.is_base)
 
   const [batchData, setBatchData] = useState({
     journal: '',

@@ -7,6 +7,11 @@ from .models import AssetBook, AssetCategory, AssetLocation, AssetTransaction, F
 
 
 class AssetCategorySerializer(serializers.ModelSerializer):
+    asset_cost_account_code = serializers.CharField(source='asset_cost_account.code', read_only=True)
+    accum_depr_account_code = serializers.CharField(source='accum_depr_account.code', read_only=True)
+    depr_expense_account_code = serializers.CharField(source='depr_expense_account.code', read_only=True)
+    disposal_gain_loss_account_code = serializers.CharField(source='disposal_gain_loss_account.code', read_only=True)
+
     class Meta:
         model = AssetCategory
         fields = '__all__'

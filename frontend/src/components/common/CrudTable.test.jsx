@@ -18,7 +18,7 @@ function renderTable(api, props = {}) {
         columns={[{ key: 'unit_number', label: 'Unit' }, { key: 'floor_size', label: 'GLA' }]}
         fields={[
           { key: 'unit_number', label: 'Unit number', required: true },
-          { key: 'floor_size', label: 'Floor area', type: 'number' },
+          { key: 'floor_size', label: 'Floor area', type: 'number', nullable: true },
           { key: 'unit_type', label: 'Type', type: 'select', options: [['office', 'Office'], ['retail', 'Retail']] },
         ]}
         {...props} />
@@ -49,6 +49,23 @@ describe('CrudTable', () => {
     fireEvent.click(screen.getByText('Save'))
     await waitFor(() => expect(api.create).toHaveBeenCalledWith({ property: 'p1', unit_number: 'B2', floor_size: null, unit_type: 'retail' }))
     expect(toast.success).toHaveBeenCalledWith('Unit added.')
+  })
+
+  it('leaves a blank non-nullable number out so the server default applies', async () => {
+    const api = { list: vi.fn(() => ok([])), create: vi.fn(() => ok({ id: 't1' })) }
+    renderTable(api, {
+      label: 'tariff', params: {},
+      fields: [
+        { key: 'name', label: 'Name', required: true },
+        { key: 'rate', label: 'Flat rate', type: 'number' },
+      ],
+      defaults: { rate: 0 },
+    })
+    fireEvent.click(await screen.findByText(/Add tariff/))
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Water' } })
+    fireEvent.change(screen.getByLabelText('Flat rate'), { target: { value: '' } })
+    fireEvent.click(screen.getByText('Save'))
+    await waitFor(() => expect(api.create).toHaveBeenCalledWith({ name: 'Water' }))
   })
 
   it('edits a row with its current values and shows server errors', async () => {

@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useCurrencies } from '@/hooks/useCurrencies'
 import api from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import { toast } from 'react-hot-toast'
@@ -10,12 +11,7 @@ export default function ExchangeRateForm() {
   const queryClient = useQueryClient()
   const rate = sidePanelData?.rate
 
-  const { data: currenciesData } = useQuery({
-    queryKey: ['currencies'],
-    queryFn: () => api.get('/finance/currencies/').then(r => r.data)
-  })
-
-  const currencies = (currenciesData?.results || currenciesData || []).filter(c => !c.is_base)
+  const currencies = useCurrencies().currencies.filter(c => !c.is_base)
 
   const [formData, setFormData] = useState({
     currency: rate?.currency || '',

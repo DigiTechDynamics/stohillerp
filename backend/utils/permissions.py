@@ -75,6 +75,8 @@ POLICY = {
     "commissions/": ({"commissions", "sales", "payroll", "finance_gl", "finance_ap"}, {"commissions"}),
     # Document types: everyone who uses documents reads them; the Documents module sets them up.
     "documents/categories/": ({"documents", "crm", "rentals", "sales", "properties", "hr"} | FINANCE, {"documents"}),
+    "documents/compliance-requirements/": ({"documents", "crm", "rentals", "sales", "properties", "hr"} | FINANCE,
+                                           {"documents"}),
     # Supporting documents (e.g. supplier invoice scans) are uploaded from finance too.
     "documents/": ({"documents", "crm", "rentals", "sales", "properties", "hr"} | FINANCE,
                    {"documents", "crm", "rentals", "sales", "properties", "hr"} | FINANCE),

@@ -104,6 +104,12 @@ export const propertiesAPI = {
   mapData: (params) => api.get('properties/map_data/', { params }),
   stats: () => api.get('properties/stats/'),
   listTypes: () => api.get('properties/types/'),
+  types: {
+    list: (params) => api.get('properties/types/', { params }),
+    create: (data) => api.post('properties/types/', data),
+    update: (id, data) => api.patch(`properties/types/${id}/`, data),
+    delete: (id) => api.delete(`properties/types/${id}/`),
+  },
   units: {
     list: (params) => api.get('properties/units/', { params }),
     detail: (id) => api.get(`properties/units/${id}/`),
@@ -215,6 +221,7 @@ export const crmAPI = {
     update: (id, data) => api.patch(`crm/pipelines/${id}/`, data),
     delete: (id) => api.delete(`crm/pipelines/${id}/`),
     stages: {
+      list: (params) => api.get('crm/pipeline-stages/', { params }),
       create: (data) => api.post('crm/pipeline-stages/', data),
       update: (id, data) => api.patch(`crm/pipeline-stages/${id}/`, data),
       delete: (id) => api.delete(`crm/pipeline-stages/${id}/`),
@@ -230,6 +237,8 @@ export const crmAPI = {
   tags: {
     list: () => api.get('crm/tags/'),
     create: (data) => api.post('crm/tags/', data),
+    update: (id, data) => api.patch(`crm/tags/${id}/`, data),
+    delete: (id) => api.delete(`crm/tags/${id}/`),
   },
   notes: {
     list: (params) => api.get('crm/notes/', { params }),
@@ -237,13 +246,13 @@ export const crmAPI = {
     delete: (id) => api.delete(`crm/notes/${id}/`),
   },
   lostReasons: {
-    list: () => api.get('crm/lost-reasons/'),
+    list: (params) => api.get('crm/lost-reasons/', { params }),   // { all: 1 } includes retired reasons
     create: (data) => api.post('crm/lost-reasons/', data),
     update: (id, data) => api.patch(`crm/lost-reasons/${id}/`, data),
     delete: (id) => api.delete(`crm/lost-reasons/${id}/`),
   },
   emailTemplates: {
-    list: () => api.get('crm/email-templates/'),
+    list: (params) => api.get('crm/email-templates/', { params }),
     create: (data) => api.post('crm/email-templates/', data),
     update: (id, data) => api.patch(`crm/email-templates/${id}/`, data),
     delete: (id) => api.delete(`crm/email-templates/${id}/`),
@@ -873,6 +882,12 @@ export const documentsAPI = {
     update: (id, data) => api.patch(`documents/categories/${id}/`, data),
     delete: (id) => api.delete(`documents/categories/${id}/`),
   },
+  requirements: {
+    list: (params) => api.get('documents/compliance-requirements/', { params }),
+    create: (data) => api.post('documents/compliance-requirements/', data),
+    update: (id, data) => api.patch(`documents/compliance-requirements/${id}/`, data),
+    delete: (id) => api.delete(`documents/compliance-requirements/${id}/`),
+  },
   compliance: {
     list: (params) => api.get('documents/compliance/', { params }),
     summary: () => api.get('documents/compliance/summary/'),
@@ -888,8 +903,8 @@ export const hrAPI = {
     delete: (id) => api.delete(`hr/employees/${id}/`),
     statement: (id) => api.get(`hr/employees/${id}/statement/`),
   },
-  departments: { 
-    list: () => api.get('hr/departments/'),
+  departments: {
+    list: (params) => api.get('hr/departments/', { params }),
     create: (data) => api.post('hr/departments/', data),
     update: (id, data) => api.patch(`hr/departments/${id}/`, data),
     delete: (id) => api.delete(`hr/departments/${id}/`),
@@ -909,6 +924,9 @@ export const hrAPI = {
   },
   jobPositions: {
     list: (params) => api.get('hr/job-positions/', { params }),
+    create: (data) => api.post('hr/job-positions/', data),
+    update: (id, data) => api.patch(`hr/job-positions/${id}/`, data),
+    delete: (id) => api.delete(`hr/job-positions/${id}/`),
   },
   attendance: {
     list: (params) => api.get('hr/attendance/', { params }),
