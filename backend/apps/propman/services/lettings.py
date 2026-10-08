@@ -99,5 +99,9 @@ def mark_signed(lease, signed=True, user=None):
         raise AccountingError('The lease is not waiting for a signature.')
     lease.signature_status = Lease.SignatureStatus.SIGNED if signed else Lease.SignatureStatus.DECLINED
     lease.signature_signed_at = timezone.now() if signed else None
+    # A signed lease is in force: activating it occupies the unit and bills from the start date.
+    # A declined one goes back to draft so it can be corrected and sent again.
+    if lease.status in (Lease.LeaseStatus.DRAFT, Lease.LeaseStatus.PENDING_SIGNATURE):
+        lease.status = Lease.LeaseStatus.ACTIVE if signed else Lease.LeaseStatus.DRAFT
     lease.save()
     return lease

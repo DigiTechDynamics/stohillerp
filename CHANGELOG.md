@@ -1,6 +1,45 @@
 # Changelog
 
-## [Unreleased] - Module settings and invoicing fixes
+## [Unreleased] - UAT round 3
+
+Branch `fix/uat-round-3`. Tests are in `backend/tests/test_uat_round3.py`.
+
+### Upgrade notes
+- Run `migrate`: adds asset categories' default useful life (60 months), the
+  asset category on purchase order lines and the asset's purchase invoice link.
+
+### Fixed
+- **Tenants list was empty.** "New Tenant" saved people as leads, and the list
+  only showed contacts typed Tenant. New tenants are now typed Tenant, the list
+  also includes anyone holding a lease, and a contact becomes a Tenant when
+  their lease goes active.
+- **Leases did not activate when signed.** Marking a lease signed now makes it
+  active (the unit is occupied and billing starts); a declined signature puts it
+  back to draft. The lease panel now reloads the lease, so its status, Billing
+  section and actions update straight away. "Mark unsigned", which the server
+  always refused, is gone.
+- **Purchasing invoicing.** Purchasing users without Accounts Payable access
+  (e.g. Rental Manager) could not load suppliers, accounts or tax codes, so they
+  could not raise an order. They can now read those lists (posting invoices
+  stays with AP). "Save draft" says what is missing instead of staying greyed
+  out. An order shows its supplier invoices and says when a draft is waiting to
+  be posted in Accounts Payable, and no longer offers to invoice goods that are
+  already on a draft.
+
+### Added
+- **Assets from purchasing.** A purchase order line can be an asset: choose an
+  asset category instead of an expense account and it books to that category's
+  asset account. When its supplier invoice is posted, the items join the fixed
+  asset register (one asset per unit for whole quantities), with a straight-line
+  book over the category's default life and an acquisition linked to the
+  invoice's journal. Nothing is posted twice and re-running never duplicates.
+- **Property owners.** The property Owners tab sets the ownership type and the
+  owner (landlord), adds a new owner on the spot (saved to CRM as a landlord),
+  and keeps co-owners' shares, warning when they don't total 100%.
+- **Refresh button** in the top bar of every page, and in the portals: reloads
+  the page's data and any open panel without reloading the browser.
+
+## Module settings and invoicing fixes
 
 Branch `fix/module-settings`. Tests are in `backend/tests/test_module_settings.py`
 and `CrudTable.test.jsx`.

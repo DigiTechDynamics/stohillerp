@@ -10,7 +10,7 @@ function AssetCategories() {
     (a) => [a.id, `${a.code} ${a.name}`])
   return (
     <CrudTable label="asset category" queryKey={['asset-categories']} api={fixedAssetsAPI.categories}
-      description="Every asset belongs to a category, which sets the accounts its cost, depreciation and disposal post to. Categories with assets cannot be deleted."
+      description="Every asset belongs to a category, which sets the accounts its cost, depreciation and disposal post to. Assets bought through Purchasing get the category's default life. Categories with assets cannot be deleted."
       columns={[
         { key: 'code', label: 'Code' },
         { key: 'name', label: 'Name' },
@@ -18,16 +18,19 @@ function AssetCategories() {
         { key: 'accum_depr_account_code', label: 'Accum. depr.' },
         { key: 'depr_expense_account_code', label: 'Depr. expense' },
         { key: 'disposal_gain_loss_account_code', label: 'Disposal' },
+        { key: 'default_useful_life_months', label: 'Life (months)', align: 'right' },
       ]}
       fields={[
         { key: 'code', label: 'Code', required: true, readOnlyOnEdit: true, placeholder: 'e.g. VEH' },
         { key: 'name', label: 'Name', required: true },
-        { key: 'description', label: 'Description', span: 2 },
+        { key: 'description', label: 'Description' },
+        { key: 'default_useful_life_months', label: 'Default life (months)', type: 'number' },
         { key: 'asset_cost_account', label: 'Asset cost account', type: 'select', options: accounts, required: true },
         { key: 'accum_depr_account', label: 'Accumulated depreciation', type: 'select', options: accounts, required: true },
         { key: 'depr_expense_account', label: 'Depreciation expense', type: 'select', options: accounts, required: true },
         { key: 'disposal_gain_loss_account', label: 'Gain / loss on disposal', type: 'select', options: accounts, required: true },
-      ]} />
+      ]}
+      defaults={{ default_useful_life_months: 60 }} />
   )
 }
 

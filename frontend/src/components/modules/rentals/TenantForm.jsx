@@ -26,7 +26,7 @@ export default function TenantForm() {
     email: contact?.email || '',
     phone_mobile: contact?.phone_mobile || contact?.phone || '',
     id_number: contact?.id_number || '',
-    contact_type: contact?.contact_type || 'lead',
+    contact_type: contact?.contact_type || 'tenant',   // opened from Rental Management's "New Tenant"
     source: contact?.source || 'Website',
     notes: contact?.notes || '',
     currency: contact?.currency || '',
@@ -113,7 +113,7 @@ export default function TenantForm() {
                 <select name="contact_type" value={formData.contact_type} onChange={handleChange} className="form-input w-full">
                   <option value="lead">Lead</option>
                   <option value="buyer">Potential Buyer</option>
-                  <option value="tenant">Potential Tenant</option>
+                  <option value="tenant">Tenant</option>
                   <option value="seller">Seller / Landlord</option>
                   <option value="investor">Investor</option>
                   <option value="other">Other</option>

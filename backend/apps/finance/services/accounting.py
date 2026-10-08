@@ -799,7 +799,7 @@ class AccountingService:
         Credit note: the same, sides reversed; input VAT reported negative.
         """
         from apps.finance.services.fx import currency_code
-        from apps.procurement.services import enforce_match, record_invoiced
+        from apps.procurement.services import create_assets, enforce_match, record_invoiced
 
         if not invoice.is_credit_note:
             enforce_match(invoice)   # PO-linked lines must agree with the PO and the goods received
@@ -832,6 +832,7 @@ class AccountingService:
         self._record_tax(lines, TaxTransaction.TransactionType.INPUT, invoice, entry, sign)
         if not invoice.is_credit_note:
             record_invoiced(invoice)
+            create_assets(invoice, entry, self.user)   # items bought as fixed assets join the register
         return entry
 
     @transaction.atomic

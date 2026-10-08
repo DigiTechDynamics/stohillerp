@@ -20,7 +20,14 @@ function InfoRow({ label, value, accent }) {
 export default function LeaseDetailPanel() {
   const { sidePanelData, openSidePanel } = useUIStore()
   const queryClient = useQueryClient()
-  const lease = sidePanelData?.lease
+  const opened = sidePanelData?.lease
+  // Load the live lease: signing, billing and renewals change it while the panel is open.
+  const { data: liveRes } = useQuery({
+    queryKey: ['lease', opened?.id],
+    queryFn: () => rentalsAPI.leases.detail(opened.id),
+    enabled: !!opened?.id,
+  })
+  const lease = liveRes?.data || opened
   const [adjusting, setAdjusting] = useState(false)
   const [newRental, setNewRental] = useState(lease?.monthly_rental || '')
 
@@ -36,6 +43,7 @@ export default function LeaseDetailPanel() {
   const adjustMutation = useMutation({
     mutationFn: () => rentalsAPI.leases.adjustRental(lease.id, newRental),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lease', lease.id] })
       queryClient.invalidateQueries({ queryKey: ['rental-leases'] })
       queryClient.invalidateQueries({ queryKey: ['rental-stats'] })
       setAdjusting(false)

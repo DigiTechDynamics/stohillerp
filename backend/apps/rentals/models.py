@@ -143,6 +143,10 @@ class Lease(AuditedModel):
             if self.tenant_id:
                 from apps.rentals.services.finance_sync import RentalFinanceSyncService  # type: ignore
                 RentalFinanceSyncService.sync_tenant_to_customer(self.tenant)
+                if self.status == self.LeaseStatus.ACTIVE:
+                    # Whoever holds an active lease is a tenant, whatever they were filed as (lead, prospect...).
+                    from apps.crm.models import Contact  # type: ignore
+                    Contact.objects.filter(pk=self.tenant_id).exclude(contact_type=Contact.ContactType.TENANT)                         .update(contact_type=Contact.ContactType.TENANT)
             sync_unit_occupancy(self.unit_id)
             if previous_unit_id and previous_unit_id != self.unit_id:
                 sync_unit_occupancy(previous_unit_id)

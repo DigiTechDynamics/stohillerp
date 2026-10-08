@@ -1,9 +1,10 @@
 // Purchasing: purchase orders, approval, goods receipt and invoicing (3-way match).
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ShoppingCart, Plus, Trash2, Send, PackageCheck, FileText, XCircle, X } from 'lucide-react'
 import { toast } from 'react-hot-toast'
-import { apiErrorMessage, financeAPI, procurementAPI, projectsAPI } from '@/services/api'
+import { apiErrorMessage, financeAPI, fixedAssetsAPI, procurementAPI, projectsAPI } from '@/services/api'
 import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
 import AccountCombobox from '@/components/common/AccountCombobox'
 import ApprovalBox from '@/components/common/ApprovalBox'
@@ -14,7 +15,7 @@ import { confirmDialog } from '@/components/common/Dialogs'
 const today = () => new Date().toISOString().split('T')[0]
 const rows = (res) => res?.data?.results || res?.data || []
 const STATUSES = ['draft', 'issued', 'partially_received', 'received', 'closed', 'cancelled']
-const blankLine = () => ({ description: '', expense_account: '', picked: null, quantity: '1', unit_price: '' })
+const blankLine = () => ({ description: '', expense_account: '', asset_category: '', picked: null, quantity: '1', unit_price: '' })
 
 function useRun() {
   const queryClient = useQueryClient()
@@ -40,7 +41,8 @@ const formFromOrder = (o) => ({
   supplier: o.supplier, order_date: o.order_date, expected_date: o.expected_date || '', project: o.project || '',
   notes: o.notes || '',
   lines: o.lines.map(l => ({
-    description: l.description, expense_account: l.expense_account, quantity: l.quantity, unit_price: l.unit_price,
+    description: l.description, expense_account: l.expense_account, asset_category: l.asset_category || '',
+    quantity: l.quantity, unit_price: l.unit_price,
     picked: { type: 'account', id: l.expense_account, display: l.expense_account_code },
   })),
 })
@@ -51,13 +53,21 @@ function OrderForm({ order, onDone }) {
     : { supplier: '', order_date: today(), expected_date: '', project: '', notes: '', lines: [blankLine()] })
   const { data: suppliersRes } = useQuery({ queryKey: ['ap-suppliers-picker'], queryFn: () => financeAPI.ap.suppliers.list({ page_size: 200 }) })
   const { data: projectsRes } = useQuery({ queryKey: ['projects-picker'], queryFn: () => projectsAPI.list({ status: 'active', page_size: 200 }) })
+  const { data: categoriesRes } = useQuery({ queryKey: ['asset-categories'], queryFn: () => fixedAssetsAPI.categories.list() })
+  const categories = rows(categoriesRes)
   const setLine = (i, patch) => setForm({ ...form, lines: form.lines.map((ln, j) => (j === i ? { ...ln, ...patch } : ln)) })
   const total = form.lines.reduce((s, l) => s + (parseFloat(l.quantity) || 0) * (parseFloat(l.unit_price) || 0), 0)
 
+  const lineReady = (l) => l.description && (l.expense_account || l.asset_category)
   const save = async () => {
+    const missing = [!form.supplier && 'Supplier', !form.lines.some(lineReady) && 'a line with a description and an expense account or asset category']
+      .filter(Boolean)
+    if (missing.length) return toast.error(`Please fill in: ${missing.join(', ')}.`)
     const payload = {
       ...form, expected_date: form.expected_date || null, project: form.project || null,
-      lines: form.lines.filter(l => l.description && l.expense_account).map(({ picked, ...l }) => l),
+      // An asset line books to its category's asset account (set by the server).
+      lines: form.lines.filter(lineReady).map(({ picked, ...l }) => (l.asset_category
+        ? { ...l, expense_account: undefined } : { ...l, asset_category: null })),
     }
     const saved = order
       ? await run(() => procurementAPI.orders.update(order.id, payload), d => `Updated ${d.number}.`)
@@ -87,12 +97,24 @@ function OrderForm({ order, onDone }) {
       <div className="space-y-2">
         {form.lines.map((ln, i) => (
           <div key={i} className="grid grid-cols-12 gap-2">
-            <input className="form-input col-span-4" placeholder="Description" aria-label={`Line ${i + 1} description`} value={ln.description} onChange={e => setLine(i, { description: e.target.value })} />
-            <div className="col-span-4">
-              <AccountCombobox value={ln.picked} placeholder="Expense account..."
-                onChange={item => (item.type === 'account'
-                  ? setLine(i, { expense_account: item.id, picked: item })
-                  : toast.error('Pick a GL account.'))} />
+            <input className="form-input col-span-3" placeholder="Description" aria-label={`Line ${i + 1} description`} value={ln.description} onChange={e => setLine(i, { description: e.target.value })} />
+            <select className="form-input col-span-2 text-xs" aria-label={`Line ${i + 1} asset category`} title="Choose a category if this item is a fixed asset"
+              value={ln.asset_category || ''} onChange={e => setLine(i, { asset_category: e.target.value })}>
+              <option value="">Expense (not an asset)</option>
+              {categories.map(c => <option key={c.id} value={c.id}>Asset: {c.name}</option>)}
+            </select>
+            <div className="col-span-3">
+              {ln.asset_category ? (
+                <p className="text-xs text-dark-400 py-2">
+                  Books to {categories.find(c => c.id === ln.asset_category)?.asset_cost_account_code || 'the asset account'};
+                  added to the asset register when invoiced.
+                </p>
+              ) : (
+                <AccountCombobox value={ln.picked} placeholder="Expense account..."
+                  onChange={item => (item.type === 'account'
+                    ? setLine(i, { expense_account: item.id, picked: item })
+                    : toast.error('Pick a GL account.'))} />
+              )}
             </div>
             <input type="number" step="0.01" className="form-input col-span-1" aria-label={`Line ${i + 1} quantity`} value={ln.quantity} onChange={e => setLine(i, { quantity: e.target.value })} />
             <input type="number" step="0.01" className="form-input col-span-2" placeholder="Unit price" aria-label={`Line ${i + 1} unit price`} value={ln.unit_price} onChange={e => setLine(i, { unit_price: e.target.value })} />
@@ -105,7 +127,7 @@ function OrderForm({ order, onDone }) {
       <textarea className="form-input w-full" rows={2} placeholder="Notes" aria-label="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
       <div className="flex justify-between items-center">
         <p className="text-sm text-white">Total {formatCurrency(total)}</p>
-        <button className="btn-primary" disabled={busy || !form.supplier || !form.lines.some(l => l.description && l.expense_account)} onClick={save}>Save draft</button>
+        <button className="btn-primary" disabled={busy} onClick={save}>Save draft</button>
       </div>
     </div>
   )
@@ -120,7 +142,9 @@ function OrderDetail({ id, onClose, onEdit }) {
   const order = data?.data
   if (!order) return <div className="card p-10 text-center text-dark-400">Loading...</div>
   const receiving = ['issued', 'partially_received'].includes(order.status)
-  const uninvoiced = order.lines.some(l => parseFloat(l.received_qty) > parseFloat(l.invoiced_qty))
+  // Something received is on no invoice yet (draft invoices count, so it isn't invoiced twice).
+  const uninvoiced = order.to_invoice ?? order.lines.some(l => parseFloat(l.received_qty) > parseFloat(l.invoiced_qty))
+  const drafts = (order.invoices || []).filter(i => ['draft', 'reviewed'].includes(i.status))
 
   const receive = async () => {
     const lines = Object.entries(receipt.qty).filter(([, q]) => parseFloat(q) > 0).map(([line, quantity]) => ({ line, quantity }))
@@ -157,7 +181,7 @@ function OrderDetail({ id, onClose, onEdit }) {
           {order.lines.map(l => (
             <tr key={l.id}>
               <td className="px-3 py-2 text-sm text-white">{l.description}</td>
-              <td className="px-3 py-2 text-xs font-mono">{l.expense_account_code}</td>
+              <td className="px-3 py-2 text-xs font-mono">{l.expense_account_code}{l.asset_category_name ? <span className="block font-sans text-dark-400">Asset: {l.asset_category_name}</span> : null}</td>
               <td className="px-3 py-2 text-xs text-right">{l.quantity}</td>
               <td className="px-3 py-2 text-xs text-right">{l.received_qty}</td>
               <td className="px-3 py-2 text-xs text-right">{l.invoiced_qty}</td>
@@ -225,6 +249,25 @@ function OrderDetail({ id, onClose, onEdit }) {
             <button className="btn-ghost text-xs" onClick={() => setInvoice(null)}>Cancel</button>
           </div>
           <p className="text-xs text-dark-500">Posting checks the invoice against this order and its receipts (3-way match).</p>
+        </div>
+      )}
+
+      {(order.invoices || []).length > 0 && (
+        <div>
+          <h3 className="text-xs font-bold text-dark-400 uppercase tracking-widest mb-2">Supplier invoices</h3>
+          {order.invoices.map(i => (
+            <p key={i.id} className="text-xs text-dark-300">
+              <span className="font-mono text-primary">{i.invoice_number}</span> · {formatCurrency(i.total_amount)} ·{' '}
+              <span className={getStatusColor(i.status)}>{i.status}</span>
+            </p>
+          ))}
+          {drafts.length > 0 && (
+            <p className="text-xs text-amber-400 mt-1">
+              {drafts.length === 1 ? 'This invoice is' : 'These invoices are'} waiting to be reviewed and posted in{' '}
+              <Link to="/finance/ap" className="underline">Accounts Payable</Link>. Posting
+              {order.lines.some(l => l.asset_category) ? ' adds the asset lines to the fixed asset register and' : ''} records the cost.
+            </p>
+          )}
         </div>
       )}
 

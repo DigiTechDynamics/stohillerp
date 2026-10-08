@@ -221,6 +221,7 @@ class PropertyDetailSerializer(CustomFieldsMixin, serializers.ModelSerializer):
     images = PropertyImageSerializer(many=True, read_only=True)  # type: ignore
     units = PropertyUnitSerializer(many=True, read_only=True)  # type: ignore
     ownerships = PropertyOwnershipSerializer(many=True, read_only=True)  # type: ignore
+    owner_name = serializers.CharField(source='owner.full_name', read_only=True, default=None)
     full_address = serializers.ReadOnlyField()
     currency_code = serializers.CharField(source='currency.code', read_only=True, default=None)
     portfolio_name = serializers.CharField(source='portfolio.name', read_only=True, default=None)

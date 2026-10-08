@@ -172,6 +172,51 @@ def record_invoiced(invoice):
         order.refresh_status()
 
 
+# Whole quantities up to this many become one asset each (4 chairs -> 4 assets); more, or a
+# fractional quantity, becomes a single asset for the line.
+MAX_ASSETS_PER_LINE = 100
+
+
+def create_assets(invoice, entry=None, user=None):
+    """
+    Called after a supplier invoice is posted: every line bought as a fixed asset (its PO line
+    has an asset category) is added to the asset register. The invoice already debited the
+    category's asset account, so no further journal is posted; the acquisition is recorded in
+    the asset history against the invoice's journal entry. Runs once per invoice line.
+    """
+    from apps.fixed_assets.models import AssetBook, AssetTransaction, FixedAsset
+
+    created = []
+    lines = invoice.lines.filter(po_line__asset_category__isnull=False)         .select_related('po_line__asset_category', 'po_line__order', 'property_ref')
+    for line in lines:
+        if line.fixed_assets.exists():
+            continue
+        category = line.po_line.asset_category
+        net = line.line_total - line.tax_amount
+        whole = line.quantity == line.quantity.to_integral_value()
+        count = int(line.quantity) if whole and 1 <= line.quantity <= MAX_ASSETS_PER_LINE else 1
+        costs = [(net / count).quantize(CENT)] * count
+        costs[-1] = net - sum(costs[:-1])          # rounding goes on the last one
+        prefix = line.po_line.order.number
+        for n, cost in enumerate(costs, start=1):
+            code = f'{prefix}-{line.po_line_id}' + (f'-{n}' if count > 1 else '')
+            while FixedAsset.objects.filter(code=code).exists():
+                code += '+'
+            asset = FixedAsset.objects.create(
+                code=code, name=line.description if count == 1 else f'{line.description} ({n} of {count})',
+                category=category, acquisition_date=invoice.invoice_date, currency=invoice.currency,
+                acquisition_cost=cost, property_ref=line.property_ref, purchase_invoice_line=line, created_by=user)
+            AssetBook.objects.create(asset=asset, book_type='Statutory', method=AssetBook.DeprMethod.STRAIGHT_LINE,
+                                     useful_life_months=category.default_useful_life_months, current_nbv=cost,
+                                     created_by=user)
+            AssetTransaction.objects.create(
+                asset=asset, book_type='Statutory', transaction_date=invoice.invoice_date, amount=cost,
+                transaction_type=AssetTransaction.TransType.ACQUISITION, journal_entry=entry, created_by=user,
+                notes=f'Bought on {invoice.supplier.name} invoice {invoice.invoice_number} ({prefix}).')
+            created.append(asset)
+    return created
+
+
 @transaction.atomic
 def override_match(invoice, user, reason: str):
     if not reason:

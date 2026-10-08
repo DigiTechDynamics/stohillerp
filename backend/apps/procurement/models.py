@@ -74,6 +74,10 @@ class PurchaseOrderLine(models.Model):
     quantity = models.DecimalField(max_digits=12, decimal_places=2)
     unit_price = models.DecimalField(max_digits=15, decimal_places=2)
     tax_code = models.ForeignKey('finance.TaxCode', null=True, blank=True, on_delete=models.PROTECT)
+    # Set when the item is a fixed asset: the line books to the category's asset account and posting
+    # its supplier invoice creates the asset(s) in the register.
+    asset_category = models.ForeignKey('fixed_assets.AssetCategory', null=True, blank=True,
+                                       on_delete=models.PROTECT, related_name='purchase_order_lines')
     received_qty = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
     invoiced_qty = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
 

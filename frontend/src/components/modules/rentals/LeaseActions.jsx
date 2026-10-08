@@ -36,7 +36,7 @@ export default function LeaseActions({ lease }) {
   const charges = chargesData?.data?.results || []
 
   const refresh = () => {
-    for (const key of ['rental-leases', 'lease-invoices', 'lease-charges', 'rental-invoices', 'rental-stats']) {
+    for (const key of ['lease', 'rental-leases', 'rental-tenants', 'lease-invoices', 'lease-charges', 'rental-invoices', 'rental-stats']) {
       queryClient.invalidateQueries({ queryKey: [key] })
     }
   }
