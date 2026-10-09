@@ -902,6 +902,8 @@ export const hrAPI = {
     update: (id, data) => api.patch(`hr/employees/${id}/`, data),
     delete: (id) => api.delete(`hr/employees/${id}/`),
     statement: (id) => api.get(`hr/employees/${id}/statement/`),
+    leaveBalances: (id, params) => api.get(`hr/employees/${id}/leave-balances/`, { params }),
+    allLeaveBalances: (params) => api.get('hr/employees/leave-balances/', { params }),
   },
   departments: {
     list: (params) => api.get('hr/departments/', { params }),

@@ -4,6 +4,7 @@ import { Calendar, Clock, CheckCircle2, XCircle, Plus, AlertCircle, User } from 
 import { hrAPI, apiErrorMessage } from '@/services/api'
 import { formatDate } from '@/utils/format'
 import RecordActions from '@/components/common/RecordActions'
+import { BALANCES_KEY, days, useLeaveBalance } from './LeaveBalances'
 
 // Leave is counted in working days (Mon-Fri), as on the server: the start date and the days
 // applied for decide the end date (half days end on the day they finish).
@@ -60,6 +61,7 @@ export default function LeaveManagementPanel() {
     mutationFn: (data) => hrAPI.leave.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hr-leaves'] })
+      queryClient.invalidateQueries({ queryKey: [BALANCES_KEY] })
       setIsRequesting(false)
       setFormData({ employee: '', leave_type: 'annual', start_date: '', end_date: '', days_requested: '', reason: '' })
     },
@@ -72,6 +74,7 @@ export default function LeaveManagementPanel() {
       queryClient.invalidateQueries({ queryKey: ['hr-leaves'] })
       queryClient.invalidateQueries({ queryKey: ['hr-employees'] })
       queryClient.invalidateQueries({ queryKey: ['hr-employees-lite'] })
+      queryClient.invalidateQueries({ queryKey: [BALANCES_KEY] })
     },
   })
 
@@ -84,7 +87,13 @@ export default function LeaveManagementPanel() {
       return next
     })
   }
-  const problem = leaveProblem(formData)
+  // The balance on the first day of leave (annual leave keeps building up until then).
+  const { data: balances } = useLeaveBalance(formData.employee, formData.start_date && !leaveProblem(formData) ? formData.start_date : '')
+  const balance = balances?.find((b) => b.leave_type === formData.leave_type)
+  const overBalance = balance && balance.available !== null && parseFloat(formData.days_requested) > Number(balance.available)
+  const problem = leaveProblem(formData) || (overBalance
+    ? `Only ${days(Math.max(Number(balance.available), 0))} ${balance.label.toLowerCase()} days are available (${days(balance.pending)} already awaiting approval).`
+    : null)
 
   const handleStatusChange = (id, status) => {
     statusMutation.mutate({ id, status })
@@ -132,11 +141,20 @@ export default function LeaveManagementPanel() {
                 <select name="leave_type" value={formData.leave_type} onChange={handleChange} required className="form-input w-full">
                   <option value="annual">Annual Leave</option>
                   <option value="sick">Sick Leave</option>
+                  <option value="special">Special Leave</option>
                   <option value="family">Family Responsibility</option>
                   <option value="maternity">Maternity Leave</option>
                   <option value="study">Study Leave</option>
                   <option value="unpaid">Unpaid Leave</option>
                 </select>
+                {balance && (
+                  <p className="text-[11px] text-dark-400" aria-label="Leave balance">
+                    {balance.available === null
+                      ? 'No limit — not deducted from a balance.'
+                      : <>Available{formData.start_date ? ` on ${formatDate(formData.start_date)}` : ' today'}: <span className={Number(balance.available) > 0 ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>{days(balance.available)} days</span>
+                        {' '}({days(balance.entitled)} due, {days(balance.taken)} taken{Number(balance.pending) ? `, ${days(balance.pending)} pending` : ''})</>}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -199,7 +217,7 @@ export default function LeaveManagementPanel() {
                     {leave.status_display || leave.status}
                   </span>
                   <RecordActions record={leave} label="leave request" deleteFn={hrAPI.leave.delete}
-                    invalidate={['hr-leaves', 'hr-employees']} />
+                    invalidate={['hr-leaves', 'hr-employees', BALANCES_KEY]} />
                 </div>
 
                 <div className="flex items-center gap-6 text-[11px] text-dark-500">

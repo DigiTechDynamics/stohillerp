@@ -9,6 +9,16 @@ from apps.hr.models import Employee, Department, LeaveRequest, JobPosition, Empl
 from apps.finance.services.fx import currency_code as currency_code_of
 from utils.record_rules import RecordRulesMixin
 
+
+def _as_of(request):
+    """The ?on=YYYY-MM-DD date balances are worked out for; today when not given."""
+    from django.utils.dateparse import parse_date
+    try:
+        return parse_date(request.query_params.get('on') or '') or None
+    except ValueError:
+        return None
+
+
 class EmployeeViewSet(viewsets.ModelViewSet):
     queryset = Employee.objects.select_related('department', 'reports_to', 'job_position').prefetch_related('managed_department')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -18,6 +28,34 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         from apps.hr.serializers import EmployeeSerializer
         return EmployeeSerializer
+
+    @action(detail=True, methods=['get'], url_path='leave-balances')
+    def leave_balances(self, request, pk=None):
+        """Leave due under the Labour Act, less approved (taken) and pending (held) requests."""
+        from apps.hr.leave import leave_balances
+        return Response(leave_balances(self.get_object(), _as_of(request)))
+
+    @action(detail=False, methods=['get'], url_path='leave-balances')
+    def all_leave_balances(self, request):
+        """Balances for every employee and agent in the (filtered) list, three queries in all."""
+        from collections import defaultdict
+        from apps.hr.leave import leave_balances
+
+        employees = list(self.filter_queryset(self.get_queryset()).exclude(status='terminated'))
+        ids = [e.pk for e in employees]
+        requests, allocations = defaultdict(list), defaultdict(list)
+        for r in LeaveRequest.objects.filter(employee_id__in=ids, status__in=['pending', 'approved']).values(
+                'id', 'employee_id', 'leave_type', 'status', 'start_date', 'days_requested'):
+            requests[r['employee_id']].append(r)
+        for a in LeaveAllocation.objects.filter(employee_id__in=ids).values(
+                'employee_id', 'leave_type', 'days_allocated', 'valid_from', 'valid_to'):
+            allocations[a['employee_id']].append(a)
+        on = _as_of(request)
+        return Response([{
+            'employee': e.pk, 'employee_name': e.full_name, 'employee_number': e.employee_number,
+            'staff_type': e.staff_type, 'department_name': e.department.name if e.department_id else '',
+            'balances': leave_balances(e, on, requests[e.pk], allocations[e.pk]),
+        } for e in employees])
 
     @action(detail=True, methods=['get'])
     def statement(self, request, pk=None):

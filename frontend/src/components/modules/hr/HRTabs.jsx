@@ -1,10 +1,11 @@
 // HR: attendance records and leave allocations (entitlements), set up per employee.
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import CrudTable from '@/components/common/CrudTable'
 import { hrAPI } from '@/services/api'
+import { BALANCES_KEY } from './LeaveBalances'
 
 export const LEAVE_TYPES = [
-  ['annual', 'Annual Leave'], ['sick', 'Sick Leave'], ['family', 'Family Responsibility'],
+  ['annual', 'Annual Leave'], ['sick', 'Sick Leave'], ['special', 'Special Leave'], ['family', 'Family Responsibility'],
   ['maternity', 'Maternity Leave'], ['study', 'Study Leave'], ['unpaid', 'Unpaid Leave'],
 ]
 
@@ -51,9 +52,10 @@ export function AttendanceTab() {
 
 export function LeaveAllocationsTab() {
   const employees = useEmployeeOptions()
+  const queryClient = useQueryClient()
   return (
     <CrudTable label="leave allocation" queryKey={['hr-leave-allocations']} api={hrAPI.allocations}
-      description="Days each employee is entitled to per leave type. Taken and remaining days count approved requests in the period."
+      description="Extra days on top of the Labour Act entitlement, e.g. a balance carried in from before or days above the legal minimum. Study and family leave only have a balance when allocated here; see Leave balances for what each person has available."
       columns={[
         { key: 'employee_name', label: 'Employee' },
         { key: 'leave_type_display', label: 'Leave type' },
@@ -70,6 +72,6 @@ export function LeaveAllocationsTab() {
         { key: 'valid_to', label: 'Valid to', type: 'date' },
         { key: 'description', label: 'Description' },
       ]}
-      defaults={{ leave_type: 'annual' }} />
+      defaults={{ leave_type: 'annual' }} onSaved={() => queryClient.invalidateQueries({ queryKey: [BALANCES_KEY] })} />
   )
 }
