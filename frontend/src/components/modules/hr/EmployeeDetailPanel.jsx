@@ -70,6 +70,9 @@ export default function EmployeeDetailPanel({ employee }) {
       </Section>
 
       <Section title="Job & Reporting" icon={Briefcase}>
+        <InfoRow label="Staff type" value={employee.staff_type === 'agent' ? 'Agent' : 'Company employee'} />
+        <InfoRow label="Manager profile" value={employee.is_manager ? 'Yes' : 'No'} />
+        {employee.managed_departments?.length > 0 && <InfoRow label="Manages" value={employee.managed_departments.join(', ')} />}
         <InfoRow label="Department" value={employee.department_name} />
         <InfoRow label="Reports To" value={employee.manager_name} />
         <InfoRow label="Job Position" value={employee.job_position_name} />

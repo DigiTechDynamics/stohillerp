@@ -12,6 +12,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useLocation } from 'react-router-dom'
 import { AttendanceTab, LeaveAllocationsTab } from '@/components/modules/hr/HRTabs'
 import { SettingsButton } from '@/components/common/SettingsPage'
+import StaffTypeBadge from '@/components/modules/hr/StaffTypeBadge'
 
 const TABS = [['employees', 'Employees'], ['attendance', 'Attendance'], ['allocations', 'Leave allocations']]
 
@@ -20,6 +21,7 @@ export default function HRPage() {
   const [sort, setSort] = useState('first_name')
   const [page, setPage] = useState(1)
   const [tab, setTab] = useState('employees')
+  const [staffType, setStaffType] = useState('')
   const queryClient = useQueryClient()
   const openPanel = useUIStore((s) => s.openSidePanel)
   const location = useLocation()
@@ -31,8 +33,8 @@ export default function HRPage() {
   }, [location.pathname, openPanel])
 
   const { data, isLoading } = useQuery({
-    queryKey: ['hr-employees', { search, ordering: sort, page }],
-    queryFn: () => hrAPI.employees.list({ search, ordering: sort, page }),
+    queryKey: ['hr-employees', { search, ordering: sort, page, staffType }],
+    queryFn: () => hrAPI.employees.list({ search, ordering: sort, page, ...(staffType ? { staff_type: staffType } : {}) }),
   })
 
   const { data: deptData } = useQuery({
@@ -67,16 +69,20 @@ export default function HRPage() {
       {/* Departments Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
         {departments.map((dept) => (
-          <div key={dept.id} className="card p-3 border-white/5 bg-dark-800/50 hover:border-primary/30 transition-all cursor-pointer group">
+          <button type="button" key={dept.id} onClick={() => openPanel('department-form', { department: dept })}
+            title={dept.manager_name ? 'Change manager / view staff' : 'Add a manager'}
+            className="card p-3 border-white/5 bg-dark-800/50 hover:border-primary/30 transition-all cursor-pointer group text-left">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-3 group-hover:scale-110 transition-transform">
               <Briefcase size={20} />
             </div>
             <p className="text-sm font-bold text-white truncate text-left">{dept.name}</p>
             <div className="flex flex-col items-start mt-1">
-              <span className="text-[8px] text-dark-500 font-bold uppercase tracking-widest">Manager</span>
-              <p className="text-[10px] text-primary truncate w-full text-left">{dept.manager_name || 'Unassigned'}</p>
+              <span className="text-[8px] text-dark-500 font-bold uppercase tracking-widest">Manager · {dept.employee_count ?? 0} staff</span>
+              {dept.manager_name
+                ? <p className="text-[10px] text-primary truncate w-full text-left">{dept.manager_name}</p>
+                : <p className="text-[10px] text-amber-400 truncate w-full text-left flex items-center gap-1"><Plus size={10} /> Add manager</p>}
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -117,6 +123,12 @@ export default function HRPage() {
             <option value="employee_number">ID (A-Z)</option>
             <option value="-created_at">Newest First</option>
           </select>
+          <select aria-label="Staff type" value={staffType} onChange={(e) => { setStaffType(e.target.value); setPage(1) }}
+            className="form-input w-auto min-w-[150px]">
+            <option value="">All staff</option>
+            <option value="employee">Company employees</option>
+            <option value="agent">Agents</option>
+          </select>
         </div>
         <div className="flex gap-2">
           <button className="btn-secondary text-xs" onClick={() => openPanel('department-list')}>Manage Departments</button>
@@ -131,6 +143,7 @@ export default function HRPage() {
             <tr>
               <th>Employee Info</th>
               <th>Contact Info</th>
+              <th>Type</th>
               <th>Dept / Role</th>
               <th>Location</th>
               <th>Status</th>
@@ -163,6 +176,7 @@ export default function HRPage() {
                     <div className="flex items-center gap-1.5"><Mail size={12} className="text-dark-500" /> {emp.email}</div>
                     <div className="flex items-center gap-1.5"><Phone size={12} className="text-dark-500" /> {emp.phone || '—'}</div>
                   </td>
+                  <td className="px-4 py-3"><StaffTypeBadge employee={emp} /></td>
                   <td className="px-4 py-3 text-sm text-dark-300">
                     <p className="font-medium text-white">{emp.job_position_name}</p>
                     <p className="text-[10px] text-dark-500 uppercase">{emp.department_name}</p>
@@ -185,7 +199,7 @@ export default function HRPage() {
             </AnimatePresence>
             {employees.length === 0 && !isLoading && (
               <tr>
-                <td colSpan={6} className="text-center py-20">
+                <td colSpan={7} className="text-center py-20">
                   <User size={40} className="mx-auto mb-3 text-dark-600" />
                   <p className="text-dark-400">No staff records found.</p>
                 </td>

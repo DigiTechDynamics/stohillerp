@@ -19,14 +19,12 @@ export default function AgentsPage() {
   const openPanel = useUIStore((s) => s.openSidePanel)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['hr-employees', { search, ordering: sort, page }],
-    queryFn: () => hrAPI.employees.list({ search, ordering: sort, page }),
+    queryKey: ['hr-employees', { search, ordering: sort, page, staffType: 'agent' }],
+    queryFn: () => hrAPI.employees.list({ search, ordering: sort, page, staff_type: 'agent' }),
   })
 
-  // Filter to just show agents if possible based on job_title or department
-  const employees = data?.data?.results || []
-  // For now, we assume this page acts as the dedicated Agent view
-  const agents = employees.filter(emp => emp.job_title?.toLowerCase().includes('agent') || emp.department_name?.toLowerCase().includes('agent') || true); // fallback to all for now
+  // Staff whose staff type is Agent (company employees are under HR).
+  const agents = data?.data?.results || []
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
@@ -41,7 +39,7 @@ export default function AgentsPage() {
             module="agents" 
             onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['hr-agents'] })} 
           />
-          <button className="btn-primary flex items-center gap-2" onClick={() => openPanel('employee-form')}>
+          <button className="btn-primary flex items-center gap-2" onClick={() => openPanel('employee-form', { staffType: 'agent' })}>
             <Plus size={16} /> New Agent
           </button>
         </div>

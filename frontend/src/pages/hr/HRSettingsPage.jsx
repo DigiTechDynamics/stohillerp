@@ -6,20 +6,22 @@ import SettingsPage from '@/components/common/SettingsPage'
 import { useOptions } from '@/pages/propman/common'
 
 function Departments() {
-  const employees = useOptions(['employees', 'options'], () => hrAPI.employees.list({ page_size: 200 }),
+  // Only employees with a manager profile can manage a department.
+  const managers = useOptions(['hr-managers', 'options'], () => hrAPI.employees.list({ is_manager: true, page_size: 500 }),
     (e) => [e.id, e.full_name || `${e.first_name} ${e.last_name}`])
   return (
     <CrudTable label="department" queryKey={['departments']} api={hrAPI.departments}
-      description="Departments group employees and job positions. A department with employees cannot be deleted."
+      description="Departments group employees and job positions. The manager must have a manager profile; everyone in the department reports to them. A department with employees cannot be deleted."
       columns={[
         { key: 'code', label: 'Code' },
         { key: 'name', label: 'Name' },
         { key: 'manager_name', label: 'Manager', render: (r) => r.manager_name || '—' },
+        { key: 'employee_count', label: 'Staff', align: 'right' },
       ]}
       fields={[
         { key: 'name', label: 'Name', required: true },
         { key: 'code', label: 'Code', required: true, placeholder: 'e.g. FIN' },
-        { key: 'manager', label: 'Manager', type: 'select', options: employees },
+        { key: 'manager', label: 'Manager (manager profile)', type: 'select', options: managers },
       ]} />
   )
 }
