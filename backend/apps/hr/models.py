@@ -124,6 +124,7 @@ class LeaveRequest(AuditedModel):
     class LeaveType(models.TextChoices):
         ANNUAL = 'annual', 'Annual Leave'
         SICK = 'sick', 'Sick Leave'
+        SPECIAL = 'special', 'Special Leave'
         FAMILY_RESPONSIBILITY = 'family', 'Family Responsibility'
         MATERNITY = 'maternity', 'Maternity Leave'
         STUDY = 'study', 'Study Leave'

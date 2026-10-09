@@ -13,8 +13,9 @@ import { useLocation } from 'react-router-dom'
 import { AttendanceTab, LeaveAllocationsTab } from '@/components/modules/hr/HRTabs'
 import { SettingsButton } from '@/components/common/SettingsPage'
 import StaffTypeBadge from '@/components/modules/hr/StaffTypeBadge'
+import { LeaveBalancesTab } from '@/components/modules/hr/LeaveBalances'
 
-const TABS = [['employees', 'Employees'], ['attendance', 'Attendance'], ['allocations', 'Leave allocations']]
+const TABS = [['employees', 'Employees'], ['balances', 'Leave balances'], ['attendance', 'Attendance'], ['allocations', 'Leave allocations']]
 
 export default function HRPage() {
   const [search, setSearch] = useState('')
@@ -96,6 +97,7 @@ export default function HRPage() {
         ))}
       </div>
 
+      {tab === 'balances' && <LeaveBalancesTab />}
       {tab === 'attendance' && <AttendanceTab />}
       {tab === 'allocations' && <LeaveAllocationsTab />}
 

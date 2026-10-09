@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Briefcase, Mail, CreditCard, Calendar, ShieldCheck } from 'lucide-react'
+import { Briefcase, Mail, CreditCard, Calendar, CalendarCheck, ShieldCheck } from 'lucide-react'
 import { formatDate } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import EmployeeStatementModal from './EmployeeStatementModal'
+import { LeaveBalanceTable } from './LeaveBalances'
 
 export default function EmployeeDetailPanel({ employee }) {
   const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
@@ -76,6 +77,10 @@ export default function EmployeeDetailPanel({ employee }) {
         <InfoRow label="Department" value={employee.department_name} />
         <InfoRow label="Reports To" value={employee.manager_name} />
         <InfoRow label="Job Position" value={employee.job_position_name} />
+      </Section>
+
+      <Section title="Leave Balances" icon={CalendarCheck}>
+        <LeaveBalanceTable employeeId={employee.id} />
       </Section>
 
       <Section title="Employment Contracts" icon={CreditCard}>

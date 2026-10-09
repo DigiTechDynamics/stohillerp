@@ -1,4 +1,6 @@
 """Stohil Properties - HR Serializers"""
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from utils.serializers import SensitiveFieldsMixin
@@ -67,7 +69,7 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         """The start date and days applied decide the end date; then check overlaps and the balance."""
-        from apps.hr.leave import end_date_for, is_working_day, working_days
+        from apps.hr.leave import balance_for, end_date_for, is_working_day, working_days
 
         keys = ('employee', 'leave_type', 'start_date', 'end_date', 'days_requested')
         if self.instance and not any(k in attrs for k in keys):
@@ -108,33 +110,15 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
                 f'{employee.full_name} already has {clash.get_status_display().lower()} leave from '
                 f'{clash.start_date:%d %b} to {clash.end_date:%d %b %Y}.')})
 
-        left = self._days_left(employee, leave_type, start)
-        if left is not None and days > left[0]:
-            raise serializers.ValidationError({'days_requested': (
-                f'Only {left[0]} {left[1]} days are left (including requests awaiting approval).')})
+        if leave_type != LeaveRequest.LeaveType.UNPAID:
+            balance = balance_for(employee, leave_type, on=start, exclude=getattr(self.instance, 'pk', None))
+            if balance['available'] is not None and days > balance['available']:
+                n = lambda d: f'{Decimal(d).normalize():f}'          # 4.0 -> 4, 20 -> 20
+                raise serializers.ValidationError({'days_requested': (
+                    f'{employee.full_name} has only {n(max(balance["available"], 0))} {balance["label"].lower()} '
+                    f'days available on {start:%d %b %Y} ({n(balance["entitled"])} due, {n(balance["taken"])} '
+                    f'taken, {n(balance["pending"])} awaiting approval).')})
         return attrs
-
-    def _days_left(self, employee, leave_type, start):
-        """(days left, leave type name) under the allocation covering `start`, or None when there is none."""
-        from django.db.models import Q, Sum
-
-        if leave_type == LeaveRequest.LeaveType.UNPAID:
-            return None
-        allocation = (LeaveAllocation.objects.filter(employee=employee, leave_type=leave_type)
-                      .filter(Q(valid_from__isnull=True) | Q(valid_from__lte=start))
-                      .filter(Q(valid_to__isnull=True) | Q(valid_to__gte=start))
-                      .order_by('-valid_from').first())
-        if not allocation:
-            return None
-        used = LeaveRequest.objects.filter(employee=employee, leave_type=leave_type, status__in=['pending', 'approved'])
-        if allocation.valid_from:
-            used = used.filter(start_date__gte=allocation.valid_from)
-        if allocation.valid_to:
-            used = used.filter(start_date__lte=allocation.valid_to)
-        if self.instance:
-            used = used.exclude(pk=self.instance.pk)
-        left = allocation.days_allocated - (used.aggregate(t=Sum('days_requested'))['t'] or 0)
-        return left, allocation.get_leave_type_display().lower()
 
 class JobPositionSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source='department.name', read_only=True)

@@ -1,5 +1,32 @@
 # Changelog
 
+## [Unreleased] - Leave balances (Labour Act, Zimbabwe)
+
+Branch `feat/leave-balances`. Tests are in `backend/tests/test_leave_balances.py`.
+
+### Upgrade notes
+- Run `migrate`: `hr 0006` adds the Special Leave type. No data changes;
+  balances are worked out from each person's start date and leave requests.
+- Leave allocations now mean extra days on top of the Labour Act entitlement
+  (an opening balance carried in, or days above the legal minimum).
+
+### Added
+- **Leave balances for every employee and agent** under the Labour Act
+  [Chapter 28:01]: annual (vacation) leave builds up at 1 day per 17 days
+  worked, to at most 90 days (s14A); 90 sick days on full pay each service year
+  (s14); 12 special leave days each calendar year (s14B); 98 maternity days
+  after a year's service, once every 24 months and up to three times (s18).
+  Study and family leave have a balance only when allocated; unpaid leave has
+  no limit. The rules live in `apps/hr/leave.py`.
+- Balances show on the employee record (due, taken, pending, available) and on
+  a new "Leave balances" tab on the HR page for all staff, filterable by
+  employees and agents. API: `GET hr/employees/{id}/leave-balances/` and
+  `GET hr/employees/leave-balances/` (optional `?on=YYYY-MM-DD`).
+- **Automatic deduction.** Applying for leave holds the days as pending;
+  approving deducts them as taken; rejecting, cancelling or deleting gives them
+  back. A request for more days than are available on its start date is refused,
+  and the leave form shows the balance as you fill it in.
+
 ## [Unreleased] - UAT round 5 (HR)
 
 Branch `fix/uat-round-5`. Tests are in `backend/tests/test_uat_round5.py`.

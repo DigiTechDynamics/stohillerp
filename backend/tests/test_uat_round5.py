@@ -118,10 +118,10 @@ def test_overlapping_leave_is_refused(auth_client, superuser):
 
 def test_leave_cannot_exceed_the_allocation(auth_client, superuser):
     client, lee = auth_client(superuser), _employee('Lee')
-    LeaveAllocation.objects.create(employee=lee, leave_type='annual', days_allocated=4)
-    assert _leave(client, lee, days_requested='3').status_code == 201
-    response = _leave(client, lee, start_date='2026-10-19', days_requested='2')
-    assert response.status_code == 400 and 'Only 1' in str(response.data)
+    LeaveAllocation.objects.create(employee=lee, leave_type='study', days_allocated=4)
+    assert _leave(client, lee, leave_type='study', days_requested='3').status_code == 201
+    response = _leave(client, lee, leave_type='study', start_date='2026-10-19', days_requested='2')
+    assert response.status_code == 400 and 'only 1 study leave days' in str(response.data)
 
 
 def test_approving_does_not_revalidate(auth_client, superuser):
