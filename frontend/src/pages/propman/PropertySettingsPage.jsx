@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
-import { Building2, Zap, LineChart, Gavel, SlidersHorizontal, FolderTree, Percent, Save } from 'lucide-react'
+import { Building2, Zap, LineChart, Gavel, SlidersHorizontal, FolderTree, Percent, Save, Plus, X } from 'lucide-react'
 import { propertiesAPI, propmanAPI, financeAPI, apiErrorMessage } from '@/services/api'
 import { formatDate } from '@/utils/format'
 import CrudTable from '@/components/common/CrudTable'
@@ -78,12 +78,37 @@ function PropertyTypes() {
   )
 }
 
-// Tariff steps are edited as text: one "up_to:rate" per line, the last line may be ":rate".
-const stepsToText = (steps) => (steps || []).map((s) => `${s.up_to ?? ''}:${s.rate}`).join('\n')
-const textToSteps = (text) => (text || '').split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
-  const [upTo, rate] = l.split(':').map((x) => x.trim())
-  return { up_to: upTo === '' ? null : upTo, rate }
-})
+// Stepped (block) rates: one row per band, "up to" a consumption limit at a rate per unit.
+// The last band's limit is left empty: it covers everything above.
+const toRows = (steps) => (steps || []).map((s) => ({ up_to: s.up_to ?? '', rate: s.rate ?? '' }))
+const fromRows = (rows) => (rows || []).filter((r) => `${r.up_to}`.trim() || `${r.rate}`.trim())
+  .map((r) => ({ up_to: `${r.up_to}`.trim() === '' ? null : `${r.up_to}`.trim(), rate: `${r.rate}`.trim() }))
+
+function StepsEditor({ value, onChange }) {
+  const rows = value || []
+  const set = (i, key, v) => onChange(rows.map((r, j) => (j === i ? { ...r, [key]: v } : r)))
+  const starts = rows.map((_, i) => rows.slice(0, i).reduce((low, r) => parseFloat(r.up_to) || low, 0))
+  return (
+    <div className="space-y-2">
+      {rows.length === 0 && <p className="text-xs text-dark-400 py-1">No steps: the flat rate applies to all consumption.</p>}
+      {rows.map((r, i) => (
+        <div key={i} className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-dark-400 w-20 shrink-0">Step {i + 1}: from {starts[i]}</span>
+          <input aria-label={`Step ${i + 1} up to`} type="number" step="any" min="0" className="form-input text-sm w-32"
+            placeholder={i === rows.length - 1 ? 'and above' : 'up to'} value={r.up_to} onChange={(e) => set(i, 'up_to', e.target.value)} />
+          <span className="text-xs text-dark-400">at</span>
+          <input aria-label={`Step ${i + 1} rate`} type="number" step="any" min="0" className="form-input text-sm w-32"
+            placeholder="rate per unit" value={r.rate} onChange={(e) => set(i, 'rate', e.target.value)} />
+          <button type="button" className="btn-ghost p-1" aria-label={`Remove step ${i + 1}`}
+            onClick={() => onChange(rows.filter((_, j) => j !== i))}><X size={14} /></button>
+        </div>
+      ))}
+      <button type="button" className="btn-ghost text-xs" onClick={() => onChange([...rows, { up_to: '', rate: '' }])}>
+        <Plus size={14} /> Add step
+      </button>
+    </div>
+  )
+}
 
 export default function PropertySettingsPage() {
   const accounts = useOptions(['accounts', 'income'], () => financeAPI.accounts.list({ account_type: 'revenue', page_size: 500 }),
@@ -93,7 +118,7 @@ export default function PropertySettingsPage() {
     types: () => <PropertyTypes />,
     tariffs: () => (
       <CrudTable label="tariff" queryKey={['tariffs']} api={propmanAPI.tariffs}
-        description="Price per unit consumed. For stepped (block) tariffs, give one step per line as limit:rate, e.g. 50:1.20 then :1.80 for everything above."
+        description="Price per unit consumed: a flat rate, or stepped rates such as up to 50 at 1.20, then 1.80 for everything above (leave the final limit empty)."
         columns={[
           { key: 'name', label: 'Name' },
           { key: 'utility', label: 'Utility', render: (r) => label(r.utility) },
@@ -107,13 +132,14 @@ export default function PropertySettingsPage() {
           { key: 'utility', label: 'Utility', type: 'select', options: UTILITIES, required: true },
           { key: 'unit_label', label: 'Unit', placeholder: 'kWh, kl...' },
           { key: 'rate', label: 'Flat rate per unit', type: 'number' },
-          { key: 'steps', label: 'Steps (limit:rate per line)', type: 'textarea', span: 2, get: (r) => stepsToText(r.steps) },
+          { key: 'steps', label: 'Stepped rates (optional)', type: 'custom', span: 4, blank: [], get: (r) => toRows(r.steps),
+            render: ({ value, onChange }) => <StepsEditor value={value} onChange={onChange} /> },
           { key: 'fixed_monthly', label: 'Fixed charge / month', type: 'number' },
           { key: 'income_account', label: 'Income account', type: 'select', options: accounts },
           { key: 'vat_applicable', label: 'VAT applies', type: 'checkbox' },
           { key: 'is_active', label: 'Active', type: 'checkbox' },
         ]}
-        toPayload={(p) => ({ ...p, steps: textToSteps(p.steps) })}
+        toPayload={(p) => ({ ...p, steps: fromRows(p.steps) })}
         defaults={{ utility: 'electricity', unit_label: 'kWh', rate: 0, fixed_monthly: 0, is_active: true }} />
     ),
     cpi: () => (

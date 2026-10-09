@@ -1,5 +1,31 @@
 # Changelog
 
+## [Unreleased] - UAT round 4
+
+Branch `fix/uat-round-4`. Tests are in `backend/tests/test_uat_round4.py`.
+
+### Upgrade notes
+- Run `migrate`: `rentals 0014` sets every unit and property status from its
+  existing leases (no schema change).
+
+### Fixed
+- **Utility tariff steps still failed** with "Each step needs a numeric rate...".
+  Steps were typed as `limit:rate` text, which broke on any other format. They
+  are now entered as rows (up to / rate) with Add step; blank rows are ignored,
+  "1,20" is read as 1.20, and an error names the step that is wrong.
+- **A let property still showed as Available.** Unit and property status now
+  follow their leases: a draft or unsigned lease marks the unit Reserved and the
+  property Under contract, an active lease makes them Occupied, and ending or
+  deleting the lease makes them Available again. A property with units is
+  Occupied once every unit is let. Statuses set by hand (sold, maintenance,
+  listed for sale, inactive) are left alone.
+
+### Added
+- **VAT on lease rent.** A "Charge VAT on rent" switch on the lease form, on the
+  lease panel (changes apply from the next invoice) and when creating a lease
+  from an application, showing the rate, the VAT and the monthly total. The rate
+  is COMPANY_VAT_RATE, now also returned by `core/company/`.
+
 ## [Unreleased] - UAT round 3
 
 Branch `fix/uat-round-3`. Tests are in `backend/tests/test_uat_round3.py`.

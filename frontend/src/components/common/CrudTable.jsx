@@ -10,8 +10,9 @@ import RecordActions from '@/components/common/RecordActions'
 //   api       { list(params), create(data), update(id, data), delete(id) }
 //   params    list filter, also merged into new records (e.g. { property: id })
 //   columns   [{ key, label, render?(row), align? }]
-//   fields    [{ key, label, type?: text|number|date|datetime|select|multiselect|checkbox|textarea, options?: [[value, label]],
-//               required?, placeholder?, span?, readOnlyOnEdit?, nullable?, get?(row) }]
+//   fields    [{ key, label, type?: text|number|date|datetime|select|multiselect|checkbox|textarea|custom, options?: [[value, label]],
+//               required?, placeholder?, span?, readOnlyOnEdit?, nullable?, get?(row), blank?, render?({ value, onChange }) }]
+//             a custom field draws its own input with render(); `blank` is its empty value
 //             a blank number is left out (server default) unless the field is nullable
 //   rowActions(row)  extra buttons per row
 const rows = (res) => res?.data?.results || res?.data || []
@@ -19,6 +20,8 @@ const rows = (res) => res?.data?.results || res?.data || []
 function Field({ field, value, onChange }) {
   const common = { 'aria-label': field.label, className: 'form-input w-full text-sm', placeholder: field.placeholder || '' }
   switch (field.type) {
+    case 'custom':
+      return field.render({ value, onChange })
     case 'select':
       return (
         <select {...common} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
@@ -62,7 +65,7 @@ export default function CrudTable({
   const items = rows(data)
 
   const refresh = () => queryClient.invalidateQueries({ queryKey })
-  const blank = (f) => (f.type === 'checkbox' ? false : f.type === 'multiselect' ? [] : '')
+  const blank = (f) => ('blank' in f ? f.blank : f.type === 'checkbox' ? false : f.type === 'multiselect' ? [] : '')
   const startAdd = () => setForm({ ...Object.fromEntries(fields.map((f) => [f.key, blank(f)])), ...defaults })
   const startEdit = (row) => setForm({ id: row.id, ...Object.fromEntries(fields.map((f) => [f.key, (f.get ? f.get(row) : row[f.key]) ?? blank(f)])) })
 

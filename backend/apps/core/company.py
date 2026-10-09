@@ -8,6 +8,8 @@ COMPANY_CURRENCY, so it always matches what the ledger reports in.
   GET core/company/    (any signed-in user, including tenant-portal users)
 """
 
+from decimal import Decimal
+
 from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -28,6 +30,8 @@ def company_profile() -> dict:
         'vat_number': cfg.get('vat_number', ''),
         'tax_number': cfg.get('tax_number', ''),
         'country': cfg.get('country', ''),
+        # Standard VAT rate as a percentage, e.g. "15.50" (COMPANY_VAT_RATE is a fraction).
+        'vat_rate': str((Decimal(str(cfg.get('vat_rate', 0))) * 100).quantize(Decimal('0.01'))),
         'currency': base.code if base else cfg['currency'],
         'currency_symbol': (base.symbol if base and base.symbol else cfg['currency_symbol']),
     }
