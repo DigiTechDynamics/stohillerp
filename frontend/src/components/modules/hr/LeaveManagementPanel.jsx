@@ -1,9 +1,34 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Calendar, Clock, CheckCircle2, XCircle, Plus, AlertCircle, User } from 'lucide-react'
-import { hrAPI } from '@/services/api'
+import { hrAPI, apiErrorMessage } from '@/services/api'
 import { formatDate } from '@/utils/format'
 import RecordActions from '@/components/common/RecordActions'
+
+// Leave is counted in working days (Mon-Fri), as on the server: the start date and the days
+// applied for decide the end date (half days end on the day they finish).
+const isWorkingDay = (d) => d.getDay() !== 0 && d.getDay() !== 6
+const parseDay = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d) }
+const toIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+export function leaveEndDate(start, days) {
+  const n = Math.ceil(parseFloat(days))
+  if (!start || !(n > 0)) return ''
+  const day = parseDay(start)
+  let left = n
+  for (;;) {
+    if (isWorkingDay(day) && --left === 0) return toIso(day)
+    day.setDate(day.getDate() + 1)
+  }
+}
+function leaveProblem({ start_date: start, days_requested: days }) {
+  if (!start || days === '') return null
+  const n = parseFloat(days)
+  if (!(n > 0)) return 'Days applied must be more than 0.'
+  if (n * 2 !== Math.round(n * 2)) return 'Leave is taken in whole or half days.'
+  if (!isWorkingDay(parseDay(start))) return 'Leave must start on a working day (Monday to Friday).'
+  return null
+}
+const nextWorkingDay = (iso) => { const d = parseDay(iso); do d.setDate(d.getDate() + 1); while (!isWorkingDay(d)); return toIso(d) }
 
 export default function LeaveManagementPanel() {
   const queryClient = useQueryClient()
@@ -38,7 +63,7 @@ export default function LeaveManagementPanel() {
       setIsRequesting(false)
       setFormData({ employee: '', leave_type: 'annual', start_date: '', end_date: '', days_requested: '', reason: '' })
     },
-    onError: (err) => setError(err.response?.data?.message || 'Failed to submit request')
+    onError: (err) => setError(apiErrorMessage(err, 'Failed to submit request'))
   })
 
   const statusMutation = useMutation({
@@ -54,18 +79,12 @@ export default function LeaveManagementPanel() {
     const { name, value } = e.target
     setFormData(prev => {
       const next = { ...prev, [name]: value }
-      if ((name === 'start_date' || name === 'end_date') && next.start_date && next.end_date) {
-        const start = new Date(next.start_date)
-        const end = new Date(next.end_date)
-        if (start <= end) {
-          const diffTime = Math.abs(end - start)
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
-          next.days_requested = diffDays.toString()
-        }
-      }
+      // The end date follows from the start date and the days applied.
+      if (name === 'start_date' || name === 'days_requested') next.end_date = leaveEndDate(next.start_date, next.days_requested)
       return next
     })
   }
+  const problem = leaveProblem(formData)
 
   const handleStatusChange = (id, status) => {
     statusMutation.mutate({ id, status })
@@ -99,7 +118,7 @@ export default function LeaveManagementPanel() {
               </div>
             )}
 
-            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); createMutation.mutate(formData); }}>
+            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); setError(null); if (!problem) createMutation.mutate(formData) }}>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Employee</label>
                 <select name="employee" value={formData.employee} onChange={handleChange} required className="form-input w-full">
@@ -108,33 +127,39 @@ export default function LeaveManagementPanel() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Leave Type</label>
-                  <select name="leave_type" value={formData.leave_type} onChange={handleChange} required className="form-input w-full">
-                    <option value="annual">Annual Leave</option>
-                    <option value="sick">Sick Leave</option>
-                    <option value="family">Family Responsibility</option>
-                    <option value="maternity">Maternity Leave</option>
-                    <option value="study">Study Leave</option>
-                    <option value="unpaid">Unpaid Leave</option>
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Days Requested</label>
-                  <input type="number" step="0.5" name="days_requested" value={formData.days_requested} onChange={handleChange} required className="form-input w-full" />
-                </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Leave Type</label>
+                <select name="leave_type" value={formData.leave_type} onChange={handleChange} required className="form-input w-full">
+                  <option value="annual">Annual Leave</option>
+                  <option value="sick">Sick Leave</option>
+                  <option value="family">Family Responsibility</option>
+                  <option value="maternity">Maternity Leave</option>
+                  <option value="study">Study Leave</option>
+                  <option value="unpaid">Unpaid Leave</option>
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Start Date</label>
-                  <input type="date" name="start_date" value={formData.start_date} onChange={handleChange} required className="form-input w-full" />
+                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">From</label>
+                  <input type="date" name="start_date" aria-label="From" value={formData.start_date} onChange={handleChange} required className="form-input w-full" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">End Date</label>
-                  <input type="date" name="end_date" value={formData.end_date} onChange={handleChange} required className="form-input w-full" />
+                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Days Applied</label>
+                  <input type="number" step="0.5" min="0.5" name="days_requested" aria-label="Days applied" value={formData.days_requested} onChange={handleChange} required className="form-input w-full" />
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">To (last day of leave)</label>
+                <p aria-label="To" className="form-input w-full text-dark-200">
+                  {formData.end_date && !problem ? formatDate(formData.end_date) : '—'}
+                </p>
+                <p className={`text-[11px] ${problem ? 'text-red-400' : 'text-dark-400'}`}>
+                  {problem || (formData.end_date
+                    ? `Working days only (Mon–Fri). Back at work on ${formatDate(nextWorkingDay(formData.end_date))}.`
+                    : 'Filled in from the start date and days applied (working days, Mon–Fri).')}
+                </p>
               </div>
 
               <div className="space-y-1.5">
@@ -142,7 +167,7 @@ export default function LeaveManagementPanel() {
                 <textarea name="reason" value={formData.reason} onChange={handleChange} rows={3} className="form-input w-full resize-none" />
               </div>
 
-              <button type="submit" disabled={createMutation.isPending} className="w-full btn-primary py-3">
+              <button type="submit" disabled={createMutation.isPending || !!problem} className="w-full btn-primary py-3">
                 {createMutation.isPending ? 'Submitting...' : 'Submit Request'}
               </button>
             </form>

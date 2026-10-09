@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Save, AlertCircle, User, Briefcase, CreditCard, Plus } from 'lucide-react'
-import { hrAPI } from '@/services/api'
+import { hrAPI, apiErrorMessage } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 
 const EMPLOYMENT_TYPES = [
@@ -39,7 +39,8 @@ export default function EmployeeForm() {
     employment_type: employee?.employment_type || 'full_time',
     status: employee?.status || 'active',
     start_date: employee?.start_date || new Date().toISOString().split('T')[0],
-    reports_to: employee?.reports_to || '',
+    staff_type: employee?.staff_type || sidePanelData?.staffType || 'employee',
+    is_manager: employee?.is_manager || false,
     bank_name: employee?.bank_name || '',
     bank_account_number: employee?.bank_account_number || '',
     bank_branch_code: employee?.bank_branch_code || '',
@@ -60,36 +61,41 @@ export default function EmployeeForm() {
   })
   const jobPositions = posData?.data?.results || []
 
-  const { data: empsData } = useQuery({
-    queryKey: ['hr-employees-lite'],
-    queryFn: () => hrAPI.employees.list({ page_size: 1000 }),
-  })
-  const allEmployees = empsData?.data?.results || []
+  // Reporting lines follow the department: everyone in it reports to its manager.
+  const department = departments.find((d) => d.id === formData.department)
+  const managesDepartment = isEditing && department?.manager === employee.id
+  const reportsTo = !department ? 'Choose a department'
+    : managesDepartment ? 'Manages this department'
+      : department.manager_name || 'No manager set for this department yet'
 
   const mutation = useMutation({
-    mutationFn: (data) => 
-      isEditing 
+    mutationFn: (data) =>
+      isEditing
         ? hrAPI.employees.update(employee.id, data)
         : hrAPI.employees.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['hr-employees'] })
+      for (const key of ['hr-employees', 'hr-employees-lite', 'hr-managers', 'hr-departments', 'employees']) {
+        queryClient.invalidateQueries({ queryKey: [key] })
+      }
       closeSidePanel()
     },
-    onError: (err) => {
-      const resp = err.response?.data
-      setError(resp?.error?.message || resp || 'An error occurred')
-    }
+    onError: (err) => setError(apiErrorMessage(err, 'An error occurred')),
   })
 
   const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    const { name, value, type, checked } = e.target
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
   }
 
   const handleSubmit = (e) => {
     e.preventDefault()
     setError(null)
-    mutation.mutate(formData)
+    // Optional dates and links are sent as null when blank (an empty string is not a date).
+    const payload = { ...formData }
+    for (const key of ['fidelity_fund_expiry', 'department', 'job_position']) if (payload[key] === '') payload[key] = null
+    // Bank numbers are never sent back by the server: blank on edit means "keep what is saved".
+    if (isEditing) for (const key of ['bank_account_number', 'bank_branch_code']) if (payload[key] === '') delete payload[key]
+    mutation.mutate(payload)
   }
 
   const TabButton = ({ id, label, icon: Icon }) => (
@@ -120,7 +126,7 @@ export default function EmployeeForm() {
           {error && (
             <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex gap-2">
               <AlertCircle size={14} className="flex-shrink-0" />
-              <p>{typeof error === 'object' ? JSON.stringify(error) : error}</p>
+              <p>{error}</p>
             </div>
           )}
 
@@ -162,6 +168,31 @@ export default function EmployeeForm() {
 
           {activeTab === 'job' && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-5">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Staff type</label>
+                <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Staff type">
+                  {[['employee', 'Company employee', 'Works for the company (salaried staff)'],
+                    ['agent', 'Agent', 'Sells or lets property for the company, usually on commission']].map(([value, title, hint]) => (
+                    <button key={value} type="button" role="radio" aria-checked={formData.staff_type === value}
+                      onClick={() => setFormData((prev) => ({ ...prev, staff_type: value,
+                        employment_type: value === 'agent' && prev.employment_type === 'full_time' && !isEditing ? 'commission_only' : prev.employment_type }))}
+                      className={`text-left p-3 rounded-lg border transition-colors ${formData.staff_type === value
+                        ? 'border-primary bg-primary/10' : 'border-white/10 hover:border-white/20'}`}>
+                      <p className={`text-sm font-medium ${formData.staff_type === value ? 'text-primary' : 'text-white'}`}>{title}</p>
+                      <p className="text-[11px] text-dark-400">{hint}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <label className="flex items-start gap-2 text-sm text-dark-200 cursor-pointer">
+                <input type="checkbox" name="is_manager" checked={formData.is_manager} onChange={handleChange} className="form-checkbox mt-0.5" />
+                <span>
+                  Manager profile
+                  <span className="block text-[11px] text-dark-400">Can be made a department&apos;s manager; the department&apos;s staff then report to them.</span>
+                </span>
+              </label>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
@@ -210,17 +241,14 @@ export default function EmployeeForm() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Reports To</label>
-                  <select name="reports_to" value={formData.reports_to} onChange={handleChange} className="form-input w-full">
-                    <option value="">No Manager (Top Level)</option>
-                    {allEmployees.filter(e => e.id !== employee?.id).map(e => (
-                      <option key={e.id} value={e.id}>{e.full_name} ({e.job_position_name})</option>
-                    ))}
-                  </select>
+                  <p className="form-input w-full text-dark-300 bg-transparent" aria-label="Reports to">{reportsTo}</p>
+                  <p className="text-[10px] text-dark-500">Set by the department&apos;s manager.</p>
                 </div>
               </div>
 
+              {formData.staff_type === 'agent' && (
               <div className="border-t border-white/5 pt-5 mt-5">
-                <h3 className="text-xs font-bold text-white mb-4">Registration Details (Agents)</h3>
+                <h3 className="text-xs font-bold text-white mb-4">Agent registration</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Fidelity Fund #</label>
@@ -232,6 +260,7 @@ export default function EmployeeForm() {
                   </div>
                 </div>
               </div>
+              )}
             </div>
           )}
 

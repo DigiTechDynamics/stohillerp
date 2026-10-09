@@ -3,15 +3,16 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from decimal import Decimal
+from django.db.models import Count
 from django_filters.rest_framework import DjangoFilterBackend
 from apps.hr.models import Employee, Department, LeaveRequest, JobPosition, EmployeeContract, Attendance, LeaveAllocation
 from apps.finance.services.fx import currency_code as currency_code_of
 from utils.record_rules import RecordRulesMixin
 
 class EmployeeViewSet(viewsets.ModelViewSet):
-    queryset = Employee.objects.select_related('department', 'reports_to', 'job_position')
+    queryset = Employee.objects.select_related('department', 'reports_to', 'job_position').prefetch_related('managed_department')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status', 'employment_type', 'department']
+    filterset_fields = ['status', 'employment_type', 'department', 'staff_type', 'is_manager']
     search_fields = ['first_name', 'last_name', 'employee_number', 'email']
     ordering_fields = ['first_name', 'last_name', 'employee_number', 'created_at']
     def get_serializer_class(self):
@@ -76,7 +77,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
 
 class DepartmentViewSet(viewsets.ModelViewSet):
-    queryset = Department.objects.all()
+    queryset = Department.objects.select_related('manager').annotate(staff_count=Count('employee'))
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name']
     ordering_fields = ['name']

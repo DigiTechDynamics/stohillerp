@@ -1,5 +1,40 @@
 # Changelog
 
+## [Unreleased] - UAT round 5 (HR)
+
+Branch `fix/uat-round-5`. Tests are in `backend/tests/test_uat_round5.py`.
+
+### Upgrade notes
+- Run `migrate`: `hr 0005` adds the staff type and manager profile to
+  employees. Commission-only staff and anyone with a Fidelity Fund number or
+  marked principal agent become Agents; whoever already manages a department or
+  has direct reports gets a manager profile; staff then report to their
+  department's manager.
+
+### Changed
+- **Managers are set per department.** "Reports to" is no longer picked on each
+  employee: everyone in a department reports to its manager, and changing the
+  manager moves the whole department. Each department card on the HR page
+  offers "Add manager" and lists the department's staff.
+- **Managers need a manager profile.** A "Manager profile" tick on the employee
+  (Job & Role). Only those employees can be a department's manager, and the
+  profile can't be removed while they manage one.
+- **Company employees vs agents.** A staff type on every employee, shown as a
+  badge (Employee / Agent, plus Manager) with an "All staff / Company
+  employees / Agents" filter. The Agents page now lists only agents, and its
+  "New" button starts an agent. Agent registration (Fidelity Fund) fields show
+  only for agents.
+- **Leave requests use From + Days applied.** The end date is filled in from
+  them in working days (Mon-Fri; half days allowed) and shows the day the
+  person is back. The server checks the same rule, refuses a start on a
+  weekend, overlapping leave, and more days than the allocation has left
+  (counting requests awaiting approval).
+
+### Fixed
+- Editing an employee with no Fidelity Fund expiry failed ("Date has wrong
+  format"), and editing anyone blanked their saved bank account number. Errors
+  on the employee and department forms are now readable text instead of JSON.
+
 ## [Unreleased] - UAT round 4
 
 Branch `fix/uat-round-4`. Tests are in `backend/tests/test_uat_round4.py`.

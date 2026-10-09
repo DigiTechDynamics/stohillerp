@@ -11,6 +11,8 @@ from apps.core.models import AuditedModel, TimeStampedModel
 class Department(TimeStampedModel):
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=20, unique=True)
+    # The department's manager is an employee with a manager profile. Everyone else in the
+    # department reports to them: reporting lines follow the department, not a per-employee pick.
     manager = models.ForeignKey('Employee', null=True, blank=True, on_delete=models.SET_NULL, related_name='managed_department')
 
     class Meta:
@@ -18,6 +20,14 @@ class Department(TimeStampedModel):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.sync_reporting_lines()
+
+    def sync_reporting_lines(self):
+        Employee.objects.filter(department=self).exclude(pk=self.manager_id) \
+            .exclude(reports_to_id=self.manager_id).update(reports_to_id=self.manager_id)
 
 class JobPosition(TimeStampedModel):
     name = models.CharField(max_length=100)
@@ -41,6 +51,10 @@ class Employee(AuditedModel):
         COMMISSION_ONLY = 'commission_only', 'Commission Only'
         INTERN = 'intern', 'Intern'
 
+    class StaffType(models.TextChoices):
+        EMPLOYEE = 'employee', 'Company employee'
+        AGENT = 'agent', 'Agent'
+
     class EmployeeStatus(models.TextChoices):
         ACTIVE = 'active', 'Active'
         ON_LEAVE = 'on_leave', 'On Leave'
@@ -61,9 +75,14 @@ class Employee(AuditedModel):
     department = models.ForeignKey(Department, null=True, blank=True, on_delete=models.SET_NULL)
     job_position = models.ForeignKey(JobPosition, null=True, blank=True, on_delete=models.SET_NULL, related_name='employees')
     employment_type = models.CharField(max_length=20, choices=EmploymentType.choices, default=EmploymentType.FULL_TIME)
+    # Company employees work for the business; agents sell or let for it (usually on commission).
+    staff_type = models.CharField(max_length=10, choices=StaffType.choices, default=StaffType.EMPLOYEE)
+    # Manager profile: only these employees can be made a department's manager.
+    is_manager = models.BooleanField(default=False)
     status = models.CharField(max_length=20, choices=EmployeeStatus.choices, default=EmployeeStatus.ACTIVE)
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
+    # Set from the department's manager (see Department.sync_reporting_lines), not chosen per employee.
     reports_to = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='direct_reports')
 
     # Agent-specific (EAAB registration)
@@ -93,6 +112,9 @@ class Employee(AuditedModel):
         if not self.employee_number:
             from apps.core.services.number_sequence import NumberSequenceService
             self.employee_number = NumberSequenceService.get_next_number("Employee", prefix="EMP-", padding=4)
+        department = self.department if self.department_id else None
+        if department and department.manager_id != self.pk:
+            self.reports_to_id = department.manager_id
         super().save(*args, **kwargs)
 
 

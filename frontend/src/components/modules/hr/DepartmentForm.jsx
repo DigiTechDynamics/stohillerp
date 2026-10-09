@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Save, AlertCircle, Briefcase } from 'lucide-react'
-import { hrAPI } from '@/services/api'
+import { hrAPI, apiErrorMessage } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 
 export default function DepartmentForm() {
@@ -18,11 +18,18 @@ export default function DepartmentForm() {
     manager: department?.manager || '',
   })
 
-  const { data: empsData } = useQuery({
-    queryKey: ['hr-employees-lite'],
-    queryFn: () => hrAPI.employees.list({ page_size: 1000 }),
+  // Only employees with a manager profile can manage a department.
+  const { data: mgrData } = useQuery({
+    queryKey: ['hr-managers'],
+    queryFn: () => hrAPI.employees.list({ is_manager: true, page_size: 500 }),
   })
-  const employees = empsData?.data?.results || []
+  const managers = mgrData?.data?.results || []
+  const { data: staffData } = useQuery({
+    queryKey: ['hr-employees-lite', 'department', department?.id],
+    queryFn: () => hrAPI.employees.list({ department: department.id, page_size: 500 }),
+    enabled: isEditing,
+  })
+  const staff = staffData?.data?.results || []
 
   const mutation = useMutation({
     mutationFn: (data) => 
@@ -30,13 +37,12 @@ export default function DepartmentForm() {
         ? hrAPI.departments.update(department.id, data)
         : hrAPI.departments.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['hr-departments'] })
+      for (const key of ['hr-departments', 'hr-employees', 'hr-employees-lite', 'departments']) {
+        queryClient.invalidateQueries({ queryKey: [key] })
+      }
       closeSidePanel()
     },
-    onError: (err) => {
-      const resp = err.response?.data
-      setError(resp?.error?.message || resp || 'An error occurred')
-    }
+    onError: (err) => setError(apiErrorMessage(err, 'An error occurred')),
   })
 
   const handleChange = (e) => {
@@ -47,7 +53,7 @@ export default function DepartmentForm() {
   const handleSubmit = (e) => {
     e.preventDefault()
     setError(null)
-    mutation.mutate(formData)
+    mutation.mutate({ ...formData, manager: formData.manager || null })
   }
 
   return (
@@ -67,7 +73,7 @@ export default function DepartmentForm() {
           {error && (
             <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex gap-2">
               <AlertCircle size={14} className="flex-shrink-0" />
-              <p>{typeof error === 'object' ? JSON.stringify(error) : error}</p>
+              <p>{error}</p>
             </div>
           )}
 
@@ -98,13 +104,33 @@ export default function DepartmentForm() {
 
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Department Manager</label>
-              <select name="manager" value={formData.manager} onChange={handleChange} className="form-input w-full">
-                <option value="">Select Manager</option>
-                {employees.map(e => (
-                  <option key={e.id} value={e.id}>{e.first_name} {e.last_name}</option>
+              <select name="manager" value={formData.manager || ''} onChange={handleChange} className="form-input w-full">
+                <option value="">No manager yet</option>
+                {managers.map(e => (
+                  <option key={e.id} value={e.id}>{e.full_name}{e.job_position_name ? ` (${e.job_position_name})` : ''}</option>
                 ))}
               </select>
+              <p className="text-[11px] text-dark-400">
+                {managers.length
+                  ? 'Only employees with a manager profile are listed. Everyone in the department reports to this manager.'
+                  : 'No employee has a manager profile yet: tick "Manager profile" on an employee (Job & Role tab) first.'}
+              </p>
             </div>
+
+            {isEditing && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Staff ({staff.length})</label>
+                {staff.length === 0 && <p className="text-xs text-dark-500">Nobody is in this department yet.</p>}
+                {staff.map((e) => (
+                  <div key={e.id} className="flex items-center justify-between text-xs py-1 border-b border-white/5">
+                    <span className="text-dark-200">{e.full_name}</span>
+                    <span className="text-dark-500">
+                      {e.id === formData.manager ? 'Manager' : e.staff_type === 'agent' ? 'Agent' : 'Employee'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </form>
       </div>
