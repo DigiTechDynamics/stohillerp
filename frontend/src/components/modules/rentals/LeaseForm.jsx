@@ -5,6 +5,7 @@ import { Save, AlertCircle, Key } from 'lucide-react'
 import { rentalsAPI, propertiesAPI, crmAPI, hrAPI, propmanAPI } from '@/services/api'
 import { useUIStore } from '@/stores/authStore'
 import CurrencySelect from '@/components/common/CurrencySelect'
+import VatOnRent from './VatOnRent'
 
 export default function LeaseForm() {
   const queryClient = useQueryClient()
@@ -76,6 +77,9 @@ export default function LeaseForm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rental-leases'] })
       queryClient.invalidateQueries({ queryKey: ['rental-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['lease'] })
+      // The property and unit now show as reserved / occupied.
+      for (const key of ['properties', 'property', 'properties-list', 'property-stats']) queryClient.invalidateQueries({ queryKey: [key] })
       closeSidePanel()
     },
     onError: (err) => {
@@ -240,6 +244,9 @@ export default function LeaseForm() {
               </div>
             </div>
 
+            <VatOnRent rent={formData.monthly_rental} checked={formData.vat_applicable}
+              onChange={(v) => setFormData((prev) => ({ ...prev, vat_applicable: v }))} />
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Deposit Amount</label>
@@ -249,10 +256,6 @@ export default function LeaseForm() {
                 <label className="flex items-center gap-2 text-xs text-dark-300 cursor-pointer">
                   <input type="checkbox" name="deposit_paid" checked={formData.deposit_paid} onChange={handleChange} className="form-checkbox" />
                   Deposit Paid
-                </label>
-                <label className="flex items-center gap-2 text-xs text-dark-300 cursor-pointer">
-                  <input type="checkbox" name="vat_applicable" checked={formData.vat_applicable} onChange={handleChange} className="form-checkbox" />
-                  VAT Applicable
                 </label>
               </div>
             </div>

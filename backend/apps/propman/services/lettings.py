@@ -46,7 +46,8 @@ def decide(application, approve, note='', user=None):
 
 
 @transaction.atomic
-def convert_to_lease(application, start_date, monthly_rental=None, deposit=None, end_date=None, user=None):
+def convert_to_lease(application, start_date, monthly_rental=None, deposit=None, end_date=None, user=None,
+                     vat_applicable=False):
     """Create a draft lease for an approved application and reserve the unit."""
     from apps.properties.models import PropertyUnit
     from apps.rentals.models import Lease
@@ -61,7 +62,7 @@ def convert_to_lease(application, start_date, monthly_rental=None, deposit=None,
         property=application.property, unit=application.unit, tenant=application.applicant,
         currency=application.property.currency, start_date=start_date, end_date=end_date or None,
         monthly_rental=rent, deposit_amount=Decimal(str(deposit)) if deposit not in (None, '') else rent,
-        status=Lease.LeaseStatus.DRAFT, created_by=user)
+        vat_applicable=bool(vat_applicable), status=Lease.LeaseStatus.DRAFT, created_by=user)
     application.status, application.lease = TenantApplication.Status.CONVERTED, lease
     application.save(update_fields=['status', 'lease', 'updated_at'])
     if application.unit_id:

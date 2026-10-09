@@ -191,7 +191,7 @@ export function ApplicationsTab() {
               </>
             )}
             {r.status === 'approved' && (
-              <button className="btn-ghost text-xs px-2 py-1 text-primary" onClick={() => setConvert({ app: r, start_date: r.desired_start || today(), end_date: '', monthly_rental: r.offered_rent || '', deposit: '' })}>Create lease</button>
+              <button className="btn-ghost text-xs px-2 py-1 text-primary" onClick={() => setConvert({ app: r, start_date: r.desired_start || today(), end_date: '', monthly_rental: r.offered_rent || '', deposit: '', vat_applicable: false })}>Create lease</button>
             )}
           </span>
         )}
@@ -213,6 +213,11 @@ export function ApplicationsTab() {
               <Field key={k} label={l}><input aria-label={l} type={t} step="any" className="form-input text-sm w-full" value={convert[k]} onChange={(e) => setConvert({ ...convert, [k]: e.target.value })} /></Field>
             ))}
           </div>
+          <label className="flex items-center gap-2 text-sm text-dark-300">
+            <input type="checkbox" aria-label="Charge VAT on rent" checked={convert.vat_applicable}
+              onChange={(e) => setConvert({ ...convert, vat_applicable: e.target.checked })} />
+            Charge VAT on rent (commercial leases)
+          </label>
           <div className="flex justify-end gap-2">
             <button className="btn-ghost" onClick={() => setConvert(null)}>Cancel</button>
             <button className="btn-primary" onClick={async () => {

@@ -14,19 +14,67 @@ def default_escalation_rate():
     return configured()
 
 
+# A draft or pending-signature lease holds the space; an active lease occupies it.
+HOLDING = ('draft', 'pending_signature')
+
+
 def sync_unit_occupancy(unit_id):
-    """A unit with an active lease is occupied; when its last active lease ends it is available again."""
+    """
+    A unit with an active lease is occupied, one with a draft or unsigned lease is reserved,
+    and when its last such lease ends (or is deleted) it is available again. A unit under
+    maintenance is left alone.
+    """
     if not unit_id:
         return
     from apps.properties.models import PropertyUnit  # type: ignore
 
-    occupied = Lease.objects.filter(unit_id=unit_id, status=Lease.LeaseStatus.ACTIVE).exists()
-    if occupied:
-        PropertyUnit.objects.filter(pk=unit_id).exclude(status=PropertyUnit.UnitStatus.OCCUPIED) \
-            .update(status=PropertyUnit.UnitStatus.OCCUPIED)
+    Status = PropertyUnit.UnitStatus
+    statuses = set(Lease.objects.filter(unit_id=unit_id).values_list('status', flat=True))
+    if Lease.LeaseStatus.ACTIVE in statuses:
+        target = Status.OCCUPIED
+    elif statuses & set(HOLDING):
+        target = Status.RESERVED
     else:
-        PropertyUnit.objects.filter(pk=unit_id, status=PropertyUnit.UnitStatus.OCCUPIED) \
-            .update(status=PropertyUnit.UnitStatus.AVAILABLE)
+        target = Status.AVAILABLE
+    PropertyUnit.objects.filter(pk=unit_id).exclude(status__in=[target, Status.UNDER_MAINTENANCE]).update(status=target)
+
+
+def sync_property_occupancy(property_id):
+    """
+    The property's own status follows its leases, so a let property no longer shows as available:
+    occupied when it is let as a whole or every unit is occupied, under contract while a lease
+    awaits signing (or every unit is taken, some only reserved), otherwise available. Statuses
+    set by hand for other reasons (sold, maintenance, listed for sale, inactive) are kept.
+    """
+    if not property_id:
+        return
+    from apps.properties.models import Property, PropertyUnit  # type: ignore
+
+    Status = Property.PropertyStatus
+    automatic = [Status.AVAILABLE, Status.OCCUPIED, Status.UNDER_CONTRACT, Status.LISTED_FOR_RENT]
+    current = Property.objects.filter(pk=property_id).values_list('status', flat=True).first()
+    if current not in automatic:
+        return
+    whole = set(Lease.objects.filter(property_id=property_id, unit__isnull=True).values_list('status', flat=True))
+    units = list(PropertyUnit.objects.filter(property_id=property_id).values_list('status', flat=True))
+    taken = [u for u in units if u in (PropertyUnit.UnitStatus.OCCUPIED, PropertyUnit.UnitStatus.RESERVED)]
+    if Lease.LeaseStatus.ACTIVE in whole or (units and all(u == PropertyUnit.UnitStatus.OCCUPIED for u in units)):
+        target = Status.OCCUPIED
+    elif whole & set(HOLDING) or (units and len(taken) == len(units)):
+        target = Status.UNDER_CONTRACT
+    elif current == Status.LISTED_FOR_RENT:
+        return
+    else:
+        target = Status.AVAILABLE
+    if target != current:
+        Property.objects.filter(pk=property_id).update(status=target)
+
+
+def sync_occupancy(unit_ids=(), property_ids=()):
+    for unit_id in {u for u in unit_ids if u}:
+        sync_unit_occupancy(unit_id)
+    for property_id in {p for p in property_ids if p}:
+        sync_property_occupancy(property_id)
 
 
 class Lease(AuditedModel):
@@ -136,9 +184,9 @@ class Lease(AuditedModel):
             from apps.core.services.number_sequence import NumberSequenceService  # type: ignore
             self.lease_number = NumberSequenceService.get_next_number("Lease Agreement", prefix="LSE-", padding=5)
         with transaction.atomic():
-            previous_unit_id = None
+            previous_unit_id = previous_property_id = None
             if self.pk:
-                previous_unit_id = Lease.objects.filter(pk=self.pk).values_list('unit_id', flat=True).first()
+                previous_unit_id, previous_property_id = Lease.objects.filter(pk=self.pk)                     .values_list('unit_id', 'property_id').first() or (None, None)
             super().save(*args, **kwargs)
             if self.tenant_id:
                 from apps.rentals.services.finance_sync import RentalFinanceSyncService  # type: ignore
@@ -146,14 +194,20 @@ class Lease(AuditedModel):
                 if self.status == self.LeaseStatus.ACTIVE:
                     # Whoever holds an active lease is a tenant, whatever they were filed as (lead, prospect...).
                     from apps.crm.models import Contact  # type: ignore
-                    Contact.objects.filter(pk=self.tenant_id).exclude(contact_type=Contact.ContactType.TENANT)                         .update(contact_type=Contact.ContactType.TENANT)
-            sync_unit_occupancy(self.unit_id)
-            if previous_unit_id and previous_unit_id != self.unit_id:
-                sync_unit_occupancy(previous_unit_id)
+                    Contact.objects.filter(pk=self.tenant_id).exclude(contact_type=Contact.ContactType.TENANT) \
+                        .update(contact_type=Contact.ContactType.TENANT)
+            sync_occupancy([self.unit_id, previous_unit_id], [self.property_id, previous_property_id])
             if self.status == self.LeaseStatus.ACTIVE and not self.letting_fee_charged \
                     and self.property.is_managed and self.property.letting_fee_percent:
                 from apps.propman.services.fees import charge_letting_fee  # type: ignore
                 charge_letting_fee(self)
+
+    def delete(self, *args, **kwargs):
+        unit_id, property_id = self.unit_id, self.property_id
+        with transaction.atomic():
+            result = super().delete(*args, **kwargs)
+            sync_occupancy([unit_id], [property_id])
+        return result
 
 
 class RentalInvoice(AuditedModel):

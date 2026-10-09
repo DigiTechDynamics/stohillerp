@@ -2,11 +2,13 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Key, FileText, Edit3 } from 'lucide-react'
-import { rentalsAPI } from '@/services/api'
+import { toast } from 'react-hot-toast'
+import { rentalsAPI, apiErrorMessage } from '@/services/api'
 import { formatCurrency, formatDate, getStatusColor } from '@/utils/format'
 import { useUIStore } from '@/stores/authStore'
 import LeaseActions from './LeaseActions'
 import LeaseTerms from './LeaseTerms'
+import VatOnRent from './VatOnRent'
 
 function InfoRow({ label, value, accent }) {
   return (
@@ -48,6 +50,17 @@ export default function LeaseDetailPanel() {
       queryClient.invalidateQueries({ queryKey: ['rental-stats'] })
       setAdjusting(false)
     },
+  })
+
+  // VAT on rent applies from the next invoice raised; invoices already issued are unchanged.
+  const vatMutation = useMutation({
+    mutationFn: (vat) => rentalsAPI.leases.update(lease.id, { vat_applicable: vat }),
+    onSuccess: (_, vat) => {
+      queryClient.invalidateQueries({ queryKey: ['lease', lease.id] })
+      queryClient.invalidateQueries({ queryKey: ['rental-leases'] })
+      toast.success(vat ? 'VAT will be charged on rent from the next invoice.' : 'VAT will no longer be charged on rent.')
+    },
+    onError: (err) => toast.error(apiErrorMessage(err)),
   })
 
   if (!lease) return null
@@ -93,7 +106,10 @@ export default function LeaseDetailPanel() {
           <InfoRow label="Next Year Estimate" value={formatCurrency(escalatedAmount)} accent="text-dark-300" />
           <InfoRow label="Deposit" value={formatCurrency(parseFloat(lease.deposit_amount || 0))} />
           <InfoRow label="Deposit Paid" value={lease.deposit_paid ? 'Yes' : 'No'} accent={lease.deposit_paid ? 'text-emerald-400' : 'text-amber-400'} />
-          <InfoRow label="VAT Applicable" value={lease.vat_applicable ? 'Yes' : 'No'} />
+          <div className="pt-2">
+            <VatOnRent rent={lease.monthly_rental} checked={lease.vat_applicable} disabled={vatMutation.isPending}
+              onChange={(v) => vatMutation.mutate(v)} />
+          </div>
 
           {/* Adjust Rental */}
           {adjusting ? (

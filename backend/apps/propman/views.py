@@ -428,7 +428,8 @@ class TenantApplicationViewSet(_Base):
         lease = lettings.convert_to_lease(
             self.get_object(), _date(request.data.get('start_date'), 'start_date'),
             request.data.get('monthly_rental'), request.data.get('deposit'),
-            _date(request.data.get('end_date'), 'end_date') if request.data.get('end_date') else None, request.user)
+            _date(request.data.get('end_date'), 'end_date') if request.data.get('end_date') else None, request.user,
+            vat_applicable=str(request.data.get('vat_applicable', '')).lower() in ('true', '1', 'yes', 'on'))
         return Response({'lease': str(lease.pk), 'lease_number': lease.lease_number}, status=201)
 
 

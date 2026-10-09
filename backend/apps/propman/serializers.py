@@ -22,22 +22,36 @@ class UtilityTariffSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def validate_steps(self, steps):
+        """
+        Normalise stepped rates to [{"up_to": "50.00", "rate": "1.2000"}, ..., {"up_to": None, "rate": ...}].
+        Blank rows are dropped and "1,20" is read as 1.20, so a half-filled form doesn't fail.
+        """
+        if steps in (None, ''):
+            return []
         if not isinstance(steps, list):
             raise serializers.ValidationError('Steps must be a list of {"up_to", "rate"}.')
-        previous = Decimal('0')
-        for i, step in enumerate(steps):
+
+        def number(value):
+            text = str(value).strip().replace(' ', '').replace(',', '.')
+            return None if text in ('', 'None', 'null') else Decimal(text)
+
+        cleaned, previous = [], Decimal('0')
+        rows = [s for s in steps if isinstance(s, dict) and any(str(s.get(k) or '').strip() for k in ('up_to', 'rate'))]
+        for i, step in enumerate(rows, start=1):
             try:
-                Decimal(str(step['rate']))
-                up_to = step.get('up_to')
-                if up_to not in (None, ''):
-                    if Decimal(str(up_to)) <= previous:
-                        raise serializers.ValidationError('Step limits must increase.')
-                    previous = Decimal(str(up_to))
-                elif i != len(steps) - 1:
-                    raise serializers.ValidationError('Only the last step can be open-ended.')
-            except (KeyError, ArithmeticError, TypeError):
-                raise serializers.ValidationError('Each step needs a numeric rate and an up_to limit (last may be empty).')
-        return steps
+                rate, up_to = number(step.get('rate')), number(step.get('up_to'))
+            except ArithmeticError:
+                raise serializers.ValidationError(f'Step {i}: the limit and rate must be numbers.')
+            if rate is None or rate < 0:
+                raise serializers.ValidationError(f'Step {i}: give the rate per unit.')
+            if up_to is None and i != len(rows):
+                raise serializers.ValidationError(f'Step {i}: only the last step can be left without an "up to" limit.')
+            if up_to is not None:
+                if up_to <= previous:
+                    raise serializers.ValidationError(f'Step {i}: each "up to" limit must be higher than the one before.')
+                previous = up_to
+            cleaned.append({'up_to': None if up_to is None else str(up_to), 'rate': str(rate)})
+        return cleaned
 
 
 class MeterSerializer(serializers.ModelSerializer):
